@@ -51,7 +51,7 @@ fun SettingsMenu(
     isVisible: Boolean,
     onDismiss: () -> Unit,
     onOpenConfigScreen: () -> Unit,
-    updateJsonUrl: String = "https://release.devmesh.ca/u/update.json",
+    updateJsonUrl: String = "https://api.github.com/repos/devmesh-git/seerrtv/releases/latest",
     viewModel: ca.devmesh.seerrtv.viewmodel.MediaDiscoveryViewModel? = null
 ) {
     val context = LocalContext.current

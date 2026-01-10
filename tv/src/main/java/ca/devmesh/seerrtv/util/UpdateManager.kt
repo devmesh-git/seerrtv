@@ -22,7 +22,7 @@ import kotlin.coroutines.resume
 import android.util.Log
 
 /**
- * Data class representing update information parsed from update.json.
+ * Data class representing update information from GitHub Releases API.
  */
 data class UpdateInfo(
     val latestVersionCode: Int,
@@ -63,7 +63,7 @@ class UpdateManager(
     private val executor = Executors.newSingleThreadExecutor()
 
     /**
-     * Checks for an available update by fetching and parsing update.json.
+     * Checks for an available update by fetching from GitHub Releases API.
      * Calls the appropriate callback method based on the result.
      */
     fun checkForUpdate(callback: UpdateCheckCallback) {
@@ -84,20 +84,26 @@ class UpdateManager(
                 }
                 val body = response.body.string()
                 if (body.isEmpty()) {
-                    Log.e("UpdateManager", "Empty response from update server")
-                    callback.onError("Empty response from update server")
+                    Log.e("UpdateManager", "Empty response from GitHub API")
+                    callback.onError("Empty response from GitHub API")
                     return@execute
                 }
-                Log.d("UpdateManager", "Update info JSON: $body")
-                val json = JSONObject(body)
-                val updateInfo = UpdateInfo(
-                    latestVersionCode = json.getInt("latestVersionCode"),
-                    latestVersionName = json.getString("latestVersionName"),
-                    apkUrl = json.getString("apkUrl"),
-                )
-                val currentVersionCode = getCurrentVersionCode()
-                Log.d("UpdateManager", "Current version code: $currentVersionCode, Latest: ${updateInfo.latestVersionCode}")
-                if (updateInfo.latestVersionCode > currentVersionCode) {
+                Log.d("UpdateManager", "GitHub release JSON: $body")
+                
+                val updateInfo = parseGitHubReleaseResponse(body)
+                
+                if (updateInfo == null) {
+                    Log.e("UpdateManager", "Failed to parse GitHub release response")
+                    callback.onError("Failed to parse GitHub release response")
+                    return@execute
+                }
+                
+                // Compare versionName semantically
+                val currentVersionName = getCurrentVersionName()
+                val hasUpdate = compareVersions(updateInfo.latestVersionName, currentVersionName) > 0
+                Log.d("UpdateManager", "Current version name: $currentVersionName, Latest: ${updateInfo.latestVersionName}, Update available: $hasUpdate")
+                
+                if (hasUpdate) {
                     Log.d("UpdateManager", "Update available: ${updateInfo.latestVersionName}")
                     callback.onUpdateAvailable(updateInfo)
                 } else {
@@ -110,19 +116,102 @@ class UpdateManager(
             }
         }
     }
-
-    private fun getCurrentVersionCode(): Int {
+    
+    /**
+     * Parses GitHub Releases API response format.
+     * Extracts version from tag_name, finds APK asset, and derives versionCode from versionName.
+     */
+    private fun parseGitHubReleaseResponse(body: String): UpdateInfo? {
         return try {
-            val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                pInfo.longVersionCode.toInt()
-            } else {
-                @Suppress("DEPRECATION")
-                pInfo.versionCode
+            val json = JSONObject(body)
+            val tagName = json.getString("tag_name")
+            // Remove 'v' prefix if present (e.g., "v0.26.3" -> "0.26.3")
+            val versionName = tagName.removePrefix("v")
+            
+            // Find the APK asset
+            val assetsArray = json.getJSONArray("assets")
+            var apkUrl: String? = null
+            for (i in 0 until assetsArray.length()) {
+                val asset = assetsArray.getJSONObject(i)
+                val assetName = asset.getString("name")
+                if (assetName.endsWith(".apk", ignoreCase = true)) {
+                    apkUrl = asset.getString("browser_download_url")
+                    Log.d("UpdateManager", "Found APK asset: $assetName -> $apkUrl")
+                    break
+                }
             }
-        } catch (_: PackageManager.NameNotFoundException) {
+            
+            if (apkUrl == null) {
+                Log.e("UpdateManager", "No APK asset found in GitHub release")
+                return null
+            }
+            
+            // Derive versionCode from versionName by parsing semantic version
+            // For now, we'll use a simple conversion: 0.26.3 -> 26 * 1000 + 3 = 26003
+            // This allows for versions up to 99.99.999
+            val versionCode = parseVersionCodeFromVersionName(versionName)
+            
+            UpdateInfo(
+                latestVersionCode = versionCode,
+                latestVersionName = versionName,
+                apkUrl = apkUrl
+            )
+        } catch (e: Exception) {
+            Log.e("UpdateManager", "Failed to parse GitHub release response: ${e.localizedMessage}", e)
+            null
+        }
+    }
+    
+    /**
+     * Converts semantic version string (e.g., "0.26.3") to a version code integer.
+     * Format: major * 1000000 + minor * 1000 + patch
+     * Examples: "0.26.3" -> 26003, "1.2.3" -> 1002003
+     * Note: This versionCode is only used for the UpdateInfo data class and is not used for comparison.
+     */
+    private fun parseVersionCodeFromVersionName(versionName: String): Int {
+        return try {
+            val parts = versionName.split(".")
+            val major = parts.getOrElse(0) { "0" }.toIntOrNull() ?: 0
+            val minor = parts.getOrElse(1) { "0" }.toIntOrNull() ?: 0
+            val patch = parts.getOrElse(2) { "0" }.toIntOrNull() ?: 0
+            major * 1000000 + minor * 1000 + patch
+        } catch (e: Exception) {
+            Log.e("UpdateManager", "Failed to parse version code from version name: $versionName", e)
             0
         }
+    }
+    
+    private fun getCurrentVersionName(): String {
+        return try {
+            val pInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+            pInfo.versionName ?: "0.0.0"
+        } catch (_: PackageManager.NameNotFoundException) {
+            "0.0.0"
+        }
+    }
+    
+    /**
+     * Compares two semantic version strings.
+     * Returns: > 0 if v1 > v2, < 0 if v1 < v2, 0 if v1 == v2
+     * Examples: compareVersions("0.26.3", "0.26.2") returns > 0
+     */
+    private fun compareVersions(v1: String, v2: String): Int {
+        val parts1 = v1.split(".").mapNotNull { it.toIntOrNull() }
+        val parts2 = v2.split(".").mapNotNull { it.toIntOrNull() }
+        
+        val maxLength = maxOf(parts1.size, parts2.size)
+        
+        for (i in 0 until maxLength) {
+            val part1 = parts1.getOrElse(i) { 0 }
+            val part2 = parts2.getOrElse(i) { 0 }
+            
+            when {
+                part1 > part2 -> return 1
+                part1 < part2 -> return -1
+            }
+        }
+        
+        return 0
     }
 
     /**

@@ -564,7 +564,7 @@ class MainActivity : AppCompatActivity() {
                                 // Actually check for updates
                                 val updateInfo = checkForUpdateIfAvailable(
                                     this@MainActivity,
-                                    "https://release.devmesh.ca/u/update.json"
+                                    "https://api.github.com/repos/devmesh-git/seerrtv/releases/latest"
                                 )
                                 if (updateInfo != null) {
                                     updateInfoForDialog = updateInfo

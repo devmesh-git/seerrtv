@@ -39,7 +39,7 @@ import androidx.compose.runtime.mutableIntStateOf
 @Composable
 fun SplashScreen(
     errorMessage: String? = null,
-    updateJsonUrl: String = "https://release.devmesh.ca/u/update.json",
+    updateJsonUrl: String = "https://api.github.com/repos/devmesh-git/seerrtv/releases/latest",
     onContinue: () -> Unit = {},
     isAuthenticationComplete: Boolean = false,
     isConfigured: Boolean = false,

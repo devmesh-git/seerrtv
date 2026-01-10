@@ -69,8 +69,8 @@ android {
         applicationId = "ca.devmesh.seerrtv"
         minSdk = 25
         targetSdk = 36
-        versionCode = 106
-        versionName = "0.26.3"
+        versionCode = 107
+        versionName = "0.26.4"
         buildConfigField("String", "VERSION_NAME", "\"${defaultConfig.versionName}\"")
         buildConfigField("Boolean", "DEBUG", "true")
         buildConfigField("Boolean", "IS_DIRECT_FLAVOR", "false")
@@ -180,54 +180,6 @@ dependencies {
     implementation(libs.core)
 }
 
-// Add UpdateJson generation task
-abstract class WriteUpdateJsonTask : DefaultTask() {
-    @get:OutputDirectory
-    abstract val outputDir: DirectoryProperty
-
-    @get:Input
-    abstract val apkUrl: Property<String>
-
-    @get:Input
-    abstract val versionCode: Property<Int>
-
-    @get:Input
-    abstract val versionName: Property<String>
-
-    @TaskAction
-    fun writeJson() {
-        // Create the JSON structure
-        val json = mapOf(
-            "latestVersionCode" to versionCode.get(),
-            "latestVersionName" to versionName.get(),
-            "apkUrl" to apkUrl.get(),
-        )
-
-        // Ensure output directory exists
-        outputDir.get().asFile.mkdirs()
-
-        // Write the JSON to a file
-        val jsonFile = outputDir.get().asFile.resolve("update.json")
-        jsonFile.writeText(groovy.json.JsonOutput.prettyPrint(groovy.json.JsonOutput.toJson(json)))
-        
-        logger.lifecycle("Generated update.json at ${jsonFile.absolutePath}")
-    }
-}
-
-// Register the task
-tasks.register<WriteUpdateJsonTask>("generateUpdateJson") {
-    group = "distribution"
-    description = "Generates update.json for direct flavor"
-    
-    val versionName = android.defaultConfig.versionName
-    val versionCode = android.defaultConfig.versionCode
-
-    outputDir.set(layout.buildDirectory.dir("outputs/updateJson"))
-    apkUrl.set("https://release.devmesh.ca/u/seerrTV-v${versionName}.apk")
-    this.versionCode.set(versionCode)
-    this.versionName.set(versionName)
-}
-
 // Hook the task into the build process to print outputs
 android.applicationVariants.all {
     val variantName = name.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
@@ -257,41 +209,22 @@ android.applicationVariants.all {
         }
     }
     
-    // For direct release builds, generate update.json after assembling, then print outputs
+    // For direct release builds, print APK location after assembling
     if (flavor == "direct" && buildType == "release") {
         val apkPath = "${buildDirPath}/outputs/apk/${flavor}/${buildType}/tv-${flavor}-${buildType}.apk"
-        val updateJsonPath = "${buildDirPath}/outputs/updateJson/update.json"
-        
-        // Create a task that always prints outputs (runs even when assemble/generateUpdateJson are up-to-date)
-        val printOutputsTaskName = "printDirectReleaseOutputs"
-        tasks.register(printOutputsTaskName) {
+        tasks.named(assembleTaskName).configure {
             doLast {
-                println("\n" + "=".repeat(70))
-                println("BUILD OUTPUTS")
-                println("=".repeat(70))
-                
                 val apkFile = File(apkPath)
                 if (apkFile.exists()) {
+                    println("\n" + "=".repeat(70))
+                    println("BUILD OUTPUTS")
+                    println("=".repeat(70))
                     println("\n📱 Direct Release APK:")
                     println("   ${apkFile.absolutePath}")
+                    println("\n📦 Upload this APK to GitHub Releases for auto-update functionality")
+                    println("\n" + "=".repeat(70) + "\n")
                 }
-                
-                val updateJsonFile = File(updateJsonPath)
-                if (updateJsonFile.exists()) {
-                    println("\n📄 Update JSON (for Direct Release):")
-                    println("   ${updateJsonFile.absolutePath}")
-                }
-                
-                println("\n" + "=".repeat(70) + "\n")
             }
-        }
-        
-        tasks.named(assembleTaskName).configure {
-            finalizedBy("generateUpdateJson", printOutputsTaskName)
-        }
-        
-        tasks.named("generateUpdateJson").configure {
-            finalizedBy(printOutputsTaskName)
         }
     } else if (flavor == "play" && buildType == "release") {
         // For Play release builds, print APK location after assembling

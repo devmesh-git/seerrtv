@@ -182,9 +182,8 @@ gradlew.bat assembleDirectRelease
 - **Linux/Windows**: Set `JAVA_HOME` environment variable to your JDK 21 installation path, or override it in `gradle.properties` by setting `org.gradle.java.home`.
 
 The direct build:
-- Includes auto-update functionality
+- Includes auto-update functionality (fetches from GitHub Releases API)
 - Contains `REQUEST_INSTALL_PACKAGES` permission
-- Automatically generates `update.json` file for update server
 - Generates `.apk` files for direct installation
 
 #### Build Variants Summary
@@ -241,8 +240,9 @@ For detailed signing setup instructions, see [Signing Setup Guide](docs/SIGNING_
 2. **For Direct Distribution**: 
    - macOS/Linux: Build with `./gradlew assembleDirectRelease`
    - Windows: Build with `gradlew.bat assembleDirectRelease`
-   - Upload the generated `.apk` and `update.json` to your distribution server
-   - Update the APK URL in `update.json` to match your server location
+   - Upload the generated `.apk` to a GitHub Release
+   - The app automatically checks `https://api.github.com/repos/devmesh-git/seerrtv/releases/latest` for updates
+   - Ensure the release tag follows semantic versioning (e.g., `v0.26.3`)
 
 **Note**: On Windows, you can also use `./gradlew` in Git Bash, WSL, or PowerShell. The `gradlew.bat` command works in all Windows shells including Command Prompt.
 
@@ -321,8 +321,9 @@ SeerrTV is available on Google Play Store for official releases.
 
 ### Sideload Builds
 
-For users who prefer to sideload builds, direct APK releases are available at:
-- **Direct Releases**: [https://release.devmesh.ca/folder/cm7jaih9k0003of018fceh1ui](https://release.devmesh.ca/folder/cm7jaih9k0003of018fceh1ui)
+For users who prefer to sideload builds, direct APK releases are available on GitHub:
+- **GitHub Releases**: [https://github.com/devmesh-git/seerrtv/releases](https://github.com/devmesh-git/seerrtv/releases)
+- The app automatically checks for updates from GitHub Releases when you open it
 
 Release notes and changelogs are also announced in the official Discord community.
 

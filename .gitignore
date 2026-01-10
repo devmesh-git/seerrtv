@@ -21,6 +21,7 @@
 .idea/appInsightsSettings.xml
 .idea/markdown.xml
 .idea/runConfigurations.xml
+.idea/deploymentTargetSelector.xml
 # Include shared settings (codeStyles, inspectionProfiles, gradle.xml, misc.xml, vcs.xml, compiler.xml, kotlinc.xml, etc.)
 .kotlin/sessions
 *.iml

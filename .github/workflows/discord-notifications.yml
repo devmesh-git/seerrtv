@@ -1,0 +1,154 @@
+name: Discord Notifications
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - 'v*'
+  pull_request:
+    types: [opened, closed]
+  issues:
+    types: [opened, closed]
+  release:
+    types: [published]
+
+jobs:
+  notify-discord:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Discord - Tag Created
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        run: |
+          curl -H "Content-Type: application/json" \
+            -d '{
+              "embeds": [{
+                "title": "🏷️ New Tag: ${{ github.ref_name }}",
+                "description": "A new tag was created in the repository",
+                "color": 3447003,
+                "fields": [
+                  {
+                    "name": "Tag",
+                    "value": "${{ github.ref_name }}",
+                    "inline": true
+                  },
+                  {
+                    "name": "Repository",
+                    "value": "${{ github.repository }}",
+                    "inline": true
+                  }
+                ],
+                "url": "https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}"
+              }]
+            }' \
+            "${{ secrets.DISCORD_WEBHOOK }}"
+
+      - name: Notify Discord - Release Published
+        if: github.event_name == 'release'
+        run: |
+          RELEASE_NAME="${{ github.event.release.name }}"
+          if [ -z "$RELEASE_NAME" ]; then
+            RELEASE_NAME="${{ github.event.release.tag_name }}"
+          fi
+          RELEASE_BODY="${{ github.event.release.body }}"
+          RELEASE_BODY=$(echo "$RELEASE_BODY" | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
+          RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${{ github.event.release.tag_name }}"
+          curl -H "Content-Type: application/json" \
+            -d "{
+              \"embeds\": [{
+                \"title\": \"🎉 New Release: ${{ github.event.release.tag_name }}\",
+                \"description\": \"${RELEASE_BODY}\",
+                \"color\": 3066993,
+                \"fields\": [
+                  {
+                    \"name\": \"Release\",
+                    \"value\": \"${RELEASE_NAME}\",
+                    \"inline\": true
+                  },
+                  {
+                    \"name\": \"Tag\",
+                    \"value\": \"${{ github.event.release.tag_name }}\",
+                    \"inline\": true
+                  }
+                ],
+                \"url\": \"${RELEASE_URL}\"
+              }]
+            }" \
+            "${{ secrets.DISCORD_WEBHOOK }}"
+
+      - name: Notify Discord - Pull Request
+        if: github.event_name == 'pull_request'
+        run: |
+          COLOR=$([ "${{ github.event.action }}" == "closed" ] && echo "15158332" || echo "3447003")
+          STATUS=$([ "${{ github.event.action }}" == "closed" ] && echo "Closed" || echo "Opened")
+          PR_BODY="${{ github.event.pull_request.body }}"
+          PR_BODY=$(echo "$PR_BODY" | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          PR_TITLE=$(echo "$PR_TITLE" | sed 's/"/\\"/g')
+          curl -H "Content-Type: application/json" \
+            -d "{
+              \"embeds\": [{
+                \"title\": \"Pull Request ${STATUS}: ${PR_TITLE}\",
+                \"description\": \"${PR_BODY}\",
+                \"color\": ${COLOR},
+                \"fields\": [
+                  {
+                    \"name\": \"PR\",
+                    \"value\": \"#${{ github.event.pull_request.number }}\",
+                    \"inline\": true
+                  },
+                  {
+                    \"name\": \"Author\",
+                    \"value\": \"${{ github.event.pull_request.user.login }}\",
+                    \"inline\": true
+                  },
+                  {
+                    \"name\": \"Status\",
+                    \"value\": \"${{ github.event.pull_request.state }}\",
+                    \"inline\": true
+                  }
+                ],
+                \"url\": \"https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }}\"
+              }]
+            }" \
+            "${{ secrets.DISCORD_WEBHOOK }}"
+
+      - name: Notify Discord - Issue
+        if: github.event_name == 'issues'
+        run: |
+          COLOR=$([ "${{ github.event.action }}" == "closed" ] && echo "15158332" || echo "3447003")
+          STATUS=$([ "${{ github.event.action }}" == "closed" ] && echo "Closed" || echo "Opened")
+          ISSUE_BODY="${{ github.event.issue.body }}"
+          ISSUE_BODY=$(echo "$ISSUE_BODY" | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
+          ISSUE_TITLE="${{ github.event.issue.title }}"
+          ISSUE_TITLE=$(echo "$ISSUE_TITLE" | sed 's/"/\\"/g')
+          LABELS="${{ join(github.event.issue.labels.*.name, ', ') }}"
+          if [ -z "$LABELS" ]; then
+            LABELS="None"
+          fi
+          curl -H "Content-Type: application/json" \
+            -d "{
+              \"embeds\": [{
+                \"title\": \"Issue ${STATUS}: ${ISSUE_TITLE}\",
+                \"description\": \"${ISSUE_BODY}\",
+                \"color\": ${COLOR},
+                \"fields\": [
+                  {
+                    \"name\": \"Issue\",
+                    \"value\": \"#${{ github.event.issue.number }}\",
+                    \"inline\": true
+                  },
+                  {
+                    \"name\": \"Author\",
+                    \"value\": \"${{ github.event.issue.user.login }}\",
+                    \"inline\": true
+                  },
+                  {
+                    \"name\": \"Labels\",
+                    \"value\": \"${LABELS}\",
+                    \"inline\": false
+                  }
+                ],
+                \"url\": \"https://github.com/${{ github.repository }}/issues/${{ github.event.issue.number }}\"
+              }]
+            }" \
+            "${{ secrets.DISCORD_WEBHOOK }}"

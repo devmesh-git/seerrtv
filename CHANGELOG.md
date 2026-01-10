@@ -1,5 +1,103 @@
 # Changelog
 
+## 0.26.4
+
+### Major Features
+
+#### GitHub Releases Integration
+- **Migrated update system to GitHub Releases API** - direct flavor now fetches updates directly from GitHub Releases instead of custom update.json files
+- **Automatic update detection** - app checks `https://api.github.com/repos/devmesh-git/seerrtv/releases/latest` for the latest release
+- **Semantic version comparison** - uses semantic versioning (e.g., "0.26.4" vs "0.26.3") to determine if updates are available
+- **Automatic APK detection** - automatically finds and uses the first `.apk` file in GitHub release assets
+
+### Technical Improvements
+
+#### Update System Refactoring
+- **Removed legacy update.json system** - completely removed custom JSON update file generation and parsing
+- **Simplified UpdateManager** - streamlined code to only handle GitHub Releases API format
+- **Cleaner build process** - removed `generateUpdateJson` Gradle task and related build configuration
+- **Enhanced error handling** - improved error messages and logging for GitHub API interactions
+
+#### Build Configuration
+- **Removed WriteUpdateJsonTask** - eliminated custom Gradle task for generating update.json
+- **Simplified build outputs** - direct release builds now only generate APK files
+- **Updated build messages** - added guidance to upload APK to GitHub Releases
+
+### Documentation Updates
+- **Updated README.md** - removed references to legacy update.json system
+- **Updated release workflow** - documented GitHub Releases upload process
+- **Updated sideload builds section** - now points to GitHub Releases instead of legacy website
+
+### Files Modified
+- `tv/src/main/java/ca/devmesh/seerrtv/util/UpdateManager.kt` - Migrated to GitHub Releases API, removed legacy JSON parsing
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/SplashScreen.kt` - Updated default update URL to GitHub API
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/SettingsMenu.kt` - Updated default update URL to GitHub API
+- `tv/src/main/java/ca/devmesh/seerrtv/MainActivity.kt` - Updated hardcoded update URL to GitHub API
+- `tv/build.gradle.kts` - Removed WriteUpdateJsonTask and generateUpdateJson task registration, simplified build output
+- `README.md` - Updated to reflect GitHub Releases workflow and removed legacy update.json references
+
+---
+
+## 0.26.3
+
+### Major Features
+
+#### First Open Source Release
+- **Initial open source release** - SeerrTV is now fully open source and available to the community
+- **Comprehensive documentation** - added complete documentation suite for contributors and users
+- **Community infrastructure** - established GitHub workflows and templates for open source collaboration
+
+### Documentation & Project Infrastructure
+
+#### New Documentation Files
+- **CHANGELOG.md** - comprehensive version history and release notes
+- **LICENSE** - open source license (Apache 2.0)
+- **CONTRIBUTING.md** - contributor guidelines and development workflow
+- **CODE_OF_CONDUCT.md** - community code of conduct
+- **SECURITY.md** - security policy and reporting guidelines
+- **README.md** - comprehensive project documentation with features, setup, and usage
+
+#### GitHub Infrastructure
+- **Issue templates** - bug report and feature request templates for better issue tracking
+- **Pull request template** - standardized PR template for contributions
+- **FUNDING.yml** - funding configuration for project support
+
+### Codebase Cleanup
+
+#### Project Organization
+- **Enhanced .gitignore** - improved IDE settings and build artifact exclusions
+- **Code style configuration** - standardized formatting rules for consistent codebase
+- **IDE configuration** - added proper IDE settings for Android Studio and VSCode
+- **Build configuration cleanup** - removed unused configurations and streamlined build process
+
+#### UI/UX Improvements
+- **SplashScreen layout improvements** - improved version display and centered message scrolling
+- **Branding removal** - removed commercial branding elements for open source release
+
+### Files Added
+- `.github/ISSUE_TEMPLATE/bug_report.md` - Bug report template
+- `.github/ISSUE_TEMPLATE/feature_request.md` - Feature request template
+- `.github/pull_request_template.md` - Pull request template
+- `.github/FUNDING.yml` - Funding configuration
+- `CHANGELOG.md` - Version history
+- `LICENSE` - Apache 2.0 License
+- `CONTRIBUTING.md` - Contribution guidelines
+- `CODE_OF_CONDUCT.md` - Code of conduct
+- `SECURITY.md` - Security policy
+- `.cursor/rules/seerrtv.mdc` - Cursor IDE rules
+- `.idea/` configuration files - IDE settings
+- `.vscode/` configuration files - VSCode settings
+- `docs/CLOUDFLARE_CONFIGURATION.md` - Cloudflare setup documentation
+- `docs/SIGNING_SETUP.md` - Signing configuration documentation
+
+### Files Modified
+- `.gitignore` - Enhanced with additional IDE settings
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/SplashScreen.kt` - Improved layout and message scrolling
+- `README.md` - Complete rewrite for open source release
+- Build configuration files - Cleanup and standardization
+
+---
+
 ## 0.26.2
 
 ### Major Features
