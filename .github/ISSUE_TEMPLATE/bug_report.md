@@ -11,12 +11,17 @@ assignees: ''
 
 A clear and concise description of what the bug is.
 
+**Note for Contributors**: If this bug is well-documented and suitable for new contributors, maintainers may add the `good first issue` label.
+
 ## Steps to Reproduce
 
-1. Go to '...'
-2. Click on '...'
-3. Navigate to '...'
-4. See error
+Please provide detailed steps using D-pad navigation (this is an Android TV app):
+
+1. Starting screen: (e.g., Main browse screen, Settings, Media details)
+2. Navigate to: (use UP/DOWN/LEFT/RIGHT/ENTER/BACK to describe path)
+3. Action taken: (what did you select or do?)
+4. Expected result: (what should have happened?)
+5. Actual result: (what actually happened?)
 
 ## Expected Behavior
 
@@ -55,9 +60,16 @@ If applicable, add screenshots to help explain your problem.
 
 Add any other context about the problem here.
 
-## D-pad Navigation
+### Checklist
 
-Please describe the D-pad navigation path to reproduce the issue:
-- Starting screen: ...
-- Navigation steps: ...
-- Where the issue occurs: ...
+Before submitting, please ensure:
+- [ ] You've searched existing issues to see if this bug has already been reported
+- [ ] You've provided all relevant environment information above
+- [ ] You've described the D-pad navigation path to reproduce the issue
+- [ ] For UI issues, you've included screenshots if possible
+
+### Getting Help
+
+- 💬 **Discord**: Join the [Seerr Community Discord](https://discord.gg/nTFk3jHbk5) for real-time help
+- 📖 **FAQ**: Check the [FAQ section](https://github.com/devmesh-git/seerrtv#faq--troubleshooting) in the README
+- 🏷️ **Labels**: This issue will be automatically labeled as `bug`. Maintainers may add additional labels like `android-tv`, `help wanted`, or `good first issue` if appropriate.

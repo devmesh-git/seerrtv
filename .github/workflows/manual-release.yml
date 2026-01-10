@@ -1,0 +1,67 @@
+name: Manual Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v0.26.5)'
+        required: true
+        type: string
+      release_notes:
+        description: 'Release notes (optional)'
+        required: false
+        type: string
+
+jobs:
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate version format
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          if [[ ! $VERSION =~ ^v[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            echo "Error: Version must follow semantic versioning format (e.g., v0.26.5)"
+            exit 1
+          fi
+          echo "Version format valid: $VERSION"
+
+      - name: Setup GitHub CLI
+        run: |
+          gh --version || (echo "GitHub CLI not found. Installing..." && echo "This workflow requires GitHub CLI to be available.")
+
+      - name: Create Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          RELEASE_NOTES="${{ github.event.inputs.release_notes }}"
+          
+          if [ -z "$RELEASE_NOTES" ]; then
+            RELEASE_NOTES="See CHANGELOG.md for details."
+          fi
+          
+          # Create release notes body (using printf to handle special characters better)
+          NOTES=$(printf "## Release %s\n\n%s\n\n### Installation\n- **Play Store**: Available via Google Play Store\n- **Direct APK**: Download the \`.apk\` file from the assets below\n\n### Notes\n- The app will automatically check for updates from GitHub Releases\n- Ensure you upload the APK file as a release asset manually\n- For build instructions, see [README.md](../README.md#development-setup)" "$VERSION" "$RELEASE_NOTES")
+          
+          gh release create "$VERSION" \
+            --title "Release $VERSION" \
+            --notes "$NOTES"
+
+      - name: Release Created
+        run: |
+          echo "Release ${{ github.event.inputs.version }} has been created!"
+          echo ""
+          echo "Next steps:"
+          echo "1. Build the APK locally using: ./gradlew assembleDirectRelease"
+          echo "2. Upload the APK file to the GitHub Release page"
+          echo "3. The release URL is: https://github.com/${{ github.repository }}/releases/tag/${{ github.event.inputs.version }}"
+          echo ""
+          echo "To build the APK:"
+          echo "  - macOS/Linux: ./gradlew assembleDirectRelease"
+          echo "  - Windows: gradlew.bat assembleDirectRelease"
+          echo ""
+          echo "The APK will be located at: tv/build/outputs/apk/direct/release/"
