@@ -1,0 +1,6 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+# This is an Android TV application, so we can't use the OnClick and focus methods on components. Use the custom navigation component for the d-pad navigation and selection.

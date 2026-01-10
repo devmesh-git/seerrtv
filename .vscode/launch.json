@@ -1,0 +1,11 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"type": "android",
+			"request": "launch",
+			"name": "App Build & Launch",
+			"preLaunchTask": "run gradle"
+		}
+	]
+}

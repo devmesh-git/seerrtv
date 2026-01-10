@@ -1,0 +1,10 @@
+<resources>
+
+    <style name="Theme.SeerrTV" parent="Theme.AppCompat.DayNight.NoActionBar">
+        <item name="android:windowBackground">#111827</item>
+        <item name="android:colorBackground">#111827</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowFullscreen">true</item>
+    </style>
+</resources>

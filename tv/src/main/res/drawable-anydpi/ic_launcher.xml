@@ -1,0 +1,38 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="80dp"
+    android:height="80dp"
+    android:viewportWidth="80"
+    android:viewportHeight="80">
+
+    <!-- Main circle with gradient -->
+    <path android:pathData="M40,40m-39.348,0a39.348,39.348 0,1 1,78.696 0a39.348,39.348 0,1 1,-78.696 0">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="13.255"
+                android:startY="69.203"
+                android:endX="68.646"
+                android:endY="12.929"
+                android:type="linear">
+                <item android:offset="0" android:color="#BF6F00DD"/>
+                <item android:offset="0.785" android:color="#FF5B42E2"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Black ellipse -->
+    <path
+        android:pathData="M40,40m-22.441,-0a22.441,21.653 0,1 1,44.882 0a22.441,21.653 0,1 1,-44.882 0"
+        android:fillColor="#000000"/>
+
+    <!-- Large gray dot -->
+    <path
+        android:pathData="M56.504,25.725m-4.938,-0a4.938,5.053 0,1 1,9.876 0a4.938,5.053 0,1 1,-9.876 0"
+        android:fillColor="#D9D9D9"/>
+
+    <!-- Small gray dot -->
+    <path
+        android:pathData="M49.433,32.968m-2.133,-0a2.133,2.19 0,1 1,4.266 0a2.133,2.19 0,1 1,-4.266 0"
+        android:fillColor="#D9D9D9"/>
+
+</vector> 

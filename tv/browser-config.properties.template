@@ -1,0 +1,7 @@
+# Browser Configuration URL Template
+# Copy this file to browser-config.properties and customize the URL if needed
+# This file can be committed to git, but browser-config.properties should be in .gitignore
+
+# Base URL for browser-based configuration endpoints
+# Default points to devmesh.ca service, but can be overridden for community deployments
+browser.config.base.url=https://seerrtv.devmesh.ca
