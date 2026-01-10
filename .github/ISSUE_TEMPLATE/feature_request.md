@@ -1,9 +1,10 @@
 ---
 name: Feature Request
 about: Suggest an idea for SeerrTV
-title: '[FEATURE] '
+title: "[FEATURE] "
 labels: enhancement
 assignees: ''
+
 ---
 
 ## Feature Description
