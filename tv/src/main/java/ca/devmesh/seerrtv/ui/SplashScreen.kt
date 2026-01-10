@@ -101,85 +101,79 @@ fun SplashScreen(
             modifier = Modifier.align(Alignment.Center)
         )
         
-        // Fixed bottom row with version and branding
-        Row(
+        // Version number positioned at bottom left
+        VersionNumber(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+        )
+        
+        // Activity log centered at bottom
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.BottomCenter)
                 .padding(horizontal = 16.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Bottom
+            contentAlignment = Alignment.BottomCenter
         ) {
-            Box(modifier = Modifier.weight(1f)) {
-                VersionNumber(
-                    modifier = Modifier.padding(vertical = 0.dp)
-                )
+            // Scrolling component centered at the bottom
+            val scrollState = rememberScrollState()
+            val coroutineScope = rememberCoroutineScope()
+            
+            // Auto-scroll to bottom when content changes
+            LaunchedEffect(allStatusMessages.size, loadingSteps.size, apiValidationError) {
+                coroutineScope.launch {
+                    // Small delay to ensure content is rendered before scrolling
+                    kotlinx.coroutines.delay(50)
+                    scrollState.animateScrollTo(scrollState.maxValue)
+                }
             }
             
-            Box(
-                modifier = Modifier.weight(2f),
-                contentAlignment = Alignment.BottomCenter
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(132.dp)
+                    .verticalScroll(scrollState),
+                verticalArrangement = Arrangement.Bottom,
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // Scrolling component in the center of the bottom row
-                val scrollState = rememberScrollState()
-                val coroutineScope = rememberCoroutineScope()
+                // Collect all messages to show only the last 5
+                val allMessages = mutableListOf<LoadingStep>()
                 
-                // Auto-scroll to bottom when content changes
-                LaunchedEffect(allStatusMessages.size, loadingSteps.size, apiValidationError) {
-                    coroutineScope.launch {
-                        // Small delay to ensure content is rendered before scrolling
-                        kotlinx.coroutines.delay(50)
-                        scrollState.animateScrollTo(scrollState.maxValue)
-                    }
+                // Add completed loading steps with their specified types
+                loadingSteps.forEach { step ->
+                    allMessages.add(step)
                 }
                 
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(132.dp)
-                        .verticalScroll(scrollState),
-                    verticalArrangement = Arrangement.Bottom,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    // Collect all messages to show only the last 5
-                    val allMessages = mutableListOf<LoadingStep>()
-                    
-                    // Add completed loading steps with their specified types
-                    loadingSteps.forEach { step ->
-                        allMessages.add(step)
+                // Add accumulated status messages
+                allMessages.addAll(allStatusMessages)
+                
+                // Add current error messages if any
+                // Note: Update errors are now handled in MainActivity
+                
+                // Show only the last 5 messages (newest at bottom)
+                val messagesToShow = allMessages.takeLast(5)
+                
+                // Reverse the order so newest appears at bottom (position 5)
+                messagesToShow.forEach { message ->
+                    val color = when (message.type) {
+                        LoadingStepType.SUCCESS -> Color.Green
+                        LoadingStepType.ERROR -> Color.Red
+                        LoadingStepType.WARNING -> Color.Yellow
+                        LoadingStepType.INFO -> Color.White
                     }
                     
-                    // Add accumulated status messages
-                    allMessages.addAll(allStatusMessages)
-                    
-                    // Add current error messages if any
-                    // Note: Update errors are now handled in MainActivity
-                    
-                    // Show only the last 5 messages (newest at bottom)
-                    val messagesToShow = allMessages.takeLast(5)
-                    
-                    // Reverse the order so newest appears at bottom (position 5)
-                    messagesToShow.forEach { message ->
-                        val color = when (message.type) {
-                            LoadingStepType.SUCCESS -> Color.Green
-                            LoadingStepType.ERROR -> Color.Red
-                            LoadingStepType.WARNING -> Color.Yellow
-                            LoadingStepType.INFO -> Color.White
-                        }
-                        
-                        Text(
-                            text = message.message,
-                            color = color,
-                            fontSize = 17.sp,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 2.dp)
-                        )
-                    }
+                    Text(
+                        text = message.message,
+                        color = color,
+                        fontSize = 17.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 2.dp)
+                    )
                 }
             }
-            
         }
 
         // Show update dialog if update is available

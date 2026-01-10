@@ -13,7 +13,15 @@
 .idea/datasources.xml
 .idea/dataSources.xml
 .idea/dataSources.local.xml
-# Include shared settings (codeStyles, inspectionProfiles, gradle.xml, misc.xml, etc.)
+# User-specific IDE settings
+.idea/caches/
+.idea/deploymentTargetDropDown.xml
+.idea/deviceManager.xml
+.idea/AndroidProjectSystem.xml
+.idea/appInsightsSettings.xml
+.idea/markdown.xml
+.idea/runConfigurations.xml
+# Include shared settings (codeStyles, inspectionProfiles, gradle.xml, misc.xml, vcs.xml, compiler.xml, kotlinc.xml, etc.)
 .kotlin/sessions
 *.iml
 /build
