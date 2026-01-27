@@ -57,7 +57,7 @@ data class CreateIssueRequest(
 
 data class PrecannedIssue(
     val id: String,
-    @StringRes val descriptionResId: Int,
+    @param:StringRes val descriptionResId: Int,
     val category: IssueType
 )
 

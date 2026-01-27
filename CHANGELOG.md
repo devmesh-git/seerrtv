@@ -1,5 +1,60 @@
 # Changelog
 
+## 0.26.6
+
+### Bug Fixes
+
+#### Splash / Update Flow
+- **Fixed splash behavior after update dialog closes** - closing the update dialog now keeps the splash screen visible until the user explicitly continues (direct flavor) or automatic navigation occurs (Play flavor), preventing premature transition away from splash.
+
+#### Issue Models Annotation
+- **Resolved future Kotlin annotation target warning** - updated `PrecannedIssue` to use `@param:StringRes` so the `descriptionResId` annotation target remains stable with upcoming Kotlin changes.
+
+### Technical Improvements
+
+#### Build & Tooling
+- **Refined Kotlin plugin wiring** - switched top-level Kotlin serialization plugin to `id("org.jetbrains.kotlin.plugin.serialization") … apply false` and applied it only in the TV module for clearer, AGP 9–compatible configuration.
+- **Hilt plugin compatibility update** - bumped Hilt to `2.59` (compiler and runtime) to align with AGP 9.0.0 and Kotlin 2.2.10.
+- **Deprecated Android Gradle flags cleaned up** - removed obsolete migration toggles from `gradle.properties` and adopted current defaults to eliminate AGP deprecation warnings.
+- **KSP + built‑in Kotlin bridge** - enabled `android.disallowKotlinSourceSets=false` to allow KSP’s current `kotlin.sourceSets` usage to work with AGP 9’s built‑in Kotlin integration.
+- **Version catalog consolidation** - moved the JUnit 4 test dependency to the Gradle version catalog and updated the TV module to use `libs.junit` for unit tests.
+
+#### Build Output Visibility
+- **Automatic build output printing** - added a `printBuildOutputs` Gradle task in the TV module and wired it to run after key assemble tasks so APK (and future AAB) paths are printed at the end of TV builds.
+
+### Files Modified
+- `tv/src/main/java/ca/devmesh/seerrtv/MainActivity.kt` – adjusted splash/update dialog flow so closing the dialog no longer forces splash off, and `onContinue` controls navigation for direct flavor only.
+- `tv/src/main/java/ca/devmesh/seerrtv/model/IssueModels.kt` – updated `PrecannedIssue` to use `@param:StringRes` for `descriptionResId`.
+- `tv/build.gradle.kts` – bumped version to 0.26.6 (versionCode 109), applied Kotlin serialization plugin explicitly, and added `printBuildOutputs` task plus assemble hooks.
+- `build.gradle.kts` – switched Kotlin serialization plugin to `id("org.jetbrains.kotlin.plugin.serialization") … apply false`.
+- `gradle/libs.versions.toml` – updated Hilt Android and compiler to 2.59 and added a version-catalog entry for JUnit.
+- `gradle.properties` – removed deprecated AGP flags, set `android.dependency.useConstraints=false`, disabled configuration cache comment, and added `android.disallowKotlinSourceSets=false`.
+
+---
+
+## 0.26.5
+
+### Bug Fixes
+
+#### Settings Menu - Default Streaming Region Navigation
+- **Fixed DPAD navigation in Default Streaming Region submenu** - users can now navigate up/down the list and select items using DPAD controls
+- **Removed mouse click handlers** - RadioButton onClick handlers removed to prevent mouse-only interactions on Android TV
+- **Unified navigation pattern** - Default Streaming Region submenu now follows the same navigation pattern as Discovery Language submenu
+- **Enhanced controller integration** - controller now properly handles up/down navigation and Enter key selection for Default Streaming Region
+
+### Technical Improvements
+
+#### Settings Menu Controller Enhancements
+- **Added regions state management** - controller now tracks regions count and list for proper navigation bounds
+- **Improved key event handling** - Default Streaming Region navigation now handled through controller's handleKeyEvent method
+- **Consistent navigation flow** - all submenus now use the same navigation pattern for better maintainability
+- **Removed conflicting event handlers** - eliminated onPreviewKeyEvent that was interfering with controller's key handling
+
+### Files Modified
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/SettingsMenu.kt` - Fixed DPAD navigation for Default Streaming Region submenu, removed onClick handlers, enhanced controller integration
+
+---
+
 ## 0.26.4
 
 ### Major Features

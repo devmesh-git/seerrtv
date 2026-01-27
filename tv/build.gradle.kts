@@ -1,12 +1,4 @@
-//import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-import org.gradle.api.DefaultTask
-import org.gradle.api.file.DirectoryProperty
-import org.gradle.api.provider.Property
-import org.gradle.api.tasks.Input
-import org.gradle.api.tasks.OutputDirectory
-import org.gradle.api.tasks.TaskAction
 import java.io.File
-import java.util.Locale
 import java.util.Properties
 
 plugins {
@@ -16,9 +8,8 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
-    alias(libs.plugins.jetbrains.kotlin.android)
     alias(libs.plugins.compose.compiler)
-    kotlin("plugin.serialization") version libs.versions.kotlin.get()
+    id("org.jetbrains.kotlin.plugin.serialization")
 }
 
 android {
@@ -69,8 +60,8 @@ android {
         applicationId = "ca.devmesh.seerrtv"
         minSdk = 25
         targetSdk = 36
-        versionCode = 108
-        versionName = "0.26.5"
+        versionCode = 109
+        versionName = "0.26.6"
         buildConfigField("String", "VERSION_NAME", "\"${defaultConfig.versionName}\"")
         buildConfigField("Boolean", "DEBUG", "true")
         buildConfigField("Boolean", "IS_DIRECT_FLAVOR", "false")
@@ -95,11 +86,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
         isCoreLibraryDesugaringEnabled = true
     }
-    kotlin {
-        compilerOptions {
-            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
-        }
-    }
     buildFeatures {
         compose = true
     }
@@ -123,6 +109,12 @@ android {
     ndkVersion = "27.0.12077973"
     buildToolsVersion =
         "36.1.0"// To set 'playDebug' as the default build variant, use the Build Variants panel in Android Studio.
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+    }
 }
 
 dependencies {
@@ -180,72 +172,59 @@ dependencies {
     implementation(libs.core)
 
     // Unit Testing
-    testImplementation("junit:junit:4.13.2")
+    testImplementation(libs.junit)
     testImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:${libs.versions.kotlinxSerializationJson.get()}")
     testImplementation("io.ktor:ktor-client-mock:${libs.versions.ktor.get()}")
 }
 
-// Hook the task into the build process to print outputs
-android.applicationVariants.all {
-    val variantName = name.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
-    val assembleTaskName = "assemble$variantName"
-    val bundleTaskName = "bundle$variantName"
-    val flavor = flavorName
-    val buildType = buildType.name
-    val buildDirPath = layout.buildDirectory.get().asFile.absolutePath
-    
-    // For bundle tasks, print AAB location
-    if (buildType == "release") {
-        tasks.named(bundleTaskName).configure {
-            val variant = "${flavor}${buildType.replaceFirstChar { it.uppercase() }}"
-            val aabPath = "${buildDirPath}/outputs/bundle/${variant}/tv-${flavor}-${buildType}.aab"
-            val flavorDisplay = flavor.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
-            doLast {
-                val aabFile = File(aabPath)
-                if (aabFile.exists()) {
-                    println("\n" + "=".repeat(70))
-                    println("BUILD OUTPUTS")
-                    println("=".repeat(70))
-                    println("\n📦 $flavorDisplay Release AAB:")
-                    println("   ${aabFile.absolutePath}")
-                    println("\n" + "=".repeat(70) + "\n")
-                }
-            }
+// Simple task to print APK and AAB output locations
+tasks.register("printBuildOutputs") {
+    group = "build"
+    description = "Prints APK and AAB output locations for the tv module."
+
+    doLast {
+        val buildDir = layout.buildDirectory.get().asFile
+        val apkRoot = File(buildDir, "outputs/apk")
+        val bundleRoot = File(buildDir, "outputs/bundle")
+
+        fun listFilesRecursively(root: File, extension: String): List<File> {
+            if (!root.exists()) return emptyList()
+            return root.walkTopDown().filter { it.isFile && it.extension == extension }.toList()
         }
+
+        val apks = listFilesRecursively(apkRoot, "apk")
+        val aabs = listFilesRecursively(bundleRoot, "aab")
+
+        if (apks.isEmpty() && aabs.isEmpty()) {
+            println("No APK or AAB outputs found under ${buildDir.absolutePath}")
+            return@doLast
+        }
+
+        println("\n" + "=".repeat(70))
+        println("BUILD OUTPUTS")
+        println("=".repeat(70))
+
+        if (apks.isNotEmpty()) {
+            println("\nAPK files:")
+            apks.forEach { println("   ${it.absolutePath}") }
+        }
+
+        if (aabs.isNotEmpty()) {
+            println("\nAAB files:")
+            aabs.forEach { println("   ${it.absolutePath}") }
+        }
+
+        println("\n" + "=".repeat(70) + "\n")
     }
-    
-    // For direct release builds, print APK location after assembling
-    if (flavor == "direct" && buildType == "release") {
-        val apkPath = "${buildDirPath}/outputs/apk/${flavor}/${buildType}/tv-${flavor}-${buildType}.apk"
-        tasks.named(assembleTaskName).configure {
-            doLast {
-                val apkFile = File(apkPath)
-                if (apkFile.exists()) {
-                    println("\n" + "=".repeat(70))
-                    println("BUILD OUTPUTS")
-                    println("=".repeat(70))
-                    println("\n📱 Direct Release APK:")
-                    println("   ${apkFile.absolutePath}")
-                    println("\n📦 Upload this APK to GitHub Releases for auto-update functionality")
-                    println("\n" + "=".repeat(70) + "\n")
-                }
-            }
-        }
-    } else if (flavor == "play" && buildType == "release") {
-        // For Play release builds, print APK location after assembling
-        val apkPath = "${buildDirPath}/outputs/apk/${flavor}/${buildType}/tv-${flavor}-${buildType}.apk"
-        tasks.named(assembleTaskName).configure {
-            doLast {
-                val apkFile = File(apkPath)
-                if (apkFile.exists()) {
-                    println("\n" + "=".repeat(70))
-                    println("BUILD OUTPUTS")
-                    println("=".repeat(70))
-                    println("\n📱 Play Release APK:")
-                    println("   ${apkFile.absolutePath}")
-                    println("\n" + "=".repeat(70) + "\n")
-                }
-            }
-        }
+}
+
+// Automatically print outputs after assembling debug or release flavors
+listOf(
+    "assembleDebug",
+    "assembleDirectRelease",
+    "assemblePlayRelease"
+).forEach { assembleTaskName ->
+    tasks.matching { it.name == assembleTaskName }.configureEach {
+        finalizedBy("printBuildOutputs")
     }
 }

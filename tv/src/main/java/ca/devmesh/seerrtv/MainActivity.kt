@@ -678,7 +678,6 @@ class MainActivity : AppCompatActivity() {
                                         updateInfoForDialog = updateInfoForDialog,
                                         onUpdateDialogClose = {
                                             showUpdateDialog = false
-                                            showSplash = false
                                         },
                                         onContinue = {
                                             // For direct flavor, this callback controls navigation after update dialog is handled
