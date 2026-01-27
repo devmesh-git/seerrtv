@@ -69,8 +69,8 @@ android {
         applicationId = "ca.devmesh.seerrtv"
         minSdk = 25
         targetSdk = 36
-        versionCode = 107
-        versionName = "0.26.4"
+        versionCode = 108
+        versionName = "0.26.5"
         buildConfigField("String", "VERSION_NAME", "\"${defaultConfig.versionName}\"")
         buildConfigField("Boolean", "DEBUG", "true")
         buildConfigField("Boolean", "IS_DIRECT_FLAVOR", "false")
@@ -178,6 +178,11 @@ dependencies {
 
     // Utilities
     implementation(libs.core)
+
+    // Unit Testing
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:${libs.versions.kotlinxSerializationJson.get()}")
+    testImplementation("io.ktor:ktor-client-mock:${libs.versions.ktor.get()}")
 }
 
 // Hook the task into the build process to print outputs

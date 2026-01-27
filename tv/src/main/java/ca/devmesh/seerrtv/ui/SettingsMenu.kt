@@ -617,6 +617,9 @@ fun DefaultStreamingRegionSubMenu(
             } else {
                 regions = regionsFromViewModel
                 isLoading = false
+                // Update controller with regions count and list
+                controller.defaultStreamingRegionCount = regions.size
+                controller.defaultStreamingRegions = regions
                 // Initialize selected index to current region
                 if (!isInitialized) {
                     val currentIndex = regions.indexOfFirst { it.iso_3166_1 == controller.defaultStreamingRegion }
@@ -639,6 +642,9 @@ fun DefaultStreamingRegionSubMenu(
                         is ApiResult.Success -> {
                             regions = result.data
                             isLoading = false
+                            // Update controller with regions count and list
+                            controller.defaultStreamingRegionCount = regions.size
+                            controller.defaultStreamingRegions = regions
                             // Initialize selected index to current region
                             if (!isInitialized) {
                                 val currentIndex = regions.indexOfFirst { it.iso_3166_1 == controller.defaultStreamingRegion }
@@ -670,6 +676,9 @@ fun DefaultStreamingRegionSubMenu(
         if (viewModel != null && regionsFromViewModel.isNotEmpty()) {
             regions = regionsFromViewModel
             isLoading = false
+            // Update controller with regions count and list
+            controller.defaultStreamingRegionCount = regions.size
+            controller.defaultStreamingRegions = regions
             // Initialize selected index to current region
             if (!isInitialized) {
                 val currentIndex = regions.indexOfFirst { it.iso_3166_1 == controller.defaultStreamingRegion }
@@ -680,6 +689,14 @@ fun DefaultStreamingRegionSubMenu(
                 }
                 isInitialized = true
             }
+        }
+    }
+    
+    // Update controller when regions change (for both viewModel and direct loading paths)
+    LaunchedEffect(regions) {
+        if (regions.isNotEmpty() && !isLoading) {
+            controller.defaultStreamingRegionCount = regions.size
+            controller.defaultStreamingRegions = regions
         }
     }
     
@@ -717,30 +734,6 @@ fun DefaultStreamingRegionSubMenu(
             .fillMaxWidth()
             .background(Color(0xFF1F2937))
             .padding(24.dp)
-            .onPreviewKeyEvent { keyEvent ->
-                when {
-                    KeyUtils.isEnterKey(keyEvent.nativeKeyEvent.keyCode) && keyEvent.type == KeyEventType.KeyDown -> {
-                        if (controller.subMenuSelectedIndex >= 0 && controller.subMenuSelectedIndex < regions.size) {
-                            val selectedRegion = regions[controller.subMenuSelectedIndex]
-                            controller.selectDefaultStreamingRegion(selectedRegion.iso_3166_1)
-                        }
-                        true
-                    }
-                    keyEvent.key == Key.DirectionUp && keyEvent.type == KeyEventType.KeyDown -> {
-                        if (controller.subMenuSelectedIndex > 0) {
-                            controller.subMenuSelectedIndex--
-                        }
-                        true
-                    }
-                    keyEvent.key == Key.DirectionDown && keyEvent.type == KeyEventType.KeyDown -> {
-                        if (controller.subMenuSelectedIndex < regions.size - 1) {
-                            controller.subMenuSelectedIndex++
-                        }
-                        true
-                    }
-                    else -> false
-                }
-            }
     ) {
         Text(
             text = stringResource(R.string.settingsMenu_defaultStreamingRegion),
@@ -781,9 +774,7 @@ fun DefaultStreamingRegionSubMenu(
                     ) {
                         androidx.compose.material3.RadioButton(
                             selected = isSelected,
-                            onClick = {
-                                controller.selectDefaultStreamingRegion(region.iso_3166_1)
-                            },
+                            onClick = {},
                             colors = androidx.compose.material3.RadioButtonDefaults.colors(
                                 selectedColor = Color(0xFFBB86FC),
                                 unselectedColor = Color.White
@@ -828,6 +819,8 @@ class SettingsMenuController(
     
     // Default Streaming Region state
     var defaultStreamingRegion by mutableStateOf(SharedPreferencesUtil.getDefaultStreamingRegion(context))
+    var defaultStreamingRegionCount by mutableIntStateOf(0)
+    var defaultStreamingRegions by mutableStateOf<List<Region>>(emptyList())
 
     private fun formatServerType(serverType: String): String {
         return when (serverType.uppercase()) {
@@ -878,7 +871,12 @@ class SettingsMenuController(
         return when {
             event.key == Key.DirectionUp && event.type == KeyEventType.KeyDown -> {
                 if (isSubMenuOpen) {
-                    subMenuSelectedIndex = (subMenuSelectedIndex - 1).coerceAtLeast(0)
+                    // Handle Default Streaming Region specially since it uses dynamic data
+                    if (currentSubMenu?.title == context.getString(R.string.settingsMenu_defaultStreamingRegion)) {
+                        subMenuSelectedIndex = (subMenuSelectedIndex - 1).coerceAtLeast(0)
+                    } else {
+                        subMenuSelectedIndex = (subMenuSelectedIndex - 1).coerceAtLeast(0)
+                    }
                 } else {
                     selectedIndex = (selectedIndex - 1).coerceAtLeast(0)
                 }
@@ -887,9 +885,15 @@ class SettingsMenuController(
 
             event.key == Key.DirectionDown && event.type == KeyEventType.KeyDown -> {
                 if (isSubMenuOpen) {
-                    subMenuSelectedIndex = (subMenuSelectedIndex + 1).coerceAtMost(
-                        (currentSubMenu?.items?.size ?: 1) - 1
-                    )
+                    // Handle Default Streaming Region specially since it uses dynamic data
+                    if (currentSubMenu?.title == context.getString(R.string.settingsMenu_defaultStreamingRegion)) {
+                        val maxIndex = (defaultStreamingRegionCount - 1).coerceAtLeast(0)
+                        subMenuSelectedIndex = (subMenuSelectedIndex + 1).coerceAtMost(maxIndex)
+                    } else {
+                        subMenuSelectedIndex = (subMenuSelectedIndex + 1).coerceAtMost(
+                            (currentSubMenu?.items?.size ?: 1) - 1
+                        )
+                    }
                 } else {
                     // menuItems is not available in the controller, so use a constant for max index
                     // When IS_DIRECT_FLAVOR is true, we have: Config(0), AppLanguage(1), Folder(2), Discovery(3), Streaming Region(4), Clock(5), Check for Update(6), About(7)
@@ -929,6 +933,14 @@ class SettingsMenuController(
                         updateDiscoveryLanguage(selected)
                         isSubMenuOpen = false
                         currentSubMenu = null
+                        true
+                    }
+                    isSubMenuOpen && currentSubMenu?.title == context.getString(R.string.settingsMenu_defaultStreamingRegion) -> {
+                        // Handle Default Streaming Region selection
+                        if (subMenuSelectedIndex >= 0 && subMenuSelectedIndex < defaultStreamingRegions.size) {
+                            val selectedRegion = defaultStreamingRegions[subMenuSelectedIndex]
+                            selectDefaultStreamingRegion(selectedRegion.iso_3166_1)
+                        }
                         true
                     }
                     !isSubMenuOpen && selectedIndex == 4 -> { // Folder Selection toggle
