@@ -47,7 +47,9 @@ fun SplashScreen(
     apiValidationError: String? = null,
     showUpdateDialog: Boolean = false,
     updateInfoForDialog: UpdateInfo? = null,
-    onUpdateDialogClose: () -> Unit = {}
+    onUpdateDialogClose: () -> Unit = {},
+    /** For direct flavor: true only after startup update check has completed. Prevents calling onContinue (and navigating away) before we know if we should show the update dialog. */
+    updateCheckComplete: Boolean = true
 ) {
     
     var allStatusMessages by remember { mutableStateOf<List<LoadingStep>>(emptyList()) }
@@ -81,11 +83,11 @@ fun SplashScreen(
     }
     val context = LocalContext.current
 
-    // For direct flavor with no update: call onContinue when authentication completes OR when no config exists
-    LaunchedEffect(isAuthenticationComplete, showUpdateDialog) {
+    // For direct flavor with no update: call onContinue only after update check has completed, then when auth completes OR no config exists
+    LaunchedEffect(isAuthenticationComplete, showUpdateDialog, updateCheckComplete) {
         if (BuildConfig.IS_DIRECT_FLAVOR && !showUpdateDialog) {
-            // Call onContinue if authentication is complete OR if we're not configured (no auth needed)
-            val shouldContinue = isAuthenticationComplete || !isConfigured
+            // Wait for update check to finish so we don't navigate to config/main before showing the update dialog
+            val shouldContinue = updateCheckComplete && (isAuthenticationComplete || !isConfigured)
             if (shouldContinue) {
                 onContinue()
             }

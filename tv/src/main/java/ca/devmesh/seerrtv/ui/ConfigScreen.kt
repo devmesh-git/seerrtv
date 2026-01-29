@@ -82,8 +82,12 @@ fun ConfigScreen(
     viewModel: ConfigViewModel = hiltViewModel()
 ) {
     var configMethod by remember { mutableStateOf<ConfigMethod?>(null) }
-    var showLanguageSelection by remember { mutableStateOf(true) }
-    var showConfigSelection by remember { mutableStateOf(false) }
+    var showLanguageSelection by remember {
+        mutableStateOf(SharedPreferencesUtil.getAppLanguage(context) == null)
+    }
+    var showConfigSelection by remember {
+        mutableStateOf(SharedPreferencesUtil.getAppLanguage(context) != null)
+    }
     var currentWizardStep by remember { mutableStateOf(ConfigWizardStep.SERVER_CONNECTION) }
     var showLoginSuccessModal by remember { mutableStateOf(false) }
     var configCompleted by remember { mutableStateOf(false) }
@@ -1827,7 +1831,7 @@ class LanguageSelectionController(
 ) {
     val currentLanguage = SharedPreferencesUtil.getAppLanguage(context) ?: "en"
     
-    // Navigation state: -1 = Next button focused, 0..size-1 = list item focused
+    // Navigation state: 0..size-1 = list item focused
     var selectedIndex by mutableStateOf(
         languageOptions.indexOfFirst { it.first == currentLanguage }.coerceAtLeast(0)
     )
@@ -1835,9 +1839,6 @@ class LanguageSelectionController(
     
     var selectedLanguage by mutableStateOf(currentLanguage)
         private set
-    
-    val isNextButtonFocused: Boolean
-        get() = selectedIndex == -1
     
     private fun selectLanguageByIndex(index: Int) {
         selectedIndex = index
@@ -1854,25 +1855,16 @@ class LanguageSelectionController(
     fun handleKeyEvent(event: KeyEvent): Boolean {
         return when {
             event.key == Key.DirectionDown && event.type == KeyEventType.KeyDown -> {
-                if (selectedIndex == -1) {
-                    // At Next button, do nothing
-                    true
-                } else if (selectedIndex < languageOptions.size - 1) {
+                if (selectedIndex < languageOptions.size - 1) {
                     selectedIndex++
                     true
                 } else {
-                    // At last item, move to Next button
-                    selectedIndex = -1
                     true
                 }
             }
             
             event.key == Key.DirectionUp && event.type == KeyEventType.KeyDown -> {
-                if (selectedIndex == -1) {
-                    // Coming from Next button, restore to last item
-                    selectedIndex = languageOptions.size - 1
-                    true
-                } else if (selectedIndex > 0) {
+                if (selectedIndex > 0) {
                     selectedIndex--
                     true
                 } else {
@@ -1881,13 +1873,9 @@ class LanguageSelectionController(
             }
             
             (event.key == Key.Enter || event.key == Key.DirectionCenter) && event.type == KeyEventType.KeyDown -> {
-                if (selectedIndex == -1) {
-                    // Next button selected
-                    onNext()
-                    true
-                } else if (selectedIndex >= 0 && selectedIndex < languageOptions.size) {
-                    // Language item selected
+                if (selectedIndex >= 0 && selectedIndex < languageOptions.size) {
                     selectLanguageByIndex(selectedIndex)
+                    onNext()
                     true
                 } else {
                     false
@@ -1913,11 +1901,8 @@ fun LanguageSelectionStep(
         LanguageSelectionController(
             context = context,
             languageOptions = languageOptions,
-            onLanguageSelected = { code ->
-                // Apply language change immediately
-                scope.launch {
-                    (context as? android.app.Activity)?.recreate()
-                }
+            onLanguageSelected = {
+                (context as? android.app.Activity)?.recreate()
             },
             onNext = onNext
         )
@@ -1933,40 +1918,32 @@ fun LanguageSelectionStep(
     
     // Auto-scroll when selected index changes
     LaunchedEffect(controller.selectedIndex) {
-        when {
-            controller.selectedIndex == -1 -> {
-                // Coming from Next button, scroll to show last item
-                val lastIndex = languageOptions.size - 1
-                val targetFirst = (lastIndex - 6).coerceAtLeast(0)
-                listState.animateScrollToItem(targetFirst)
-            }
-            controller.selectedIndex >= 0 && controller.selectedIndex < languageOptions.size -> {
-                val layoutInfo = listState.layoutInfo
-                val visibleItems = layoutInfo.visibleItemsInfo
-                if (visibleItems.isNotEmpty()) {
-                    val firstVisibleIndex = listState.firstVisibleItemIndex
-                    val lastVisibleIndex = visibleItems.last().index
-                    
-                    when {
-                        controller.selectedIndex >= lastVisibleIndex - 1 -> {
-                            val targetIndex = (firstVisibleIndex + 1).coerceAtMost(layoutInfo.totalItemsCount - 1)
-                            if (targetIndex != firstVisibleIndex && targetIndex >= 0) {
-                                listState.animateScrollToItem(targetIndex)
-                            }
-                        }
-                        controller.selectedIndex <= firstVisibleIndex + 1 -> {
-                            val targetIndex = (firstVisibleIndex - 1).coerceAtLeast(0)
-                            if (targetIndex != firstVisibleIndex && targetIndex >= 0) {
-                                listState.animateScrollToItem(targetIndex)
-                            }
-                        }
-                        controller.selectedIndex < firstVisibleIndex || controller.selectedIndex > lastVisibleIndex -> {
-                            listState.animateScrollToItem(controller.selectedIndex)
+        if (controller.selectedIndex >= 0 && controller.selectedIndex < languageOptions.size) {
+            val layoutInfo = listState.layoutInfo
+            val visibleItems = layoutInfo.visibleItemsInfo
+            if (visibleItems.isNotEmpty()) {
+                val firstVisibleIndex = listState.firstVisibleItemIndex
+                val lastVisibleIndex = visibleItems.last().index
+                
+                when {
+                    controller.selectedIndex >= lastVisibleIndex - 1 -> {
+                        val targetIndex = (firstVisibleIndex + 1).coerceAtMost(layoutInfo.totalItemsCount - 1)
+                        if (targetIndex != firstVisibleIndex && targetIndex >= 0) {
+                            listState.animateScrollToItem(targetIndex)
                         }
                     }
-                } else {
-                    listState.animateScrollToItem(controller.selectedIndex)
+                    controller.selectedIndex <= firstVisibleIndex + 1 -> {
+                        val targetIndex = (firstVisibleIndex - 1).coerceAtLeast(0)
+                        if (targetIndex != firstVisibleIndex && targetIndex >= 0) {
+                            listState.animateScrollToItem(targetIndex)
+                        }
+                    }
+                    controller.selectedIndex < firstVisibleIndex || controller.selectedIndex > lastVisibleIndex -> {
+                        listState.animateScrollToItem(controller.selectedIndex)
+                    }
                 }
+            } else {
+                listState.animateScrollToItem(controller.selectedIndex)
             }
         }
     }
@@ -1992,10 +1969,8 @@ fun LanguageSelectionStep(
         ConfigStepLayout(
             title = stringResource(R.string.settingsMenu_appLanguage),
             helpText = "Select your preferred language",
-            onNext = onNext,
-            nextButtonText = stringResource(R.string.configScreen_next),
-            nextButtonFocused = controller.isNextButtonFocused,
-            nextButtonControlledExternally = true
+            onNext = null,
+            nextButtonText = null
         ) {
             Box(
                 modifier = Modifier

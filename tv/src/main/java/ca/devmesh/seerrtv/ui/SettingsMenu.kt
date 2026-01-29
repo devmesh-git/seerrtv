@@ -195,12 +195,18 @@ fun SettingsMenu(
 
     // Show update dialog only in direct flavor
     if (BuildConfig.IS_DIRECT_FLAVOR && showUpdateDialog && updateInfoForDialog != null) {
-        Dialog(onDismissRequest = { }) {
+        Dialog(onDismissRequest = {
+            showUpdateDialog = false
+            updateInfoForDialog = null
+        }) {
             UpdateAvailableDialog(
                 context = context,
                 updateInfo = updateInfoForDialog!!,
                 updateJsonUrl = updateJsonUrl,
-                onClose = { }
+                onClose = {
+                    showUpdateDialog = false
+                    updateInfoForDialog = null
+                }
             )
         }
     }

@@ -163,6 +163,8 @@ class MainActivity : AppCompatActivity() {
     private var isAuthenticationComplete by mutableStateOf(false)
     private var showUpdateDialog by mutableStateOf(false)
     private var updateInfoForDialog by mutableStateOf<UpdateInfo?>(null)
+    /** For direct flavor: true only after the startup update check has completed. Prevents config validation from running (and calling onContinue) before we know if we should show the update dialog. */
+    private var updateCheckComplete by mutableStateOf(false)
     private val activityScope = MainScope()
     private val sharedViewModel: SeerrViewModel by viewModels()
     private val sharedDiscoveryViewModel: MediaDiscoveryViewModel by viewModels()
@@ -566,16 +568,21 @@ class MainActivity : AppCompatActivity() {
                                     this@MainActivity,
                                     "https://api.github.com/repos/devmesh-git/seerrtv/releases/latest"
                                 )
+                                updateCheckComplete = true // Signal that config logic can run (so it doesn't race and call onContinue before we show the dialog)
                                 if (updateInfo != null) {
                                     updateInfoForDialog = updateInfo
                                     showUpdateDialog = true
-                                    return@LaunchedEffect // Exit early if update is available
+                                    return@LaunchedEffect // Stay on splash to show update dialog
                                 }
+                            } else {
+                                updateCheckComplete = true // Not direct or no splash: no update check, allow config logic
                             }
                         }
 
-                        // Configuration validation - runs when showSplash changes
-                        LaunchedEffect(showSplash) {
+                        // Configuration validation - runs when showSplash (and for direct flavor, only after update check completes)
+                        LaunchedEffect(showSplash, updateCheckComplete) {
+                            val mayRunConfig = showSplash && (!BuildConfig.IS_DIRECT_FLAVOR || updateCheckComplete)
+                            if (!mayRunConfig) return@LaunchedEffect
                             if (isConfigured && showSplash) {
                                 isAuthenticationComplete = false
                                 delay(300) // Show initial loading message
@@ -679,6 +686,7 @@ class MainActivity : AppCompatActivity() {
                                         onUpdateDialogClose = {
                                             showUpdateDialog = false
                                         },
+                                        updateCheckComplete = updateCheckComplete,
                                         onContinue = {
                                             // For direct flavor, this callback controls navigation after update dialog is handled
                                             // For play flavor, automatic navigation is handled by the LaunchedEffect below

@@ -189,30 +189,6 @@ class UpdateManager(
             "0.0.0"
         }
     }
-    
-    /**
-     * Compares two semantic version strings.
-     * Returns: > 0 if v1 > v2, < 0 if v1 < v2, 0 if v1 == v2
-     * Examples: compareVersions("0.26.3", "0.26.2") returns > 0
-     */
-    private fun compareVersions(v1: String, v2: String): Int {
-        val parts1 = v1.split(".").mapNotNull { it.toIntOrNull() }
-        val parts2 = v2.split(".").mapNotNull { it.toIntOrNull() }
-        
-        val maxLength = maxOf(parts1.size, parts2.size)
-        
-        for (i in 0 until maxLength) {
-            val part1 = parts1.getOrElse(i) { 0 }
-            val part2 = parts2.getOrElse(i) { 0 }
-            
-            when {
-                part1 > part2 -> return 1
-                part1 < part2 -> return -1
-            }
-        }
-        
-        return 0
-    }
 
     /**
      * Downloads the APK from the provided URL and reports progress.
@@ -310,6 +286,26 @@ class UpdateManager(
     companion object {
         private const val DEFAULT_BUFFER_SIZE = 8 * 1024
     }
+}
+
+/**
+ * Compares two semantic version strings (e.g. "0.26.6", "0.26.7").
+ * Returns: > 0 if v1 > v2, < 0 if v1 < v2, 0 if v1 == v2.
+ * Used by UpdateManager and exposed for testing the direct-flavor upgrade flow.
+ */
+internal fun compareVersions(v1: String, v2: String): Int {
+    val parts1 = v1.split(".").mapNotNull { it.toIntOrNull() }
+    val parts2 = v2.split(".").mapNotNull { it.toIntOrNull() }
+    val maxLength = maxOf(parts1.size, parts2.size)
+    for (i in 0 until maxLength) {
+        val part1 = parts1.getOrElse(i) { 0 }
+        val part2 = parts2.getOrElse(i) { 0 }
+        when {
+            part1 > part2 -> return 1
+            part1 < part2 -> return -1
+        }
+    }
+    return 0
 }
 
 // Shared suspend function to check for update

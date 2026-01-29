@@ -1,5 +1,41 @@
 # Changelog
 
+## 0.26.7
+
+### Bug Fixes
+
+#### Splash / Update Flow
+- **Fixed race between update check and config validation** – On direct flavor, config validation (and `onContinue`) now waits for the startup update check to finish, so the app no longer navigates away from splash before deciding whether to show the update dialog.
+- **Update dialog dismiss now clears state** – Closing the update-available dialog (via back or dismiss) now sets `showUpdateDialog = false` and clears `updateInfoForDialog`, so the dialog closes correctly and state stays in sync.
+
+#### Config / Language
+- **Language step only when no language set** – The config wizard shows the language selection step only when the user has not yet chosen a language (`SharedPreferencesUtil.getAppLanguage(context) == null`); otherwise it goes straight to config selection.
+- **Language preference no longer auto-persisted** – System language is used for the session only when no preference exists; the app no longer writes a resolved system language to preferences until the user explicitly selects a language on the language screen.
+
+### Technical Improvements
+
+#### Config Screen – Language Selection UX
+- **Simplified language step navigation** – Removed the separate focusable “Next” button; Enter on a language now both selects it and advances. D-pad navigation is list-only (no index -1 for Next).
+- **Language step layout** – `ConfigStepLayout` for the language step no longer receives `onNext`, `nextButtonText`, or `nextButtonFocused`; selection + advance is handled by the controller.
+
+#### Update System
+- **Version comparison testability** – `compareVersions` in `UpdateManager` is now a top-level `internal` function so it can be covered by unit tests.
+- **Unit tests for version comparison** – Added `UpdateManagerVersionTest` to verify semantic version comparison and the direct-flavor “update available” logic.
+
+### Files Modified
+- `tv/build.gradle.kts` – Bumped version to 0.26.7 (versionCode 110).
+- `tv/src/main/java/ca/devmesh/seerrtv/MainActivity.kt` – Added `updateCheckComplete` state and gated config validation on it; passed through to `SplashScreen`.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/ConfigScreen.kt` – Language step visibility from stored preference; simplified language controller (no Next focus); language step uses null next button.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/SettingsMenu.kt` – Update dialog `onDismissRequest` and `onClose` clear `showUpdateDialog` and `updateInfoForDialog`.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/SplashScreen.kt` – Added `updateCheckComplete` parameter; `onContinue` only when update check complete and (auth complete or not configured).
+- `tv/src/main/java/ca/devmesh/seerrtv/util/SharedPreferencesUtil.kt` – `resolveAppLanguage` no longer persists system language; only persists when user selects on language screen.
+- `tv/src/main/java/ca/devmesh/seerrtv/util/UpdateManager.kt` – Moved `compareVersions` to top-level `internal fun` for tests.
+
+### Files Added
+- `tv/src/test/java/ca/devmesh/seerrtv/util/UpdateManagerVersionTest.kt` – Unit tests for `compareVersions` and update-availability logic.
+
+---
+
 ## 0.26.6
 
 ### Bug Fixes

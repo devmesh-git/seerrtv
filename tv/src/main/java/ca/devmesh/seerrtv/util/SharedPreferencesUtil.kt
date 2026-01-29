@@ -93,29 +93,21 @@ object SharedPreferencesUtil {
     }
 
     fun resolveAppLanguage(context: Context): String {
-        // 1. Check if user already has a preference
+        // 1. Check if user already has a preference (set via language screen or Settings)
         val storedLanguage = getAppLanguage(context)
         if (storedLanguage != null) {
             return storedLanguage
         }
 
-        // 2. No preference found (First run or Migration) - Detect system language
+        // 2. No preference yet - use system language for this session only (do not persist).
+        // Language is only persisted when the user selects one on the language screen.
         val systemLocale = context.resources.configuration.locales[0]
         val systemLanguage = systemLocale.language.lowercase()
-
-        // 3. Check if system language is supported
-        // Special case for Chinese (zh) - checks for startWith because of zh-CN, zh-TW etc
-        val resolvedLanguage = if (systemLanguage == "zh" || SUPPORTED_APP_LANGUAGES.contains(systemLanguage)) {
+        return if (systemLanguage == "zh" || SUPPORTED_APP_LANGUAGES.contains(systemLanguage)) {
             systemLanguage
         } else {
-            "en" // Fallback to English
+            "en"
         }
-
-        // 4. SAVE this resolved language immediately so preference is locked in
-        Log.d("SharedPreferencesUtil", "Migration: Resolved app language to '$resolvedLanguage' (System: $systemLanguage). Saving preference.")
-        setAppLanguage(context, resolvedLanguage)
-
-        return resolvedLanguage
     }
 
     fun hasApiConfig(context: Context): Boolean {
