@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.26.8
+
+### Bug Fixes
+
+#### Jellyfin Authentication
+- **Fixed "Jellyfin hostname already configured" auth failure** – When Jellyfin returns this error, the app now retries with a simple username/password login (`/auth/jellyfin`) instead of the full request body, allowing authentication to succeed when the hostname is already set.
+- **Added JellyfinLoginRequest model** – New serializable data class for the simple Jellyfin login payload used in the retry flow.
+
+### Documentation / Project
+
+#### README
+- **Updated badges** – Added Cursor AI development badge, Discord badge, and applied `style=for-the-badge` to license, version, GitHub release, and downloads badges for consistent styling.
+
+### Files Modified
+- `README.md` – Cursor and Discord badges; badge styling.
+- `tv/build.gradle.kts` – Bumped version to 0.26.8 (versionCode 111).
+- `tv/src/main/java/ca/devmesh/seerrtv/data/SeerrApiService.kt` – Added `JellyfinLoginRequest`, retry logic for "Jellyfin hostname already configured" with simple login.
+
+---
+
 ## 0.26.7
 
 ### Bug Fixes

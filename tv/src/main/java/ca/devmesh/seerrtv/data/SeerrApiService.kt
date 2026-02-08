@@ -307,6 +307,12 @@ class SeerrApiService @Inject constructor(
     )
 
     @Serializable
+    data class JellyfinLoginRequest(
+        val username: String,
+        val password: String
+    )
+
+    @Serializable
     data class EmbyAuthRequest(
         val username: String,
         val password: String
@@ -811,6 +817,42 @@ class SeerrApiService @Inject constructor(
                         headers.append("Content-Type", "application/json; charset=utf-8")
                         setBody(json.encodeToString(jellyfinRequest))
                     }
+
+                    // Check if we got the "Jellyfin hostname already configured" error
+                    if (!authResponse.status.isSuccess()) {
+                        val errorBody = try {
+                            authResponse.bodyAsText()
+                        } catch (_: Exception) {
+                            ""
+                        }
+                        
+                        if (errorBody.contains("Jellyfin hostname already configured", ignoreCase = true)) {
+                            Log.d("SeerrApiService", "⚠️ Jellyfin hostname already configured, retrying with simple login...")
+                            
+                            val loginRequest = JellyfinLoginRequest(
+                                username = config.username,
+                                password = config.password
+                            )
+                            
+                            val retryResponse = client.request {
+                                url {
+                                    takeFrom("$apiUrl/auth/jellyfin")
+                                }
+                                method = HttpMethod.Post
+                                headers.append("Content-Type", "application/json; charset=utf-8")
+                                setBody(json.encodeToString(loginRequest))
+                            }
+                            
+                            return handleAuthResponse(retryResponse)
+                        }
+                        
+                        // If it's a different error, handle it normally
+                        // We need to reconstruct the response handling since we consumed the body
+                        Log.e("SeerrApiService", "Authentication failed with status ${authResponse.status.value}")
+                        Log.e("SeerrApiService", "Error details: $errorBody")
+                        return ApiResult.Error(Exception(errorBody), authResponse.status.value)
+                    }
+
                     return handleAuthResponse(authResponse)
                 }
                 AuthType.Emby -> {
