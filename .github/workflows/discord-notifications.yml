@@ -18,137 +18,84 @@ jobs:
     steps:
       - name: Notify Discord - Tag Created
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          REPO: ${{ github.repository }}
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: |
-          curl -H "Content-Type: application/json" \
-            -d '{
-              "embeds": [{
-                "title": "🏷️ New Tag: ${{ github.ref_name }}",
-                "description": "A new tag was created in the repository",
-                "color": 3447003,
-                "fields": [
-                  {
-                    "name": "Tag",
-                    "value": "${{ github.ref_name }}",
-                    "inline": true
-                  },
-                  {
-                    "name": "Repository",
-                    "value": "${{ github.repository }}",
-                    "inline": true
-                  }
-                ],
-                "url": "https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}"
-              }]
-            }' \
-            "${{ secrets.DISCORD_WEBHOOK }}"
+          PAYLOAD=$(jq -n \
+            --arg tag "$REF_NAME" \
+            --arg repo "$REPO" \
+            '{embeds:[{title:("🏷️ New Tag: " + $tag),description:"A new tag was created in the repository",color:3447003,fields:[{name:"Tag",value:$tag,inline:true},{name:"Repository",value:$repo,inline:true}],url:("https://github.com/" + $repo + "/releases/tag/" + $tag)}]}')
+          curl -sS -H "Content-Type: application/json" -d "$PAYLOAD" "$WEBHOOK"
 
       - name: Notify Discord - Release Published
         if: github.event_name == 'release'
+        env:
+          RELEASE_NAME: ${{ github.event.release.name }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_BODY_JSON: ${{ toJSON(github.event.release.body) }}
+          REPO: ${{ github.repository }}
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: |
-          RELEASE_NAME="${{ github.event.release.name }}"
-          if [ -z "$RELEASE_NAME" ]; then
-            RELEASE_NAME="${{ github.event.release.tag_name }}"
-          fi
-          RELEASE_BODY="${{ github.event.release.body }}"
-          RELEASE_BODY=$(echo "$RELEASE_BODY" | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
-          RELEASE_URL="https://github.com/${{ github.repository }}/releases/tag/${{ github.event.release.tag_name }}"
-          curl -H "Content-Type: application/json" \
-            -d "{
-              \"embeds\": [{
-                \"title\": \"🎉 New Release: ${{ github.event.release.tag_name }}\",
-                \"description\": \"${RELEASE_BODY}\",
-                \"color\": 3066993,
-                \"fields\": [
-                  {
-                    \"name\": \"Release\",
-                    \"value\": \"${RELEASE_NAME}\",
-                    \"inline\": true
-                  },
-                  {
-                    \"name\": \"Tag\",
-                    \"value\": \"${{ github.event.release.tag_name }}\",
-                    \"inline\": true
-                  }
-                ],
-                \"url\": \"${RELEASE_URL}\"
-              }]
-            }" \
-            "${{ secrets.DISCORD_WEBHOOK }}"
+          [ -z "$RELEASE_NAME" ] && RELEASE_NAME="$RELEASE_TAG"
+          PAYLOAD=$(jq -n \
+            --arg title "🎉 New Release: $RELEASE_TAG" \
+            --argjson desc "$RELEASE_BODY_JSON" \
+            --arg release "$RELEASE_NAME" \
+            --arg tag "$RELEASE_TAG" \
+            --arg url "https://github.com/$REPO/releases/tag/$RELEASE_TAG" \
+            '{embeds:[{title:$title,description:$desc,color:3066993,fields:[{name:"Release",value:$release,inline:true},{name:"Tag",value:$tag,inline:true}],url:$url}]}')
+          curl -sS -H "Content-Type: application/json" -d "$PAYLOAD" "$WEBHOOK"
 
       - name: Notify Discord - Pull Request
         if: github.event_name == 'pull_request'
+        env:
+          ACTION: ${{ github.event.action }}
+          PR_BODY_JSON: ${{ toJSON(github.event.pull_request.body) }}
+          PR_TITLE_JSON: ${{ toJSON(github.event.pull_request.title) }}
+          PR_NUM: ${{ github.event.pull_request.number }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PR_STATE: ${{ github.event.pull_request.state }}
+          REPO: ${{ github.repository }}
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: |
-          COLOR=$([ "${{ github.event.action }}" == "closed" ] && echo "15158332" || echo "3447003")
-          STATUS=$([ "${{ github.event.action }}" == "closed" ] && echo "Closed" || echo "Opened")
-          PR_BODY="${{ github.event.pull_request.body }}"
-          PR_BODY=$(echo "$PR_BODY" | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
-          PR_TITLE="${{ github.event.pull_request.title }}"
-          PR_TITLE=$(echo "$PR_TITLE" | sed 's/"/\\"/g')
-          curl -H "Content-Type: application/json" \
-            -d "{
-              \"embeds\": [{
-                \"title\": \"Pull Request ${STATUS}: ${PR_TITLE}\",
-                \"description\": \"${PR_BODY}\",
-                \"color\": ${COLOR},
-                \"fields\": [
-                  {
-                    \"name\": \"PR\",
-                    \"value\": \"#${{ github.event.pull_request.number }}\",
-                    \"inline\": true
-                  },
-                  {
-                    \"name\": \"Author\",
-                    \"value\": \"${{ github.event.pull_request.user.login }}\",
-                    \"inline\": true
-                  },
-                  {
-                    \"name\": \"Status\",
-                    \"value\": \"${{ github.event.pull_request.state }}\",
-                    \"inline\": true
-                  }
-                ],
-                \"url\": \"https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }}\"
-              }]
-            }" \
-            "${{ secrets.DISCORD_WEBHOOK }}"
+          if [ "$ACTION" = "closed" ]; then COLOR=15158332; STATUS="Closed"; else COLOR=3447003; STATUS="Opened"; fi
+          PAYLOAD=$(jq -n \
+            --arg status "$STATUS" \
+            --argjson title "$PR_TITLE_JSON" \
+            --argjson desc "$PR_BODY_JSON" \
+            --argjson color "$COLOR" \
+            --arg pr "#$PR_NUM" \
+            --arg author "$PR_AUTHOR" \
+            --arg state "$PR_STATE" \
+            --arg url "https://github.com/$REPO/pull/$PR_NUM" \
+            '{embeds:[{title:("Pull Request " + $status + ": " + $title),description:$desc,color:$color,fields:[{name:"PR",value:$pr,inline:true},{name:"Author",value:$author,inline:true},{name:"Status",value:$state,inline:true}],url:$url}]}')
+          curl -sS -H "Content-Type: application/json" -d "$PAYLOAD" "$WEBHOOK"
 
       - name: Notify Discord - Issue
         if: github.event_name == 'issues'
+        env:
+          ACTION: ${{ github.event.action }}
+          ISSUE_BODY_JSON: ${{ toJSON(github.event.issue.body) }}
+          ISSUE_TITLE_JSON: ${{ toJSON(github.event.issue.title) }}
+          ISSUE_NUM: ${{ github.event.issue.number }}
+          ISSUE_AUTHOR: ${{ github.event.issue.user.login }}
+          ISSUE_LABELS: ${{ join(github.event.issue.labels.*.name, ', ') }}
+          REPO: ${{ github.repository }}
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: |
-          COLOR=$([ "${{ github.event.action }}" == "closed" ] && echo "15158332" || echo "3447003")
-          STATUS=$([ "${{ github.event.action }}" == "closed" ] && echo "Closed" || echo "Opened")
-          ISSUE_BODY="${{ github.event.issue.body }}"
-          ISSUE_BODY=$(echo "$ISSUE_BODY" | sed 's/"/\\"/g' | sed ':a;N;$!ba;s/\n/\\n/g')
-          ISSUE_TITLE="${{ github.event.issue.title }}"
-          ISSUE_TITLE=$(echo "$ISSUE_TITLE" | sed 's/"/\\"/g')
-          LABELS="${{ join(github.event.issue.labels.*.name, ', ') }}"
-          if [ -z "$LABELS" ]; then
-            LABELS="None"
-          fi
-          curl -H "Content-Type: application/json" \
-            -d "{
-              \"embeds\": [{
-                \"title\": \"Issue ${STATUS}: ${ISSUE_TITLE}\",
-                \"description\": \"${ISSUE_BODY}\",
-                \"color\": ${COLOR},
-                \"fields\": [
-                  {
-                    \"name\": \"Issue\",
-                    \"value\": \"#${{ github.event.issue.number }}\",
-                    \"inline\": true
-                  },
-                  {
-                    \"name\": \"Author\",
-                    \"value\": \"${{ github.event.issue.user.login }}\",
-                    \"inline\": true
-                  },
-                  {
-                    \"name\": \"Labels\",
-                    \"value\": \"${LABELS}\",
-                    \"inline\": false
-                  }
-                ],
-                \"url\": \"https://github.com/${{ github.repository }}/issues/${{ github.event.issue.number }}\"
-              }]
-            }" \
-            "${{ secrets.DISCORD_WEBHOOK }}"
+          if [ "$ACTION" = "closed" ]; then COLOR=15158332; STATUS="Closed"; else COLOR=3447003; STATUS="Opened"; fi
+          LABELS="$ISSUE_LABELS"
+          [ -z "$LABELS" ] && LABELS="None"
+          PAYLOAD=$(jq -n \
+            --arg status "$STATUS" \
+            --argjson title "$ISSUE_TITLE_JSON" \
+            --argjson desc "$ISSUE_BODY_JSON" \
+            --argjson color "$COLOR" \
+            --arg issue "#$ISSUE_NUM" \
+            --arg author "$ISSUE_AUTHOR" \
+            --arg labels "$LABELS" \
+            --arg url "https://github.com/$REPO/issues/$ISSUE_NUM" \
+            '{embeds:[{title:("Issue " + $status + ": " + $title),description:$desc,color:$color,fields:[{name:"Issue",value:$issue,inline:true},{name:"Author",value:$author,inline:true},{name:"Labels",value:$labels,inline:false}],url:$url}]}')
+          curl -sS -H "Content-Type: application/json" -d "$PAYLOAD" "$WEBHOOK"
