@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.26.11
+
+### Bug Fixes
+
+#### Movie/Series Genres – Genre switching
+- **Genre selection now updates correctly when switching between genres** – Selecting a genre (e.g. Action), backing out, then selecting another (e.g. Adventure) now loads the correct genre’s content. Previously the shared MediaDiscoveryViewModel kept the prior genre’s results, and the LaunchedEffect only loaded when `searchResults.isEmpty()`, so the new genre was never fetched.
+- **Load trigger logic adjusted** – The discovery LaunchedEffect now loads when results are empty *or* when not returning from media details for the same category, so switching genres triggers a reload while preserving scroll position when returning from details.
+
+### Files Modified
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/MediaDiscoveryScreen.kt` – Updated LaunchedEffect to call discovery methods when `!GridPositionManager.isReturningFromDetails(screenKey)` in addition to when `searchResults.isEmpty()`.
+
+---
+
 ## 0.26.10
 
 ### Features

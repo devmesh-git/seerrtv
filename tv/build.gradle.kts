@@ -60,8 +60,8 @@ android {
         applicationId = "ca.devmesh.seerrtv"
         minSdk = 25
         targetSdk = 36
-        versionCode = 113
-        versionName = "0.26.10"
+        versionCode = 114
+        versionName = "0.26.11"
         buildConfigField("String", "VERSION_NAME", "\"${defaultConfig.versionName}\"")
         buildConfigField("Boolean", "DEBUG", "true")
         buildConfigField("Boolean", "IS_DIRECT_FLAVOR", "false")

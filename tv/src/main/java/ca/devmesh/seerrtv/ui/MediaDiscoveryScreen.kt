@@ -518,8 +518,10 @@ fun MediaDiscoveryScreen(
     }
 
     LaunchedEffect(discoveryType, initialKeyword, timestamp) {
-        // Only load data if we have no results (don't reload when returning from details)
-        if (searchResults.isEmpty()) {
+        // Load when: no results yet, OR we navigated to a different category (e.g. switched genres).
+        // Skip load only when returning from details to the same category (preserves scroll position).
+        val isReturningFromDetailsForThisScreen = GridPositionManager.isReturningFromDetails(screenKey)
+        if (searchResults.isEmpty() || !isReturningFromDetailsForThisScreen) {
             if (discoveryType != DiscoveryType.SEARCH) {
                 // Mark as initial load when switching to keyword discovery
                 isInitialLoad = true
