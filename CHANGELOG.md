@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.26.9
+
+### Bug Fixes
+
+#### Media Browse – Filters
+- **Filters no longer carry over between screens** – Entering Media Browse (Movies or Series) now always starts with default filters; filters are cleared on enter (LaunchedEffect) and on leave (DisposableEffect), so returning to the same mode shows "Filters" with 0 count and switching modes never leaves the wrong filters active.
+- **Filters drawer no longer locks up when switching modes** – The Filters drawer always receives filters that match the current screen’s media type; if the ViewModel had movie filters while on Series (or vice versa), the drawer now gets default filters for the current screen instead of mismatched ones.
+
+#### Top Bar – Browse Screens
+- **Hide current browse icon on Movies/Series screens** – On Movies browse the Movies icon is hidden; on Series browse the Series icon is hidden, so the same screen is not pushed again and the bar only shows the other browse option plus Settings and Search.
+- **Top bar D-pad no wrap** – Left/right between top bar icons no longer wraps at the ends on any screen (main with 4 icons, or browse with 3 icons); focus stops at Settings (left) and Search (right).
+- **Enter on current browse icon is no-op** – Selecting the Movies icon when already on Movies browse (or Series when on Series browse) does nothing instead of nesting the same screen.
+
+### Technical Improvements
+
+#### Media Browse
+- **MainTopBar** – Added `showMoviesIcon` and `showSeriesIcon` (default `true`); Movies and Series icons are conditionally rendered so the current browse screen can hide its own icon.
+- **MediaBrowseScreen** – Resets filters on enter and on dispose; passes `showMoviesIcon` / `showSeriesIcon` based on `mediaType`; when moving focus to the top bar, focuses the other browse icon; Filters drawer receives `filtersForDrawer` that matches `mediaType`.
+- **TopBarController** – Left/right handlers branch on `browse/movies` vs `browse/series` vs other routes so only visible icons are in the focus chain and ends do not wrap; Enter on Movies/Series no-ops when already on that browse route.
+
+### Files Modified
+- `tv/build.gradle.kts` – Bumped version to 0.26.9 (versionCode 112).
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/MediaBrowseScreen.kt` – Filter reset on enter/leave; drawer filter guard; top bar icon visibility and initial top-bar focus.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/components/MainTopBar.kt` – `showMoviesIcon` / `showSeriesIcon`; conditional Series and Movies icon rendering.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/components/TopBarController.kt` – Route-aware left/right (no wrap); Enter no-op when already on same browse screen.
+
+---
+
 ## 0.26.8
 
 ### Bug Fixes

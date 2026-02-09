@@ -127,34 +127,39 @@ fun TopBarController(
     val handleLeft: () -> Unit = {
         when (val focus = appFocusManager.currentFocus) {
             is AppFocusState.TopBar -> {
+                val currentRoute = navController.currentDestination?.route
+                val onMoviesBrowse = currentRoute == "browse/movies"
+                val onSeriesBrowse = currentRoute == "browse/series"
+                // On browse screens only 3 icons are visible; move left between them with no wrap.
+                // Visual order: Settings | Series/Movies | Search
                 when (focus.focus) {
                     TopBarFocus.Search -> {
-                        // Move to movies
-                        if (BuildConfig.DEBUG) {
-                            Log.d("TopBarController", "🔄 handleLeft: Search -> Movies")
+                        if (onMoviesBrowse) {
+                            appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Series))
+                        } else if (onSeriesBrowse) {
+                            appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Movies))
+                        } else {
+                            appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Movies))
                         }
-                        appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Movies))
                     }
                     TopBarFocus.Movies -> {
-                        // Move to series
-                        if (BuildConfig.DEBUG) {
-                            Log.d("TopBarController", "🔄 handleLeft: Movies -> Series")
+                        if (onSeriesBrowse) {
+                            appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Settings))
+                        } else {
+                            appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Series))
                         }
-                        appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Series))
                     }
                     TopBarFocus.Series -> {
-                        // Move to settings
-                        if (BuildConfig.DEBUG) {
-                            Log.d("TopBarController", "🔄 handleLeft: Series -> Settings")
+                        if (onMoviesBrowse) {
+                            appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Settings))
+                        } else if (onSeriesBrowse) {
+                            appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Movies))
+                        } else {
+                            appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Settings))
                         }
-                        appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Settings))
                     }
                     TopBarFocus.Settings -> {
-                        // Wrap to search
-                        if (BuildConfig.DEBUG) {
-                            Log.d("TopBarController", "🔄 handleLeft: Settings -> Search")
-                        }
-                        appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Search))
+                        // Left from Settings = end (no wrap on any screen)
                     }
                 }
             }
@@ -169,34 +174,36 @@ fun TopBarController(
     val handleRight: () -> Unit = {
         when (val focus = appFocusManager.currentFocus) {
             is AppFocusState.TopBar -> {
+                val currentRoute = navController.currentDestination?.route
+                val onMoviesBrowse = currentRoute == "browse/movies"
+                val onSeriesBrowse = currentRoute == "browse/series"
+                // On browse screens only 3 icons are visible; move right between them with no wrap.
                 when (focus.focus) {
-                    TopBarFocus.Search -> {
-                        // Wrap to settings
-                        if (BuildConfig.DEBUG) {
-                            Log.d("TopBarController", "🔄 handleRight: Search -> Settings")
-                        }
-                        appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Settings))
-                    }
                     TopBarFocus.Settings -> {
-                        // Move to series
-                        if (BuildConfig.DEBUG) {
-                            Log.d("TopBarController", "🔄 handleRight: Settings -> Series")
+                        if (onMoviesBrowse) {
+                            appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Series))
+                        } else if (onSeriesBrowse) {
+                            appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Movies))
+                        } else {
+                            appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Series))
                         }
-                        appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Series))
                     }
                     TopBarFocus.Series -> {
-                        // Move to movies
-                        if (BuildConfig.DEBUG) {
-                            Log.d("TopBarController", "🔄 handleRight: Series -> Movies")
+                        if (onMoviesBrowse) {
+                            appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Search))
+                        } else {
+                            appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Movies))
                         }
-                        appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Movies))
                     }
                     TopBarFocus.Movies -> {
-                        // Move to search
-                        if (BuildConfig.DEBUG) {
-                            Log.d("TopBarController", "🔄 handleRight: Movies -> Search")
+                        if (onSeriesBrowse) {
+                            appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Search))
+                        } else {
+                            appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Search))
                         }
-                        appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Search))
+                    }
+                    TopBarFocus.Search -> {
+                        // Right from Search = end (no wrap on any screen)
                     }
                 }
             }
@@ -211,6 +218,7 @@ fun TopBarController(
     val handleEnter: () -> Unit = {
         when (val focus = appFocusManager.currentFocus) {
             is AppFocusState.TopBar -> {
+                val currentRoute = navController.currentDestination?.route
                 when (focus.focus) {
                     TopBarFocus.Search -> {
                         if (BuildConfig.DEBUG) {
@@ -219,16 +227,30 @@ fun TopBarController(
                         navController.navigate("search")
                     }
                     TopBarFocus.Movies -> {
-                        if (BuildConfig.DEBUG) {
-                            Log.d("TopBarController", "🔄 handleEnter: Navigating to movies browse")
+                        if (currentRoute == "browse/movies") {
+                            // Already on Movies browse; don't nest
+                            if (BuildConfig.DEBUG) {
+                                Log.d("TopBarController", "🔄 handleEnter: Already on movies browse, no-op")
+                            }
+                        } else {
+                            if (BuildConfig.DEBUG) {
+                                Log.d("TopBarController", "🔄 handleEnter: Navigating to movies browse")
+                            }
+                            navController.navigate("browse/movies")
                         }
-                        navController.navigate("browse/movies")
                     }
                     TopBarFocus.Series -> {
-                        if (BuildConfig.DEBUG) {
-                            Log.d("TopBarController", "🔄 handleEnter: Navigating to series browse")
+                        if (currentRoute == "browse/series") {
+                            // Already on Series browse; don't nest
+                            if (BuildConfig.DEBUG) {
+                                Log.d("TopBarController", "🔄 handleEnter: Already on series browse, no-op")
+                            }
+                        } else {
+                            if (BuildConfig.DEBUG) {
+                                Log.d("TopBarController", "🔄 handleEnter: Navigating to series browse")
+                            }
+                            navController.navigate("browse/series")
                         }
-                        navController.navigate("browse/series")
                     }
                     TopBarFocus.Settings -> {
                         if (BuildConfig.DEBUG) {

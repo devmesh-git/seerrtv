@@ -288,11 +288,38 @@ fun MediaBrowseScreen(
         }
     }
 
-    // Load initial popular content when screen opens
-    LaunchedEffect(mediaType) {
-        when (mediaType) {
-            MediaType.MOVIE -> viewModel.loadPopularMovies()
-            MediaType.TV -> viewModel.loadPopularSeries()
+    // Load initial content when screen opens.
+    // Design choice: do NOT carry filters across screens (Movies/Series/main/etc).
+    // Each time this screen is entered for a given mediaType, we reset to default filters.
+    LaunchedEffect(mediaType, screenKey) {
+        // Clear any saved browse filter/sort state for this screen so we always start clean.
+        GridPositionManager.clearBrowseState(screenKey)
+
+        // Apply default filters for this media type. This sets currentFilters and activeFilterCount to 0
+        // and triggers a fresh browse for this mediaType with the current sort.
+        val defaultFilters = BrowseModels.MediaFilters.default(mediaType)
+        if (BuildConfig.DEBUG) {
+            Log.d(
+                "MediaBrowseScreen",
+                "🔄 Entering $screenKey with mediaType=$mediaType - resetting filters to default (no carry-over)"
+            )
+        }
+        viewModel.applyFilters(defaultFilters)
+    }
+
+    // When leaving this screen (composable disposed), clear filters so we never carry state to the next visit.
+    // This ensures returning to the same mode shows "Filters" with 0 count even if LaunchedEffect didn't re-run.
+    DisposableEffect(mediaType, screenKey) {
+        onDispose {
+            GridPositionManager.clearBrowseState(screenKey)
+            val defaultFilters = BrowseModels.MediaFilters.default(mediaType)
+            if (BuildConfig.DEBUG) {
+                Log.d(
+                    "MediaBrowseScreen",
+                    "🔄 Leaving $screenKey - clearing filters so next visit starts clean"
+                )
+            }
+            viewModel.applyFilters(defaultFilters)
         }
     }
 
@@ -352,8 +379,8 @@ fun MediaBrowseScreen(
                 BrowseFocusedItem.Search,
                 BrowseFocusedItem.Sort,
                 BrowseFocusedItem.Filters -> {
-                    // Move to top bar
-                    val topBarFocus = if (mediaType == MediaType.MOVIE) TopBarFocus.Movies else TopBarFocus.Series
+                    // Move to top bar; focus the other browse icon (current one is hidden on this screen)
+                    val topBarFocus = if (mediaType == MediaType.MOVIE) TopBarFocus.Series else TopBarFocus.Movies
                     appFocusManager.setFocus(AppFocusState.TopBar(topBarFocus))
                 }
 
@@ -651,7 +678,7 @@ fun MediaBrowseScreen(
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            // Persistent top bar
+            // Persistent top bar (hide current browse icon to avoid nesting the same screen)
             MainTopBar(
                 context = context,
                 activeMode = when (mediaType) {
@@ -676,7 +703,9 @@ fun MediaBrowseScreen(
                         (appFocusManager.currentFocus as AppFocusState.TopBar).focus == TopBarFocus.Settings,
                 showRefreshHint = false,
                 isInTopBar = appFocusManager.currentFocus is AppFocusState.TopBar,
-                isRefreshRowVisible = false
+                isRefreshRowVisible = false,
+                showMoviesIcon = mediaType != MediaType.MOVIE,
+                showSeriesIcon = mediaType != MediaType.TV
             )
 
             // Header text
@@ -886,10 +915,16 @@ fun MediaBrowseScreen(
 
         // Filters Drawer Modal
         if (showFiltersDrawer) {
+            // Ensure the drawer always receives filters that match the current screen's media type.
+            // This prevents passing movie filters into the TV browse drawer (or vice versa).
+            val filtersForDrawer = currentFilters
+                ?.takeIf { it.mediaType == mediaType }
+                ?: BrowseModels.MediaFilters.default(mediaType)
+
             FiltersDrawer(
                 isVisible = showFiltersDrawer,
                 viewModel = viewModel,
-                filters = currentFilters ?: BrowseModels.MediaFilters.default(mediaType),
+                filters = filtersForDrawer,
                 onFiltersChange = { newFilters ->
                     viewModel.applyFilters(newFilters)
                 },

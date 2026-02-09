@@ -53,7 +53,9 @@ fun MainTopBar(
     showRefreshHint: Boolean = false,
     isInTopBar: Boolean = false,
     isRefreshRowVisible: Boolean = false,
-    showSearchIcon: Boolean = true
+    showSearchIcon: Boolean = true,
+    showMoviesIcon: Boolean = true,
+    showSeriesIcon: Boolean = true
 ) {
     Box(
         modifier = modifier
@@ -98,47 +100,51 @@ fun MainTopBar(
             }
             Spacer(modifier = Modifier.width(8.dp))
             
-            // Series icon
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .background(
-                        color = if (isSeriesFocused)
-                            Color.Gray.copy(alpha = 0.5f)
-                        else Color.Transparent,
-                        shape = CircleShape
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Tv,
-                    contentDescription = "Series",
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
-                )
+            // Series icon (hidden when already on Series browse to avoid nesting)
+            if (showSeriesIcon) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(
+                            color = if (isSeriesFocused)
+                                Color.Gray.copy(alpha = 0.5f)
+                            else Color.Transparent,
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Tv,
+                        contentDescription = "Series",
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
             }
-            Spacer(modifier = Modifier.width(8.dp))
             
-            // Movies icon
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .background(
-                        color = if (isMoviesFocused)
-                            Color.Gray.copy(alpha = 0.5f)
-                        else Color.Transparent,
-                        shape = CircleShape
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Movie,
-                    contentDescription = "Movies",
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
-                )
+            // Movies icon (hidden when already on Movies browse to avoid nesting)
+            if (showMoviesIcon) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(
+                            color = if (isMoviesFocused)
+                                Color.Gray.copy(alpha = 0.5f)
+                            else Color.Transparent,
+                            shape = CircleShape
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Movie,
+                        contentDescription = "Movies",
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
             }
-            Spacer(modifier = Modifier.width(8.dp))
             
             // Search icon (optional)
             if (showSearchIcon) {
