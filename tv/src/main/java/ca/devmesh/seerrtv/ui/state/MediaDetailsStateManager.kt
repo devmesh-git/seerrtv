@@ -69,6 +69,9 @@ class MediaDetailsStateManager {
     var mediaPlayerTrigger by mutableIntStateOf(0)
     var watchTrailerTrigger by mutableIntStateOf(0)
 
+    // Trailer overlay: when non-null, overlay is visible with this YouTube video ID
+    var trailerOverlayVideoId by mutableStateOf<String?>(null)
+
     // Computed properties
     val currentMediaType: MediaType?
         get() = (mediaDetailsState as? ApiResult.Success)?.data?.mediaType

@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.26.10
+
+### Features
+
+#### Trailer playback
+- **Trailer Player setting** – In Settings, users can choose how trailers open: **YouTube app** (opens `youtube.com/watch?v=…` in the system YouTube app) or **In-app player** (fullscreen overlay with embedded player).
+- **In-app trailer overlay** – When “In-app player” is selected, tapping “Watch Trailer” on media details opens a fullscreen overlay using the android-youtube-player library (WebView/IFrame API). Loading is indicated by a spinner; on error, a red circle with a white X is shown.
+- **D-pad support in overlay** – Back closes the overlay; Left/Right scrub ±10 seconds; Enter/Center toggles play/pause. Focus stays on the overlay (player view is non-focusable).
+
+### Technical
+
+- **TrailerOverlay.kt** – New composable: `YouTubePlayerView` via AndroidView, lifecycle-aware init/release, key handling for Back/Left/Right/Enter, load/error/loaded states.
+- **SharedPreferencesUtil** – Trailer player preference (`trailerPlayerYouTubeApp` / in-app); getter/setter for Settings and MediaDetails.
+- **SettingsMenu** – New “Trailer Player” row with “YouTube app” / “In-app player” options.
+- **MediaDetails** – Reads trailer player preference; opens YouTube Intent for app option or TrailerOverlay for in-app; passes YouTube video ID from media state.
+- **MediaDetailsStateManager** – Trailer YouTube ID exposed for overlay.
+- **MediaStatus** – “Watch Trailer” visibility/behavior wired to trailer URL and player preference.
+- **Strings** – `settingsMenu_trailerPlayer`, `settingsMenu_trailerPlayer_youtubeApp`, `settingsMenu_trailerPlayer_inApp` added in all locales (values, de, es, fr, ja, nl, pt, zh).
+- **tv/build.gradle.kts** – Bumped to 0.26.10 (versionCode 113); added `com.pierfrancescosoffritti.androidyoutubeplayer:core:13.0.0`.
+
+### Files Modified
+- `tv/build.gradle.kts` – Version 0.26.10, android-youtube-player dependency.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/MediaDetails.kt` – Trailer player preference, YouTube Intent vs TrailerOverlay.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/SettingsMenu.kt` – Trailer Player setting row.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/TrailerOverlay.kt` – New file (in-app trailer overlay).
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/components/MediaStatus.kt` – Watch Trailer and player preference.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/state/MediaDetailsStateManager.kt` – Trailer YouTube ID.
+- `tv/src/main/java/ca/devmesh/seerrtv/util/SharedPreferencesUtil.kt` – Trailer player preference.
+- `tv/src/main/res/values/strings.xml`, `values-de`, `values-es`, `values-fr`, `values-ja`, `values-nl`, `values-pt`, `values-zh` – Trailer Player strings.
+
+---
+
 ## 0.26.9
 
 ### Bug Fixes

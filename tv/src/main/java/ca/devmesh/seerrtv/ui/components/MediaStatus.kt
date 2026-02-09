@@ -122,3 +122,20 @@ private fun getTrailerUrl(relatedVideos: List<RelatedVideo>?): String? {
 fun findTrailerUrl(relatedVideos: List<RelatedVideo>?): String? {
     return relatedVideos?.find { it.type == "Trailer" }?.url
 }
+
+/**
+ * Returns the YouTube video ID for the trailer, or null if none.
+ * Prefers [RelatedVideo.key] when present; otherwise parses [RelatedVideo.url]
+ * for youtube.com/watch?v=ID or youtu.be/ID.
+ */
+fun getTrailerYouTubeVideoId(relatedVideos: List<RelatedVideo>?): String? {
+    val trailer = relatedVideos?.find { it.type == "Trailer" } ?: return null
+    trailer.key?.takeIf { it.isNotBlank() }?.let { return it }
+    val url = trailer.url ?: return null
+    // youtube.com/watch?v=VIDEO_ID or youtu.be/VIDEO_ID
+    val vParam = Regex("[?&]v=([^&]+)").find(url)?.groupValues?.getOrNull(1)
+    if (!vParam.isNullOrBlank()) return vParam
+    val youtuBe = Regex("youtu\\.be/([^?&/]+)").find(url)?.groupValues?.getOrNull(1)
+    if (!youtuBe.isNullOrBlank()) return youtuBe
+    return null
+}

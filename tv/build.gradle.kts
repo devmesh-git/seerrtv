@@ -60,8 +60,8 @@ android {
         applicationId = "ca.devmesh.seerrtv"
         minSdk = 25
         targetSdk = 36
-        versionCode = 112
-        versionName = "0.26.9"
+        versionCode = 113
+        versionName = "0.26.10"
         buildConfigField("String", "VERSION_NAME", "\"${defaultConfig.versionName}\"")
         buildConfigField("Boolean", "DEBUG", "true")
         buildConfigField("Boolean", "IS_DIRECT_FLAVOR", "false")
@@ -170,6 +170,9 @@ dependencies {
 
     // Utilities
     implementation(libs.core)
+
+    // YouTube embed player (IFrame API wrapper; WebView-based)
+    implementation("com.pierfrancescosoffritti.androidyoutubeplayer:core:13.0.0")
 
     // Unit Testing
     testImplementation(libs.junit)

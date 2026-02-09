@@ -74,6 +74,7 @@ fun SettingsMenu(
         items.add(MenuItem(context.getString(R.string.settingsMenu_defaultStreamingRegion), controller.getDefaultStreamingRegionDisplayName()))
         items.add(MenuItem(context.getString(R.string.settingsMenu_folderSelection), if (controller.folderSelectionEnabled) context.getString(R.string.settingsMenu_enabled) else context.getString(R.string.settingsMenu_disabled)))
         items.add(MenuItem(context.getString(R.string.settingsMenu_clockFormat), if (controller.use24HourClock) context.getString(R.string.settingsMenu_24Hour) else context.getString(R.string.settingsMenu_12Hour)))
+        items.add(MenuItem(context.getString(R.string.settingsMenu_trailerPlayer), if (controller.useTrailerWebView) context.getString(R.string.settingsMenu_trailerPlayer_inApp) else context.getString(R.string.settingsMenu_trailerPlayer_youtubeApp)))
         if (BuildConfig.IS_DIRECT_FLAVOR) {
             items.add(MenuItem("Check for Update", ""))
         }
@@ -149,7 +150,7 @@ fun SettingsMenu(
                     .onKeyEvent { event ->
                         // Handle Enter/Right key for Check for Update
                         if (BuildConfig.IS_DIRECT_FLAVOR &&
-                            controller.selectedIndex == 6 && // Check for Update is at index 6 in direct flavor (was 5, now shifted)
+                            controller.selectedIndex == 7 && // Check for Update is at index 7 in direct flavor (Trailer at 6)
                             (event.key == Key.DirectionRight || KeyUtils.isEnterKey(event.nativeKeyEvent.keyCode)) &&
                             event.type == KeyEventType.KeyDown
                         ) {
@@ -810,6 +811,7 @@ class SettingsMenuController(
     var currentSubMenu: SubMenu? by mutableStateOf(null)
     var folderSelectionEnabled by mutableStateOf(SharedPreferencesUtil.isFolderSelectionEnabled(context))
     var use24HourClock by mutableStateOf(SharedPreferencesUtil.use24HourClock(context))
+    var useTrailerWebView by mutableStateOf(SharedPreferencesUtil.useTrailerWebView(context))
     val authType = SharedPreferencesUtil.getConfig(context)?.authType ?: "unknown"
     val displayName = SharedPreferencesUtil.getUserDisplayName(context) ?: ""
     val mediaServerType = SharedPreferencesUtil.getMediaServerType(context).name
@@ -902,9 +904,9 @@ class SettingsMenuController(
                     }
                 } else {
                     // menuItems is not available in the controller, so use a constant for max index
-                    // When IS_DIRECT_FLAVOR is true, we have: Config(0), AppLanguage(1), Folder(2), Discovery(3), Streaming Region(4), Clock(5), Check for Update(6), About(7)
-                    // When IS_DIRECT_FLAVOR is false, we have: Config(0), AppLanguage(1), Folder(2), Discovery(3), Streaming Region(4), Clock(5), About(6)
-                    val maxIndex = if (BuildConfig.IS_DIRECT_FLAVOR) 7 else 6
+                    // When IS_DIRECT_FLAVOR is true: Config(0), AppLanguage(1), Discovery(2), Streaming Region(3), Folder(4), Clock(5), Trailer(6), Check for Update(7), About(8)
+                    // When IS_DIRECT_FLAVOR is false: Config(0), AppLanguage(1), Discovery(2), Streaming Region(3), Folder(4), Clock(5), Trailer(6), About(7)
+                    val maxIndex = if (BuildConfig.IS_DIRECT_FLAVOR) 8 else 7
                     selectedIndex = (selectedIndex + 1).coerceAtMost(maxIndex)
                 }
                 true
@@ -957,6 +959,10 @@ class SettingsMenuController(
                         toggleClockFormat()
                         true
                     }
+                    !isSubMenuOpen && selectedIndex == 6 -> { // Trailer Player toggle
+                        toggleTrailerPlayer()
+                        true
+                    }
                     else -> handleRightOrEnterKey()
                 }
             }
@@ -990,8 +996,7 @@ class SettingsMenuController(
                 )
                 3 -> SubMenu(context.getString(R.string.settingsMenu_defaultStreamingRegion), emptyList())
                 // About menu index depends on whether Check for Update is present
-                // Update Check (6) -> No sub menu
-                if (BuildConfig.IS_DIRECT_FLAVOR) 7 else 6 -> SubMenu(context.getString(R.string.settingsMenu_aboutMenu), emptyList())
+                if (BuildConfig.IS_DIRECT_FLAVOR) 8 else 7 -> SubMenu(context.getString(R.string.settingsMenu_aboutMenu), emptyList())
                 // Don't handle index corresponding to "Check for Update" in direct flavor
                 else -> null
             }
@@ -1018,6 +1023,11 @@ class SettingsMenuController(
     fun toggleClockFormat() {
         use24HourClock = !use24HourClock
         SharedPreferencesUtil.setUse24HourClock(context, use24HourClock)
+    }
+
+    fun toggleTrailerPlayer() {
+        useTrailerWebView = !useTrailerWebView
+        SharedPreferencesUtil.setUseTrailerWebView(context, useTrailerWebView)
     }
 
     private fun updateDiscoveryLanguage(newValue: String) {

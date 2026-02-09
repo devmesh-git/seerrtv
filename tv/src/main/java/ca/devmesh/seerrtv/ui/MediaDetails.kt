@@ -26,6 +26,8 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.zIndex
 import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -58,6 +60,7 @@ import ca.devmesh.seerrtv.ui.components.MediaDetailsContentLayout
 import ca.devmesh.seerrtv.ui.components.MediaDetailsCarousels
 import ca.devmesh.seerrtv.ui.components.findTrailerUrl
 import ca.devmesh.seerrtv.ui.components.getActionButtonStates
+import ca.devmesh.seerrtv.ui.components.getTrailerYouTubeVideoId
 import ca.devmesh.seerrtv.ui.components.TVMessage
 import ca.devmesh.seerrtv.ui.components.processMediaStatus
 import ca.devmesh.seerrtv.ui.focus.DpadController
@@ -760,17 +763,35 @@ fun MediaDetails(
     fun handleWatchTrailerTrigger() {
         when (val state = mediaDetailsState) {
             is ApiResult.Success<MediaDetails> -> {
+                val videoId = getTrailerYouTubeVideoId(state.data.relatedVideos)
                 val trailerUrl = findTrailerUrl(state.data.relatedVideos)
-                if (trailerUrl != null) {
+                if (videoId == null && trailerUrl == null) return@handleWatchTrailerTrigger
+                if (SharedPreferencesUtil.useTrailerWebView(context)) {
+                    if (videoId != null) {
+                        stateManager.trailerOverlayVideoId = videoId
+                    } else {
+                        try {
+                            val intent = Intent(Intent.ACTION_VIEW, trailerUrl!!.toUri())
+                            context.startActivity(intent)
+                        } catch (_: ActivityNotFoundException) {
+                            showMessage = context.getString(R.string.mediaDetails_youTubeNotFound)
+                        }
+                    }
+                } else {
                     try {
-                        val intent = Intent(Intent.ACTION_VIEW, trailerUrl.toUri())
+                        // Use full URL so YouTube app opens and plays the video (vnd.youtube:id can open app without playing)
+                        val uri = when {
+                            !trailerUrl.isNullOrBlank() -> trailerUrl.toUri()
+                            videoId != null -> android.net.Uri.parse("https://www.youtube.com/watch?v=$videoId")
+                            else -> return@handleWatchTrailerTrigger
+                        }
+                        val intent = Intent(Intent.ACTION_VIEW, uri)
                         context.startActivity(intent)
                     } catch (_: ActivityNotFoundException) {
                         showMessage = context.getString(R.string.mediaDetails_youTubeNotFound)
                     }
                 }
             }
-
             else -> {}
         }
     }
@@ -984,13 +1005,16 @@ fun MediaDetails(
     Box(
         modifier = Modifier.fillMaxSize()
     ) {
-        // Global back suppression: consume Back while modals are open or within debounce window after modal Back
+        // Global back suppression: consume Back while modals are open or trailer overlay is visible or within debounce window after modal Back
         val nowTs = System.currentTimeMillis()
         val shouldSuppressBack = (nowTs - stateManager.lastIssueBackKeyTime < 600) ||
-                modalManager.showIssueReport || modalManager.showIssueDetails
+                modalManager.showIssueReport || modalManager.showIssueDetails ||
+                stateManager.trailerOverlayVideoId != null
         BackHandler(enabled = shouldSuppressBack) {
-            // If a modal is open, close it; otherwise just consume to suppress unintended navigation
             when {
+                stateManager.trailerOverlayVideoId != null -> {
+                    stateManager.trailerOverlayVideoId = null
+                }
                 modalManager.showIssueReport -> {
                     modalManager.closeIssueReport()
                     stateManager.lastIssueModalCloseTime = System.currentTimeMillis()
@@ -2730,6 +2754,22 @@ fun MediaDetails(
                     showMessage = null
                 }
             )
+        }
+
+        // Trailer overlay: fullscreen Dialog so it covers the top bar; in-app WebView when user enabled "In-app player" in Settings
+        stateManager.trailerOverlayVideoId?.let { videoId ->
+            Dialog(
+                onDismissRequest = { stateManager.trailerOverlayVideoId = null },
+                properties = DialogProperties(
+                    usePlatformDefaultWidth = false,
+                    dismissOnBackPress = true
+                )
+            ) {
+                TrailerOverlay(
+                    videoId = videoId,
+                    onClose = { stateManager.trailerOverlayVideoId = null }
+                )
+            }
         }
     }
 }

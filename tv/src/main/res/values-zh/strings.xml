@@ -287,6 +287,9 @@
     <string name="settingsMenu_mediaServerTypePlex">Plex</string>
     <string name="settingsMenu_serverType">服务器类型</string>
     <string name="settingsMenu_thankYou">感谢您支持我们的产品。</string>
+    <string name="settingsMenu_trailerPlayer">预告片播放器</string>
+    <string name="settingsMenu_trailerPlayer_youtubeApp">YouTube 应用</string>
+    <string name="settingsMenu_trailerPlayer_inApp">应用内播放器</string>
     <string name="settingsMenu_title">设置</string>
     <string name="settingsMenu_username">账号</string>
     <string name="settingsMenu_website">网站</string>

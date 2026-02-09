@@ -75,6 +75,7 @@ object SharedPreferencesUtil {
     private const val KEY_DISCOVERY_LANGUAGE = "discovery_language"
     private const val KEY_APP_LANGUAGE = "app_language"
     private const val KEY_DEFAULT_STREAMING_REGION = "default_streaming_region"
+    private const val KEY_USE_TRAILER_WEBVIEW = "use_trailer_webview"
 
     // Supported app languages
     val SUPPORTED_APP_LANGUAGES = listOf("en", "de", "es", "fr", "ja", "nl", "pt", "zh")
@@ -244,6 +245,20 @@ object SharedPreferencesUtil {
         val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         with(sharedPrefs.edit()) {
             putBoolean(KEY_USE_24_HOUR_CLOCK, enabled)
+            commit()
+        }
+    }
+
+    /** Default = false (use YouTube app for trailers). When true, use in-app WebView overlay. */
+    fun useTrailerWebView(context: Context): Boolean {
+        val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return sharedPrefs.getBoolean(KEY_USE_TRAILER_WEBVIEW, false)
+    }
+
+    fun setUseTrailerWebView(context: Context, useWebView: Boolean) {
+        val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        with(sharedPrefs.edit()) {
+            putBoolean(KEY_USE_TRAILER_WEBVIEW, useWebView)
             commit()
         }
     }

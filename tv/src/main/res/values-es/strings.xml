@@ -287,6 +287,9 @@
     <string name="settingsMenu_mediaServerTypePlex">Plex</string>
     <string name="settingsMenu_serverType">Tipo de servidor</string>
     <string name="settingsMenu_thankYou">Gracias por apoyar nuestro producto.</string>
+    <string name="settingsMenu_trailerPlayer">Reproductor de tráilers</string>
+    <string name="settingsMenu_trailerPlayer_youtubeApp">Aplicación YouTube</string>
+    <string name="settingsMenu_trailerPlayer_inApp">Reproductor en la app</string>
     <string name="settingsMenu_title">Configuración</string>
     <string name="settingsMenu_username">Cuenta</string>
     <string name="settingsMenu_website">Sitio Web</string>
