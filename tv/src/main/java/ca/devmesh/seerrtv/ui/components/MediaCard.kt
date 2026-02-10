@@ -197,15 +197,6 @@ fun MediaCard(
                             )
                         }
                     }
-                    
-                    else -> {
-                        // Fallback for unknown search result types
-                        EmptyCard(
-                            isSelected = isSelected,
-                            cardHeight = cardHeight,
-                            cardWidth = cardWidth
-                        )
-                    }
                 }
             }
             

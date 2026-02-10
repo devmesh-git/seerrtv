@@ -281,7 +281,7 @@ fun DownloadStatusItem(
     is4K: Boolean = false
 ) {
     // Force recomposition for any updates to ensure progress changes are visible
-    val recomposeKey = remember(downloadStatus) { Object() }
+    val recomposeKey = remember(downloadStatus) { Any() }
     
     Column(
         modifier = modifier

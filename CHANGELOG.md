@@ -1,5 +1,45 @@
 # Changelog
 
+## 0.26.13
+
+### App Store Compliance
+
+#### Android TV App Bundle
+- **Resolved App Bundle Rejection** – Removed `<uses-feature android:name="android.hardware.type.television" />` from the manifest. This declaration was causing "App installation issues" on Google Play by restricting device compatibility too strictly.
+- **Target SDK Validation** – Verified and maintained `targetSdk = 36` for Android 16 support.
+
+### Technical Improvements
+
+#### Code Quality (Compiler Warnings)
+- **Resolved Kotlin Compiler Warnings** – Cleaned up various warnings to improve build stability and code cleanliness:
+    - **Redundant Branches** – Removed redundant `else` branches in `when` statements across `MediaDiscoveryScreen.kt`, `MediaCard.kt`, and `SeerrViewModel.kt`.
+    - **Unnecessary Safe Calls** – Removed unnecessary `?.` safe calls on non-null `nativeKeyEvent` in `TrailerOverlay.kt`.
+    - **Deprecated Usage** – Replaced deprecated `java.lang.Object()` with `kotlin.Any()` for Jetpack Compose `remember` keys in `CommonComponents.kt`.
+
+#### Build Configuration
+- **Dependency Management** – Updated `androidyoutubeplayer` to use the Gradle version catalog for better dependency management.
+
+#### Dependency Updates
+- **Kotlin**: 2.2.10 → 2.3.10
+- **Compose BOM**: 2025.12.01 → 2026.01.01
+- **Hilt**: 2.59 → 2.59.1
+- **Ktor**: 3.3.3 → 3.4.0
+- **Kotlinx Serialization**: 1.9.0 → 1.10.0
+- **Compose UI/Foundation**: 1.10.0 → 1.10.2
+- **Activity Compose**: 1.12.2 → 1.12.3
+- **Navigation Compose**: 2.9.6 → 2.9.7
+
+### Files Modified
+- `tv/build.gradle.kts` – Version bumped to 0.26.13 (versionCode 116); dependency updates.
+- `gradle/libs.versions.toml` – Added `androidyoutubeplayer` core version.
+- `tv/src/main/AndroidManifest.xml` – Removed `android.hardware.type.television`.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/MediaDiscoveryScreen.kt` – Removed redundant `else` branch.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/TrailerOverlay.kt` – Removed unnecessary safe calls.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/components/CommonComponents.kt` – Replaced `Object()` with `Any()`.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/components/MediaCard.kt` – Removed redundant `else` branch.
+- `tv/src/main/java/ca/devmesh/seerrtv/viewmodel/SeerrViewModel.kt` – Removed redundant `else` branch.
+
+---
 ## 0.26.12
 
 ### New Features

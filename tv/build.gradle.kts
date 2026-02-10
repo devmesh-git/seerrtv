@@ -60,8 +60,8 @@ android {
         applicationId = "ca.devmesh.seerrtv"
         minSdk = 25
         targetSdk = 36
-        versionCode = 115
-        versionName = "0.26.12"
+        versionCode = 116
+        versionName = "0.26.13"
         buildConfigField("String", "VERSION_NAME", "\"${defaultConfig.versionName}\"")
         buildConfigField("Boolean", "DEBUG", "true")
         buildConfigField("Boolean", "IS_DIRECT_FLAVOR", "false")
@@ -107,8 +107,6 @@ android {
         }
     }
     ndkVersion = "27.0.12077973"
-    buildToolsVersion =
-        "36.1.0"// To set 'playDebug' as the default build variant, use the Build Variants panel in Android Studio.
 }
 
 kotlin {
@@ -172,7 +170,7 @@ dependencies {
     implementation(libs.core)
 
     // YouTube embed player (IFrame API wrapper; WebView-based)
-    implementation("com.pierfrancescosoffritti.androidyoutubeplayer:core:13.0.0")
+    implementation(libs.androidyoutubeplayer.core)
 
     // Unit Testing
     testImplementation(libs.junit)

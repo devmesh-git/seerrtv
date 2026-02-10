@@ -532,7 +532,6 @@ fun MediaDiscoveryScreen(
                     DiscoveryType.SERIES_GENRE -> viewModel.discoverTVByGenre(initialKeyword)
                     DiscoveryType.STUDIO -> viewModel.discoverMoviesByStudio(initialKeyword)
                     DiscoveryType.NETWORK -> viewModel.discoverTVByNetwork(initialKeyword)
-                    else -> {}
                 }
             } else if (initialKeyword.isNotEmpty()) {
                 // Mark as initial load when using initial keyword for search

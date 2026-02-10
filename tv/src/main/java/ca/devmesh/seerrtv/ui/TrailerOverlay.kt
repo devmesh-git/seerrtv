@@ -102,12 +102,12 @@ fun TrailerOverlay(
                             true
                         } else {
                             @Suppress("DEPRECATION")
-                            event.nativeKeyEvent?.let { playerViewRef.value?.dispatchKeyEvent(it) } ?: false
+                            event.nativeKeyEvent.let { playerViewRef.value?.dispatchKeyEvent(it) } ?: false
                         }
                     }
                     else -> {
                         @Suppress("DEPRECATION")
-                        event.nativeKeyEvent?.let { playerViewRef.value?.dispatchKeyEvent(it) } ?: false
+                        event.nativeKeyEvent.let { playerViewRef.value?.dispatchKeyEvent(it) } ?: false
                     }
                 }
             }

@@ -984,8 +984,6 @@ class SeerrViewModel @Inject constructor(
                                             )
                                         }
                                     }
-
-                                    else -> null
                                 }
                             }
 
