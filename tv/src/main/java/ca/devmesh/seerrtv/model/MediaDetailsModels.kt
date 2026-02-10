@@ -90,6 +90,7 @@ data class ReleaseDate(
     val descriptors: List<String>? = null,
     val iso_639_1: String,
     val note: String,
+    @SerialName("release_date")
     val releaseDate: String? = null,
     val type: Int
 )

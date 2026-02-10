@@ -198,6 +198,9 @@
     <string name="mediaInfoTable_originalTitle">Originele Titel</string>
     <string name="mediaInfoTable_productionCountry">Productieland</string>
     <string name="mediaInfoTable_releaseDate">Releasedatum</string>
+    <string name="mediaInfoTable_releaseDateTheatrical">Bioscoop</string>
+    <string name="mediaInfoTable_releaseDateDigital">Digitaal</string>
+    <string name="mediaInfoTable_releaseDatePhysical">Fysiek</string>
     <string name="mediaInfoTable_revenue">Opbrengst</string>
     <string name="mediaInfoTable_rottenTomatoesRating">Rotten Tomatoes Beoordeling</string>
     <string name="mediaInfoTable_status">Status</string>

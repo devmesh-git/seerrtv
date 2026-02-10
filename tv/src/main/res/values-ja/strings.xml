@@ -198,6 +198,9 @@
     <string name="mediaInfoTable_originalTitle">原題</string>
     <string name="mediaInfoTable_productionCountry">制作国</string>
     <string name="mediaInfoTable_releaseDate">公開日</string>
+    <string name="mediaInfoTable_releaseDateTheatrical">劇場公開</string>
+    <string name="mediaInfoTable_releaseDateDigital">デジタル</string>
+    <string name="mediaInfoTable_releaseDatePhysical">パッケージ</string>
     <string name="mediaInfoTable_revenue">興行収入</string>
     <string name="mediaInfoTable_rottenTomatoesRating">Rotten Tomatoesの評価</string>
     <string name="mediaInfoTable_status">ステータス</string>

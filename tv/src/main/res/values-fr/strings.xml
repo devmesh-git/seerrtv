@@ -198,6 +198,9 @@
     <string name="mediaInfoTable_originalTitle">Titre Original</string>
     <string name="mediaInfoTable_productionCountry">Pays de Production</string>
     <string name="mediaInfoTable_releaseDate">Date de Sortie</string>
+    <string name="mediaInfoTable_releaseDateTheatrical">Cinéma</string>
+    <string name="mediaInfoTable_releaseDateDigital">Numérique</string>
+    <string name="mediaInfoTable_releaseDatePhysical">Physique</string>
     <string name="mediaInfoTable_revenue">Recettes</string>
     <string name="mediaInfoTable_rottenTomatoesRating">Note de Rotten Tomatoes</string>
     <string name="mediaInfoTable_status">Statut</string>

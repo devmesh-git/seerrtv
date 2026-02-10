@@ -1,5 +1,6 @@
 package ca.devmesh.seerrtv.ui
 
+import android.content.Context
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -7,6 +8,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -20,12 +22,38 @@ import ca.devmesh.seerrtv.model.ProductionCompany
 import ca.devmesh.seerrtv.model.Provider
 import ca.devmesh.seerrtv.R
 import ca.devmesh.seerrtv.util.CommonUtil
+import ca.devmesh.seerrtv.util.SharedPreferencesUtil
 import kotlin.math.round
+import java.util.Locale
+
+private const val RELEASE_TYPE_THEATRICAL = 3
+private const val RELEASE_TYPE_DIGITAL = 4
+private const val RELEASE_TYPE_PHYSICAL = 5
+
+
+
+/**
+ * Returns (theatricalDate, digitalDate, physicalDate) for the given region from releases.
+ * Each date is trimmed to yyyy-MM-dd for CommonUtil.formatDate. Returns nulls when no data.
+ */
+private fun getMovieReleaseDatesByType(mediaDetails: MediaDetails, region: String): Triple<String?, String?, String?> {
+    val results = mediaDetails.releases?.results ?: return Triple(null, null, null)
+    val country = results.find { it.iso_3166_1 == region } ?: results.firstOrNull() ?: return Triple(null, null, null)
+    val dates = country.releaseDates ?: return Triple(null, null, null)
+    fun dateForType(type: Int): String? =
+        dates.firstOrNull { it.type == type && !it.releaseDate.isNullOrBlank() }?.releaseDate?.take(10)
+    return Triple(
+        dateForType(RELEASE_TYPE_THEATRICAL),
+        dateForType(RELEASE_TYPE_DIGITAL),
+        dateForType(RELEASE_TYPE_PHYSICAL)
+    )
+}
 
 @Composable
 fun MediaInfoTable(
     mediaDetails: MediaDetails,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    context: Context = LocalContext.current
 ) {
     Column(modifier = modifier) {
         // Debug logging for ratings
@@ -137,16 +165,22 @@ fun MediaInfoTable(
             HorizontalDivider(color = Color.Gray, thickness = 1.dp)
         }
 
+        val appLang = SharedPreferencesUtil.getAppLanguage(context)
+        val locale = if (!appLang.isNullOrBlank()) Locale.forLanguageTag(appLang) else (if (!context.resources.configuration.locales.isEmpty) context.resources.configuration.locales[0] else Locale.getDefault())
         when (mediaDetails.mediaType) {
-            MediaType.TV -> TvInfoRows(mediaDetails)
-            MediaType.MOVIE -> MovieInfoRows(mediaDetails)
+            MediaType.TV -> TvInfoRows(mediaDetails, locale)
+            MediaType.MOVIE -> MovieInfoRows(
+                mediaDetails = mediaDetails,
+                releaseDateRegion = CommonUtil.getRegionForLanguage(SharedPreferencesUtil.getDiscoveryLanguage(context)),
+                locale = locale
+            )
             null -> {} // Handle null case
         }
     }
 }
 
 @Composable
-private fun TvInfoRows(mediaDetails: MediaDetails) {
+private fun TvInfoRows(mediaDetails: MediaDetails, locale: Locale) {
     mediaDetails.originalTitle?.let { InfoRow(stringResource(R.string.mediaInfoTable_originalTitle), it) }
     InfoRow(stringResource(R.string.mediaInfoTable_status), mediaDetails.status)
     HorizontalDivider(color = Color.Gray, thickness = 1.dp)
@@ -154,9 +188,9 @@ private fun TvInfoRows(mediaDetails: MediaDetails) {
     HorizontalDivider(color = Color.Gray, thickness = 1.dp)
     InfoRow(stringResource(R.string.mediaInfoTable_numberOfEpisodes), mediaDetails.numberOfEpisodes.toString())
     HorizontalDivider(color = Color.Gray, thickness = 1.dp)
-    InfoRow(stringResource(R.string.mediaInfoTable_firstAirDate), CommonUtil.formatDate(mediaDetails.firstAirDate))
+    InfoRow(stringResource(R.string.mediaInfoTable_firstAirDate), CommonUtil.formatDateShort(mediaDetails.firstAirDate, locale))
     if (mediaDetails.inProduction == false) {
-        InfoRow(stringResource(R.string.mediaInfoTable_lastAirDate), CommonUtil.formatDate(mediaDetails.lastAirDate))
+        InfoRow(stringResource(R.string.mediaInfoTable_lastAirDate), CommonUtil.formatDateShort(mediaDetails.lastAirDate, locale))
     }
     HorizontalDivider(color = Color.Gray, thickness = 1.dp)
     InfoRow(stringResource(R.string.mediaInfoTable_productionCountry), mediaDetails.productionCountries.firstOrNull()?.name ?: "")
@@ -164,10 +198,23 @@ private fun TvInfoRows(mediaDetails: MediaDetails) {
 }
 
 @Composable
-private fun MovieInfoRows(mediaDetails: MediaDetails) {
+private fun MovieInfoRows(
+    mediaDetails: MediaDetails,
+    releaseDateRegion: String,
+    locale: Locale
+) {
     InfoRow(stringResource(R.string.mediaInfoTable_status), mediaDetails.status)
     HorizontalDivider(color = Color.Gray, thickness = 1.dp)
-    InfoRow(stringResource(R.string.mediaInfoTable_releaseDate), CommonUtil.formatDate(mediaDetails.releaseDate))
+    val (theatricalDate, digitalDate, physicalDate) = getMovieReleaseDatesByType(mediaDetails, releaseDateRegion)
+    val hasReleaseDates = theatricalDate != null || digitalDate != null || physicalDate != null
+    if (hasReleaseDates) {
+        val theatricalDisplay = theatricalDate ?: mediaDetails.releaseDate?.take(10)
+        theatricalDisplay?.let { InfoRow(stringResource(R.string.mediaInfoTable_releaseDateTheatrical), CommonUtil.formatDateShort(it, locale)) }
+        digitalDate?.let { InfoRow(stringResource(R.string.mediaInfoTable_releaseDateDigital), CommonUtil.formatDateShort(it, locale)) }
+        physicalDate?.let { InfoRow(stringResource(R.string.mediaInfoTable_releaseDatePhysical), CommonUtil.formatDateShort(it, locale)) }
+    } else {
+        InfoRow(stringResource(R.string.mediaInfoTable_releaseDate), CommonUtil.formatDateShort(mediaDetails.releaseDate, locale))
+    }
     if (mediaDetails.revenue != null && mediaDetails.revenue > 0) {
         InfoRow(stringResource(R.string.mediaInfoTable_revenue), CommonUtil.formatDollars(mediaDetails.revenue))
     }

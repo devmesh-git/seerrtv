@@ -198,6 +198,9 @@
     <string name="mediaInfoTable_originalTitle">Original Title</string>
     <string name="mediaInfoTable_productionCountry">Production Country</string>
     <string name="mediaInfoTable_releaseDate">Release Date</string>
+    <string name="mediaInfoTable_releaseDateTheatrical">Theatrical</string>
+    <string name="mediaInfoTable_releaseDateDigital">Digital</string>
+    <string name="mediaInfoTable_releaseDatePhysical">Physical</string>
     <string name="mediaInfoTable_revenue">Revenue</string>
     <string name="mediaInfoTable_rottenTomatoesRating">Rotten Tomatoes Rating</string>
     <string name="mediaInfoTable_status">Status</string>

@@ -173,6 +173,22 @@ object CommonUtil {
         }
     }
 
+    /**
+     * Short month format for compact display (e.g. "Oct 15, 1999" in English).
+     * Uses [locale] for month names so dates display in the app's language.
+     */
+    fun formatDateShort(date: String?, locale: Locale = Locale.getDefault()): String {
+        if (date.isNullOrEmpty()) return ""
+        val inputFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+        val outputFormat = SimpleDateFormat("MMM d, yyyy", locale)
+        return try {
+            val parsedDate = inputFormat.parse(date)
+            outputFormat.format(parsedDate ?: return "")
+        } catch (_: Exception) {
+            ""
+        }
+    }
+
     fun formatDollars(amount: Long?): String {
         if (amount == null) return ""
         val format = NumberFormat.getCurrencyInstance(Locale.US)
@@ -204,5 +220,21 @@ object CommonUtil {
                     word.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
                 }
         }
+    }
+
+    /**
+     * Maps discovery language code to ISO 3166-1 region for release dates.
+     * English uses US; other languages use a primary country for that language.
+     */
+    fun getRegionForLanguage(lang: String): String = when (lang.lowercase()) {
+        "en" -> "US"
+        "de" -> "DE"
+        "es" -> "ES"
+        "fr" -> "FR"
+        "ja" -> "JP"
+        "nl" -> "NL"
+        "pt" -> "PT"
+        "zh" -> "CN"
+        else -> "US"
     }
 } 

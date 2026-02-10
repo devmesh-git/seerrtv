@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.26.12
+
+### New Features
+
+#### Enhanced Movie Details
+- **Detailed Release Dates** – Now displaying Theatrical, Digital, and Physical release dates for movies when available, based on the selected region.
+
+### Technical Improvements
+
+#### Language & Region Handling
+- **Centralized Language-to-Region Logic** – Moved the `discoveryLanguageToRegion` mapping from `MediaInfoTable` to `CommonUtil.getRegionForLanguage`. This consolidating logic ensures consistent language-to-region mapping across the app (used for determining release dates).
+- **Locale Retrieval Fix** – Replaced `firstOrNull()` on `LocaleList` with an explicit empty check and index access in `MediaInfoTable` to prevent potential crashes on certain Android versions/configurations where the extension function might be missing or behave unexpectedly.
+- **Release Date Parsing Fix** – added `@SerialName("release_date")` annotation to `ReleaseDate` model in `MediaDetailsModels` to ensure API responses are correctly deserialized. Previously `releaseDate` might have been null if the JSON field was `release_date`.
+
+### Files Modified
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/MediaInfoTable.kt` – Removed private mapping function; updated to use CommonUtil; fixed LocaleList access.
+- `tv/src/main/java/ca/devmesh/seerrtv/util/CommonUtil.kt` – Added `getRegionForLanguage` function.
+- `tv/src/main/java/ca/devmesh/seerrtv/model/MediaDetailsModels.kt` – Added `@SerialName` annotation to `releaseDate`.
+- `tv/src/main/res/values*/strings.xml` – Added release date type labels.
+
+---
+
 ## 0.26.11
 
 ### Bug Fixes
