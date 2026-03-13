@@ -1,5 +1,46 @@
 # Changelog
 
+## 0.26.14
+
+### Navigation & Focus
+
+#### Media Browse Screen & Coordinator
+- **Improved DPAD route handling** – Updated `NavigationCoordinator` to track logical DPAD routes separately from the underlying navigation back stack, reducing focus glitches when moving between main, browse, and details screens.
+- **More reliable position restore** – Simplified `MediaBrowseScreen` position restoration so grid position is only restored when returning from details, avoiding unexpected jumps while browsing.
+- **Initial focus behavior refined** – Adjusted initial focus so first entry to Media Browse focuses the grid (first item) instead of the search box, preventing the on-screen keyboard from popping up immediately.
+- **Back navigation polish** – Refined back handling between `MediaBrowseScreen` and `FiltersDrawer` so Back now consistently closes the drawer from its main Categories screen and otherwise returns focus to the sort menu, keeping navigation predictable.
+- **DPAD controller lifecycle** – Ensured browse screens unregister from the DPAD controller when disposed to avoid stale focus registrations and potential memory leaks.
+
+#### GitHub Issues
+- **Navigation & focus fixes** – Resolves GitHub issues [#1](https://github.com/devmesh-git/seerrtv/issues/1), [#2](https://github.com/devmesh-git/seerrtv/issues/2), [#3](https://github.com/devmesh-git/seerrtv/issues/3), and [#4](https://github.com/devmesh-git/seerrtv/issues/4) related to Media Browse initial focus, position restore, back handling, and DPAD route tracking.
+
+### Build & Tooling
+
+#### Gradle & Toolchain
+- **Toolchain resolver integration** – Added the Foojay toolchain resolver plugin in `settings.gradle.kts` and a `gradle-daemon-jvm.properties` file to centralize JVM toolchain URLs across platforms.
+- **Gradle/AGP upgrades** – Updated Android Gradle Plugin to 9.1.0 and bumped the Gradle wrapper to 9.3.1 for better performance and compatibility with current tooling.
+
+#### Dependency Updates
+- **Coil (compose / okhttp)**: 3.3.0 → 3.4.0
+- **Hilt Android / Compiler**: 2.59.1 → 2.59.2
+- **AndroidX Core KTX**: 1.17.0 → 1.18.0
+- **Compose BOM**: 2026.01.01 → 2026.03.00
+- **Compose Foundation / UI**: 1.10.2 → 1.10.5
+- **Compose TV Foundation**: 1.0.0-alpha12 → 1.0.0-beta01
+- **Activity Compose**: 1.12.3 → 1.13.0
+- **Ktor**: 3.4.0 → 3.4.1
+
+### Files Modified
+- `tv/build.gradle.kts` – Version bumped to 0.26.14 (versionCode 117).
+- `settings.gradle.kts` – Added Foojay toolchain resolver plugin.
+- `gradle/gradle-daemon-jvm.properties` – New JVM toolchain configuration file.
+- `gradle/libs.versions.toml` – Dependency version bumps (AGP, Coil, Hilt, AndroidX, Compose, Ktor).
+- `tv/src/main/java/ca/devmesh/seerrtv/navigation/NavigationCoordinator.kt` – DPAD route tracking and navigation logging improvements.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/MediaBrowseScreen.kt` – Position restore, initial focus, and back navigation refinements.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/components/FiltersDrawer.kt` – Back handling updates for drawer close behavior.
+
+---
+
 ## 0.26.13
 
 ### App Store Compliance
