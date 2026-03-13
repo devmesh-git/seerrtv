@@ -151,16 +151,15 @@ fun MediaBrowseScreen(
     }
 
     // Consolidated position restoration - only restore when returning from details
-    LaunchedEffect(isReturningFromDetails, searchResults.size, isLoading, isInitialComposition) {
-        // Only restore if we're actually returning from details AND have data AND not initial composition
-        if (!isReturningFromDetails || isInitialComposition) {
-            // Not returning from details or initial composition - don't restore
-            if (BuildConfig.DEBUG && !isReturningFromDetails && (GridPositionManager.getSavedPosition(screenKey) != null || GridPositionManager.getSavedSelection(screenKey) != null)) {
+    LaunchedEffect(isReturningFromDetails, searchResults.size, isLoading) {
+        if (!isReturningFromDetails) {
+            // Not returning from details - nothing to restore
+            if (BuildConfig.DEBUG && (GridPositionManager.getSavedPosition(screenKey) != null || GridPositionManager.getSavedSelection(screenKey) != null)) {
                 Log.d("MediaBrowseScreen", "🧹 Not returning from details but found saved state - will be ignored")
             }
             return@LaunchedEffect
         }
-        
+
         if (isLoading || searchResults.isEmpty()) {
             return@LaunchedEffect
         }
@@ -200,6 +199,10 @@ fun MediaBrowseScreen(
                         "🔄 Restored position: index=${currentSavedPosition.first}, offset=${currentSavedPosition.second}, selection=(${selectedRow}, ${selectedColumn})"
                     )
                 }
+
+                // Mark that we've already established initial focus via grid restore
+                hasSetInitialFocus = true
+                isInitialComposition = false
 
                 // Clear the returning flag in the manager now that we've restored position
                 GridPositionManager.clearReturningFlag(screenKey)
@@ -252,28 +255,20 @@ fun MediaBrowseScreen(
         }
     }
 
-    // Set focus to Search by default when first arriving (not returning from details)
-    LaunchedEffect(Unit) {
-        // Only set to Search if we're NOT returning from details
+    // Set focus to Search by default only on the first non-returning entry.
+    // When returning from details, let the grid restore logic keep focus on the last item.
+    LaunchedEffect(isReturningFromDetails, screenKey) {
         if (!isReturningFromDetails && !hasSetInitialFocus) {
-            // Always set to Search on first composition when not returning
             if (BuildConfig.DEBUG) {
-                Log.d("MediaBrowseScreen", "🔍 Setting focus to Search by default (initial composition, not returning from details)")
+                Log.d(
+                    "MediaBrowseScreen",
+                    "🔍 Setting focus to Search by default (initial composition, not returning from details)"
+                )
             }
             focusedItem = BrowseFocusedItem.Search
             appFocusManager.focusBrowseScreen(BrowseFocusState.Search)
             hasSetInitialFocus = true
             isInitialComposition = false
-        } else if (!isReturningFromDetails && hasSetInitialFocus) {
-            // Check if focus is already set to something other than Search
-            // If it's Grid, that means AppFocusManager restored it - we want Search instead
-            if (focusedItem == BrowseFocusedItem.Grid) {
-                if (BuildConfig.DEBUG) {
-                    Log.d("MediaBrowseScreen", "🔍 Setting focus to Search by default (not returning from details)")
-                }
-                focusedItem = BrowseFocusedItem.Search
-                appFocusManager.focusBrowseScreen(BrowseFocusState.Search)
-            }
         }
     }
     
@@ -288,38 +283,27 @@ fun MediaBrowseScreen(
         }
     }
 
-    // Load initial content when screen opens.
-    // Design choice: do NOT carry filters across screens (Movies/Series/main/etc).
-    // Each time this screen is entered for a given mediaType, we reset to default filters.
-    LaunchedEffect(mediaType, screenKey) {
-        // Clear any saved browse filter/sort state for this screen so we always start clean.
-        GridPositionManager.clearBrowseState(screenKey)
+    // Initialize filters when needed, but do not clear them when navigating to details
+    // so that filters persist while browsing multiple series.
+    LaunchedEffect(mediaType) {
+        val existingFilters = currentFilters
+        val shouldInitialize =
+            existingFilters == null || existingFilters.mediaType != mediaType
 
-        // Apply default filters for this media type. This sets currentFilters and activeFilterCount to 0
-        // and triggers a fresh browse for this mediaType with the current sort.
-        val defaultFilters = BrowseModels.MediaFilters.default(mediaType)
-        if (BuildConfig.DEBUG) {
-            Log.d(
-                "MediaBrowseScreen",
-                "🔄 Entering $screenKey with mediaType=$mediaType - resetting filters to default (no carry-over)"
-            )
-        }
-        viewModel.applyFilters(defaultFilters)
-    }
-
-    // When leaving this screen (composable disposed), clear filters so we never carry state to the next visit.
-    // This ensures returning to the same mode shows "Filters" with 0 count even if LaunchedEffect didn't re-run.
-    DisposableEffect(mediaType, screenKey) {
-        onDispose {
-            GridPositionManager.clearBrowseState(screenKey)
+        if (shouldInitialize) {
             val defaultFilters = BrowseModels.MediaFilters.default(mediaType)
             if (BuildConfig.DEBUG) {
                 Log.d(
                     "MediaBrowseScreen",
-                    "🔄 Leaving $screenKey - clearing filters so next visit starts clean"
+                    "🔄 Initializing filters for $screenKey with mediaType=$mediaType"
                 )
             }
             viewModel.applyFilters(defaultFilters)
+        } else if (BuildConfig.DEBUG) {
+            Log.d(
+                "MediaBrowseScreen",
+                "✅ Reusing existing filters for $screenKey with mediaType=$mediaType"
+            )
         }
     }
 
