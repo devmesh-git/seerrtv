@@ -255,34 +255,26 @@ fun MediaBrowseScreen(
         }
     }
 
-    // Set focus to Search by default only on the first non-returning entry.
-    // When returning from details, let the grid restore logic keep focus on the last item.
-    LaunchedEffect(isReturningFromDetails, screenKey) {
-        if (!isReturningFromDetails && !hasSetInitialFocus) {
+    // Set initial focus only once when first entering the screen (not returning from details).
+    // UX: default to the first grid item when results are available, and do NOT auto-focus Search
+    // to avoid popping up the keyboard immediately.
+    LaunchedEffect(isReturningFromDetails, screenKey, searchResults.size) {
+        if (!isReturningFromDetails && !hasSetInitialFocus && searchResults.isNotEmpty()) {
             if (BuildConfig.DEBUG) {
                 Log.d(
                     "MediaBrowseScreen",
-                    "🔍 Setting focus to Search by default (initial composition, not returning from details)"
+                    "🎯 Setting initial focus to Grid(0,0) (not returning from details)"
                 )
             }
-            focusedItem = BrowseFocusedItem.Search
-            appFocusManager.focusBrowseScreen(BrowseFocusState.Search)
+            focusedItem = BrowseFocusedItem.Grid
+            selectedRow = 0
+            selectedColumn = 0
+            appFocusManager.focusBrowseScreen(BrowseFocusState.Grid(0, 0))
             hasSetInitialFocus = true
             isInitialComposition = false
         }
     }
     
-    // Trigger keyboard when search box is selected (but not on initial composition)
-    LaunchedEffect(focusedItem) {
-        if (focusedItem == BrowseFocusedItem.Search && hasSetInitialFocus && !isInitialComposition) {
-            // Increment trigger to request keyboard focus
-            searchKeyboardTrigger++
-            if (BuildConfig.DEBUG) {
-                Log.d("MediaBrowseScreen", "🔍 Search box selected - triggering keyboard")
-            }
-        }
-    }
-
     // Initialize filters when needed, but do not clear them when navigating to details
     // so that filters persist while browsing multiple series.
     LaunchedEffect(mediaType) {
