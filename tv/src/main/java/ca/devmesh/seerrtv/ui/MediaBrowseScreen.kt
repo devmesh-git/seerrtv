@@ -564,40 +564,29 @@ fun MediaBrowseScreen(
             }
         },
         onBack = {
-            // Check if any modal is open - if so, close the modal instead of navigating back
-            // Same approach for both modals (no race condition)
+            // If the sort menu is open, close it instead of navigating back
             if (showSortMenu) {
                 if (BuildConfig.DEBUG) {
                     Log.d("MediaBrowseScreen", "🔙 Back pressed - closing sort menu")
                 }
                 showSortMenu = false
-            } else if (showFiltersDrawer && currentFilterScreen == FilterScreen.Categories) {
-                // Close filters drawer from Categories screen (same as SortMenu)
-                if (BuildConfig.DEBUG) {
-                    Log.d("MediaBrowseScreen", "🔙 Back pressed - closing filters drawer")
-                }
-                showFiltersDrawer = false
             } else {
-                // Navigate back to main screen
+                // No modal managed by this screen is open – navigate back to main screen
                 navigationManager.navigateBack()
             }
         }
         )
     }
 
-    // Handle back button when modal is open to prevent navigation
-    // Same approach for both modals - consistent behavior, no race conditions
-    BackHandler(enabled = showSortMenu || (showFiltersDrawer && currentFilterScreen == FilterScreen.Categories)) {
+    // Handle back button when sort modal is open to prevent navigation
+    BackHandler(enabled = showSortMenu) {
         if (BuildConfig.DEBUG) {
-            Log.d("MediaBrowseScreen", "🔙 BackHandler: Intercepting back button - modal is open")
+            Log.d("MediaBrowseScreen", "🔙 BackHandler: Intercepting back button - sort menu is open")
             Log.d("MediaBrowseScreen", "🔙 showSortMenu: $showSortMenu, showFiltersDrawer: $showFiltersDrawer, currentFilterScreen: $currentFilterScreen")
         }
         
         if (showSortMenu) {
             showSortMenu = false
-        } else if (showFiltersDrawer && currentFilterScreen == FilterScreen.Categories) {
-            // Close filters drawer from Categories screen (same as SortMenu)
-            showFiltersDrawer = false
         }
     }
     

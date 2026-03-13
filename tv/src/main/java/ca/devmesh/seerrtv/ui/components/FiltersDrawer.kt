@@ -231,20 +231,25 @@ private fun FiltersDrawerContent(
         }
     }
     
-    // Handle back button - same approach as SortMenu (let parent BackHandler handle Categories)
-    // This prevents race conditions with DpadController re-registration
-    BackHandler(enabled = currentScreen != FilterScreen.Categories) {
+    // Handle system Back for the drawer.
+    // - From sub-screens: Back returns to Categories
+    // - From Categories: Back closes the drawer via onDismiss()
+    BackHandler(enabled = true) {
         if (BuildConfig.DEBUG) {
-            Log.d("FiltersDrawer", "🔙 BackHandler: Handling back from sub-screen: $currentScreen")
+            Log.d("FiltersDrawer", "🔙 BackHandler: Handling back, currentScreen: $currentScreen")
         }
         
-        // Back from sub-screen returns to categories
         when (currentScreen) {
             FilterScreen.Categories -> {
-                // Shouldn't reach here as BackHandler is disabled for Categories
-                // Parent BackHandler will handle closing the drawer
+                // Close the drawer when on the main Categories screen
+                if (BuildConfig.DEBUG) {
+                    Log.d("FiltersDrawer", "🔙 BackHandler: Dismissing drawer from Categories")
+                }
+                focusManager.clearFocus(force = true)
+                onDismiss()
             }
             else -> {
+                // Back from sub-screen returns to categories
                 currentScreen = FilterScreen.Categories
                 selectedIndex = 0
             }
@@ -380,27 +385,6 @@ private fun FiltersDrawerContent(
                                     }
                                 }
                                 true
-                            }
-                            keyEvent.key == Key.Back && keyEvent.type == KeyEventType.KeyDown -> {
-                                if (BuildConfig.DEBUG) {
-                                    Log.d("FiltersDrawer", "🔙 Back pressed, currentScreen: $currentScreen")
-                                }
-                                when (currentScreen) {
-                                    FilterScreen.Categories -> {
-                                        // Don't handle Back for Categories - let parent BackHandler handle it
-                                        // This matches SortMenu behavior and prevents race conditions
-                                        if (BuildConfig.DEBUG) {
-                                            Log.d("FiltersDrawer", "🔙 Back from Categories - letting parent BackHandler handle it")
-                                        }
-                                        false // Don't consume, let it propagate to parent BackHandler
-                                    }
-                                    else -> {
-                                        // Back from sub-screen returns to categories
-                                        currentScreen = FilterScreen.Categories
-                                        selectedIndex = 0
-                                        true // Consume the event
-                                    }
-                                }
                             }
                             else -> false
                         }
