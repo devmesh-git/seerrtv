@@ -452,7 +452,19 @@ class DpadControllerImpl : DpadController {
             }
         }
         
-        // Check if we're in a BrowseScreen
+        // Prefer the config for the current DPAD route when available
+        currentRoute?.let { route ->
+            val config = registeredScreens[route]
+            if (config != null) {
+                val focus = config.focusManager.currentFocus
+                // For browse routes, ensure we're actually in a BrowseScreen
+                if ((route == "browse_movies" || route == "browse_series").not() || focus is AppFocusState.BrowseScreen) {
+                    return config
+                }
+            }
+        }
+
+        // Fallback: check if we're in any BrowseScreen (keeps backward compatibility)
         val browseConfig = registeredScreens["browse_movies"] ?: registeredScreens["browse_series"]
         if (browseConfig != null) {
             val currentFocus = browseConfig.focusManager.currentFocus
@@ -461,7 +473,7 @@ class DpadControllerImpl : DpadController {
             }
         }
         
-        // Fallback to current route
+        // Final fallback to current route if registered
         return currentRoute?.let { registeredScreens[it] }
     }
 

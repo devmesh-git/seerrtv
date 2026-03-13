@@ -223,38 +223,6 @@ fun MediaBrowseScreen(
         }
     }
 
-    // Save position when navigating away
-    DisposableEffect(Unit) {
-        onDispose {
-            // Set returning flag in GridPositionManager
-            GridPositionManager.markReturningFromDetails(screenKey, true)
-
-            if (BuildConfig.DEBUG) {
-                Log.d(
-                    "MediaBrowseScreen",
-                    "💾 Saving position before navigation: row=$selectedRow, col=$selectedColumn, firstVisibleIndex=${gridState.firstVisibleItemIndex}"
-                )
-            }
-
-            // Request position change through manager
-            GridPositionManager.requestPositionChange(
-                screenKey = screenKey,
-                position = gridState.firstVisibleItemIndex,
-                offset = gridState.firstVisibleItemScrollOffset,
-                row = selectedRow,
-                column = selectedColumn,
-                totalItems = searchResults.size
-            )
-
-            if (BuildConfig.DEBUG) {
-                Log.d(
-                    "MediaBrowseScreen",
-                    "💾 Saved grid state for $screenKey at index ${gridState.firstVisibleItemIndex}"
-                )
-            }
-        }
-    }
-
     // Set initial focus only once when first entering the screen (not returning from details).
     // UX: default to the first grid item when results are available, and do NOT auto-focus Search
     // to avoid popping up the keyboard immediately.
@@ -530,6 +498,17 @@ fun MediaBrowseScreen(
                     val index = selectedRow * numberOfColumns + selectedColumn
                     if (index < searchResults.size) {
                         val result = searchResults[index]
+                        // Snapshot current grid state and mark this screen as returning from details
+                        GridPositionManager.requestPositionChange(
+                            screenKey = screenKey,
+                            position = gridState.firstVisibleItemIndex,
+                            offset = gridState.firstVisibleItemScrollOffset,
+                            row = selectedRow,
+                            column = selectedColumn,
+                            totalItems = searchResults.size
+                        )
+                        GridPositionManager.markReturningFromDetails(screenKey, true)
+
                         navigationManager.navigateToDetails(
                             mediaId = result.id.toString(),
                             mediaType = result.mediaType ?: "unknown",
@@ -580,6 +559,16 @@ fun MediaBrowseScreen(
             dpadController.setCurrentRoute(screenKey)
             if (BuildConfig.DEBUG) {
                 Log.d("MediaBrowseScreen", "📱 Registered MediaBrowse with DPAD controller")
+            }
+        }
+    }
+
+    // Ensure browse screen is unregistered from DPAD when this composable leaves composition
+    DisposableEffect(screenKey) {
+        onDispose {
+            dpadController.unregisterScreen(screenKey)
+            if (BuildConfig.DEBUG) {
+                Log.d("MediaBrowseScreen", "📱 Unregistered MediaBrowse from DPAD controller (disposed)")
             }
         }
     }

@@ -28,11 +28,14 @@ class NavigationCoordinator(
     private val dpadController: DpadController,
     private val scope: CoroutineScope
 ) {
-    // Single source of truth for current route
+    // Single source of truth for current route (logical route, e.g. "main", "browse", "details")
     private val _currentRoute = MutableStateFlow<String?>(null)
 
     // Single source of truth for previous route
     private val _previousRoute = MutableStateFlow<String?>(null)
+
+    // Separate tracking for DPAD route keys (e.g. "browse_movies", "browse_series")
+    private val _currentDpadRoute = MutableStateFlow<String?>(null)
 
     // Single source of truth for navigation entry processing
     private val _currentBackStackEntry = MutableStateFlow<String?>(null)
@@ -59,8 +62,18 @@ class NavigationCoordinator(
      * Centralized route change handling - replaces all duplicate navigation listeners
      */
     private fun handleRouteChange(destination: NavDestination) {
-        val newRoute = destination.route?.split("/")?.firstOrNull() ?: ""
+        val fullRoute = destination.route ?: ""
+        // Logical route for focus/business rules (first path segment)
+        val newRoute = fullRoute.split("/").firstOrNull() ?: ""
         val previousRouteValue = _currentRoute.value
+        val previousDpadRoute = _currentDpadRoute.value
+
+        // Map navigation route to DPAD route key used by DpadController/registerScreen
+        val newDpadRoute = when (fullRoute) {
+            "browse/movies" -> "browse_movies"
+            "browse/series" -> "browse_series"
+            else -> newRoute
+        }
         
         if (BuildConfig.DEBUG) {
             Log.d("NavigationCoordinator", "🔄 Route changed: $previousRouteValue -> $newRoute (full route: ${destination.route})")
@@ -70,14 +83,15 @@ class NavigationCoordinator(
         _previousRoute.value = _currentRoute.value
         _currentRoute.value = newRoute
         
-        // Handle focus state management
+        // Handle focus state management (uses logical routes)
         handleFocusStateManagement(previousRouteValue, newRoute)
         
-        // Handle navigation entry processing
+        // Handle navigation entry processing (uses logical routes)
         handleNavigationEntryProcessing(previousRouteValue, newRoute)
         
         // Handle DPAD controller state
-        handleDpadControllerState(previousRouteValue, newRoute)
+        handleDpadControllerState(previousDpadRoute, newDpadRoute)
+        _currentDpadRoute.value = newDpadRoute
         
         // Handle back debouncing
         handleBackDebouncing(previousRouteValue, newRoute)
