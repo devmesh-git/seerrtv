@@ -16,7 +16,6 @@ import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InputStream
 import java.util.concurrent.Executors
-import android.os.Build
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import android.util.Log
@@ -128,21 +127,53 @@ class UpdateManager(
             // Remove 'v' prefix if present (e.g., "v0.26.3" -> "0.26.3")
             val versionName = tagName.removePrefix("v")
             
-            // Find the APK asset
+            // Find the APK asset for this flavor: main app uses SeerrTV-vX.Y.Z.apk, launcher uses SeerrTV-vX.Y.Z-launcher.apk
             val assetsArray = json.getJSONArray("assets")
             var apkUrl: String? = null
+            val wantLauncher = BuildConfig.IS_LAUNCHER_BUILD
             for (i in 0 until assetsArray.length()) {
                 val asset = assetsArray.getJSONObject(i)
                 val assetName = asset.getString("name")
-                if (assetName.endsWith(".apk", ignoreCase = true)) {
-                    apkUrl = asset.getString("browser_download_url")
-                    Log.d("UpdateManager", "Found APK asset: $assetName -> $apkUrl")
-                    break
+                if (!assetName.endsWith(".apk", ignoreCase = true)) continue
+                val isLauncherAsset = assetName.endsWith("-launcher.apk", ignoreCase = true)
+                if (isLauncherAsset == wantLauncher) {
+                    // Prefer SeerrTV-v* naming; accept any *-launcher.apk / non-launcher .apk if we only have one flavor on release
+                    if (assetName.startsWith("SeerrTV-v", ignoreCase = true)) {
+                        apkUrl = asset.getString("browser_download_url")
+                        Log.d("UpdateManager", "Found APK asset for ${if (wantLauncher) "launcher" else "app"}: $assetName -> $apkUrl")
+                        break
+                    }
+                    if (apkUrl == null) {
+                        apkUrl = asset.getString("browser_download_url")
+                        Log.d("UpdateManager", "Using APK asset for ${if (wantLauncher) "launcher" else "app"}: $assetName -> $apkUrl")
+                    }
                 }
             }
-            
+            if (apkUrl == null && !wantLauncher) {
+                // Fallback: first .apk that is not -launcher (legacy single-APK releases)
+                for (i in 0 until assetsArray.length()) {
+                    val asset = assetsArray.getJSONObject(i)
+                    val assetName = asset.getString("name")
+                    if (assetName.endsWith(".apk", ignoreCase = true) && !assetName.endsWith("-launcher.apk", ignoreCase = true)) {
+                        apkUrl = asset.getString("browser_download_url")
+                        Log.d("UpdateManager", "Found APK asset (fallback): $assetName -> $apkUrl")
+                        break
+                    }
+                }
+            }
+            if (apkUrl == null && wantLauncher) {
+                for (i in 0 until assetsArray.length()) {
+                    val asset = assetsArray.getJSONObject(i)
+                    val assetName = asset.getString("name")
+                    if (assetName.endsWith("-launcher.apk", ignoreCase = true)) {
+                        apkUrl = asset.getString("browser_download_url")
+                        Log.d("UpdateManager", "Found launcher APK asset (fallback): $assetName -> $apkUrl")
+                        break
+                    }
+                }
+            }
             if (apkUrl == null) {
-                Log.e("UpdateManager", "No APK asset found in GitHub release")
+                Log.e("UpdateManager", "No APK asset found in GitHub release for ${if (wantLauncher) "launcher" else "app"}")
                 return null
             }
             

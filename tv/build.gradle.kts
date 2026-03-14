@@ -1,6 +1,9 @@
 import java.io.File
 import java.util.Properties
 
+// Single source for app version; used in defaultConfig and for direct-release APK naming
+val appVersionName = "0.26.16"
+
 plugins {
     // https://developer.android.com/jetpack/androidx/releases/hilt
     // https://www.jetbrains.com/help/kotlin-multiplatform-dev/compose-compatibility-and-versioning.html#jetpack-compose-and-compose-multiplatform-release-cycles
@@ -60,8 +63,8 @@ android {
         applicationId = "ca.devmesh.seerrtv"
         minSdk = 25
         targetSdk = 36
-        versionCode = 118
-        versionName = "0.26.15"
+        versionCode = 119
+        versionName = appVersionName
         buildConfigField("String", "VERSION_NAME", "\"${defaultConfig.versionName}\"")
         buildConfigField("Boolean", "DEBUG", "true")
         buildConfigField("Boolean", "IS_DIRECT_FLAVOR", "false")
@@ -121,6 +124,7 @@ android {
             buildConfigField("Boolean", "IS_LAUNCHER_BUILD", "true")
         }
     }
+
     ndkVersion = "27.0.12077973"
 }
 
@@ -193,26 +197,96 @@ dependencies {
     testImplementation("io.ktor:ktor-client-mock:${libs.versions.ktor.get()}")
 }
 
-// Simple task to print APK and AAB output locations
+// Rename direct release APKs to SeerrTV-vX.Y.Z.apk and SeerrTV-vX.Y.Z-launcher.apk (runs after assemble)
+// Registered in afterEvaluate so variant tasks exist
+project.afterEvaluate {
+    fun registerRenameDirectApkTask(flavorSuffix: String, isLauncher: Boolean) {
+        val variantDir = "direct$flavorSuffix"
+        val assembleTaskName = "assembleDirect${flavorSuffix}Release"
+        val taskName = "renameDirect${flavorSuffix}ReleaseApk"
+        tasks.register(taskName) {
+            group = "build"
+            description = "Renames direct $flavorSuffix release APK to SeerrTV-v${appVersionName}${if (isLauncher) "-launcher" else ""}.apk"
+            dependsOn(assembleTaskName)
+            val launcherSuffix = if (isLauncher) "-launcher" else ""
+            val targetName = "SeerrTV-v${appVersionName}${launcherSuffix}.apk"
+            val apkDir = layout.buildDirectory.dir("outputs/apk/$variantDir/release")
+            inputs.files(apkDir.map { it.asFileTree.matching { include("*.apk") } })
+            outputs.file(apkDir.map { File(it.asFile, targetName) })
+            doLast {
+                val dir = apkDir.get().asFile
+                val apks = dir.listFiles { f -> f.isFile && f.extension.equals("apk", ignoreCase = true) }.orEmpty()
+                val apk = apks.singleOrNull()
+                    ?: throw GradleException("Expected exactly one APK in $dir, found: ${apks.map { it.name }}")
+                val dest = File(dir, targetName)
+                if (apk != dest) {
+                    apk.renameTo(dest)
+                    logger.lifecycle("Renamed ${apk.name} -> $targetName")
+                }
+            }
+        }
+        tasks.named(assembleTaskName) {
+            finalizedBy(taskName)
+        }
+    }
+    registerRenameDirectApkTask("App", false)
+    registerRenameDirectApkTask("Launcher", true)
+    // So Gradle's task dependency validation is satisfied: printBuildOutputs reads APK dirs written by rename tasks
+    tasks.named("printBuildOutputs") {
+        mustRunAfter(tasks.named("renameDirectAppReleaseApk"), tasks.named("renameDirectLauncherReleaseApk"))
+    }
+}
+
+// Single entry points for direct: build both app and launcher APKs
+tasks.register("assembleDirectDebug") {
+    group = "build"
+    description = "Assembles both direct app and launcher debug APKs."
+    dependsOn("assembleDirectAppDebug", "assembleDirectLauncherDebug")
+}
+tasks.register("assembleDirectRelease") {
+    group = "build"
+    description = "Assembles both direct app and launcher release APKs (SeerrTV-vX.Y.Z.apk, SeerrTV-vX.Y.Z-launcher.apk)."
+    dependsOn("assembleDirectAppRelease", "assembleDirectLauncherRelease")
+}
+
+// Single entry points for Play builds (disambiguate app vs launcher)
+tasks.register("bundlePlayDebug") {
+    group = "build"
+    description = "Builds the Play Store debug AAB (main app)."
+    dependsOn("bundlePlayAppDebug")
+}
+tasks.register("bundlePlayRelease") {
+    group = "build"
+    description = "Builds the Play Store release AAB (main app) for upload to Play Console."
+    dependsOn("bundlePlayAppRelease")
+}
+
+// Simple task to print APK and AAB output locations (configuration-cache safe: uses only serializable inputs)
 tasks.register("printBuildOutputs") {
     group = "build"
     description = "Prints APK and AAB output locations for the tv module."
 
+    val apkRoot = objects.directoryProperty()
+    val bundleRoot = objects.directoryProperty()
+    apkRoot.set(layout.buildDirectory.dir("outputs/apk"))
+    bundleRoot.set(layout.buildDirectory.dir("outputs/bundle"))
+    inputs.dir(apkRoot)
+    inputs.dir(bundleRoot)
+
     doLast {
-        val buildDir = layout.buildDirectory.get().asFile
-        val apkRoot = File(buildDir, "outputs/apk")
-        val bundleRoot = File(buildDir, "outputs/bundle")
+        val apkRootDir = apkRoot.get().asFile
+        val bundleRootDir = bundleRoot.get().asFile
 
         fun listFilesRecursively(root: File, extension: String): List<File> {
             if (!root.exists()) return emptyList()
             return root.walkTopDown().filter { it.isFile && it.extension == extension }.toList()
         }
 
-        val apks = listFilesRecursively(apkRoot, "apk")
-        val aabs = listFilesRecursively(bundleRoot, "aab")
+        val apks = listFilesRecursively(apkRootDir, "apk")
+        val aabs = listFilesRecursively(bundleRootDir, "aab")
 
         if (apks.isEmpty() && aabs.isEmpty()) {
-            println("No APK or AAB outputs found under ${buildDir.absolutePath}")
+            println("No APK or AAB outputs found under outputs/apk or outputs/bundle")
             return@doLast
         }
 
@@ -234,13 +308,14 @@ tasks.register("printBuildOutputs") {
     }
 }
 
-// Automatically print outputs after assembling debug or release flavors
+// Print APK/AAB paths after main build entry points only (assembleDebug builds all variants and is not a primary target)
 listOf(
-    "assembleDebug",
+    "assembleDirectDebug",
     "assembleDirectRelease",
-    "assemblePlayRelease"
-).forEach { assembleTaskName ->
-    tasks.matching { it.name == assembleTaskName }.configureEach {
+    "bundlePlayDebug",
+    "bundlePlayRelease"
+).forEach { taskName ->
+    tasks.matching { it.name == taskName }.configureEach {
         finalizedBy("printBuildOutputs")
     }
 }

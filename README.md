@@ -230,74 +230,51 @@ For detailed configuration guides, see:
 
 ### Building for Distribution
 
-SeerrTV supports two distribution methods with different build variants:
+SeerrTV supports two distribution methods. Use these **main build tasks** (run from project root with `./gradlew` or `gradlew.bat` on Windows):
 
-#### Play Store Distribution (.aab)
+| Goal | Task | Output |
+|------|------|--------|
+| **Play Store** (debug) | `bundlePlayDebug` | `.aab` for testing |
+| **Play Store** (release) | `bundlePlayRelease` | `.aab` for Play Console |
+| **Direct / sideload** (debug) | `assembleDirectDebug` | Both app + launcher `.apk` files |
+| **Direct / sideload** (release) | `assembleDirectRelease` | Both app + launcher `.apk` files |
 
-For Google Play Store releases, build the **play** flavor which excludes update functionality and sensitive permissions:
+After a build, Gradle prints the paths to the generated APK/AAB files. Use these four tasks; the generic `assembleDebug` (all debug variants at once) is not needed for normal development.
 
-```bash
-# Debug build for testing
-# macOS/Linux:
-./gradlew bundlePlayDebug
-# Windows:
-gradlew.bat bundlePlayDebug
+#### Play Store (.aab)
 
-# Release build for Play Store submission
-# macOS/Linux:
-./gradlew bundlePlayRelease
-# Windows:
-gradlew.bat bundlePlayRelease
-```
-
-The Play Store build:
-- Contains no auto-update functionality
-- Excludes `REQUEST_INSTALL_PACKAGES` permission
-- Fully compliant with Play Store policies
-- Generates `.aab` files for Play Console upload
-
-#### Direct Distribution (.apk)
-
-For sideloading and direct distribution, build the **direct** flavor which includes update functionality:
+Build the **play** flavor for Google Play (no in-app update, minimal permissions):
 
 ```bash
-# Debug build for testing
-# macOS/Linux:
-./gradlew assembleDirectDebug
-# Windows:
-gradlew.bat assembleDirectDebug
-
-# Release build for direct distribution
-# macOS/Linux:
-./gradlew assembleDirectRelease
-# Windows:
-gradlew.bat assembleDirectRelease
+./gradlew bundlePlayDebug    # Debug
+./gradlew bundlePlayRelease  # Release for Play Console
 ```
 
-**Platform Notes**:
-- **macOS**: Android Studio's bundled Java 21 (JBR) is automatically used via `gradle.properties`. If you don't have Android Studio, set `JAVA_HOME` environment variable to your JDK 21 installation path, or update `gradle.properties` to set `org.gradle.java.home`.
-- **Linux/Windows**: Set `JAVA_HOME` environment variable to your JDK 21 installation path, or override it in `gradle.properties` by setting `org.gradle.java.home`.
+- Generates `.aab` in `tv/build/outputs/bundle/playAppRelease/`
+- Compliant with Play Store policies
 
-The direct build:
-- Includes auto-update functionality (fetches from GitHub Releases API)
-- Contains `REQUEST_INSTALL_PACKAGES` permission
-- Generates `.apk` files for direct installation
+#### Direct / Sideload (.apk)
+
+Build the **direct** flavor for sideloading (includes auto-update from GitHub Releases):
+
+```bash
+./gradlew assembleDirectDebug    # Debug
+./gradlew assembleDirectRelease  # Release: builds app + launcher APKs
+```
+
+- Release outputs: `SeerrTV-vX.Y.Z.apk` and `SeerrTV-vX.Y.Z-launcher.apk` under `tv/build/outputs/apk/`
+- Upload both to a GitHub Release for the in-app updater to work
+
+**Platform notes**: macOS uses Android Studio’s JBR via `gradle.properties`; set `JAVA_HOME` or `org.gradle.java.home` on Linux/Windows if needed.
 
 #### Launcher build (optional)
 
-SeerrTV can be built as an **Android TV launcher** — a variant that can replace the device home screen so SeerrTV opens when the user presses Home or turns on the TV. The launcher build uses a separate application ID (`ca.devmesh.seerrtv.launcher`) so it can be installed alongside the regular app.
+SeerrTV can be built as an **Android TV launcher** (replaces the device home screen; app ID `ca.devmesh.seerrtv.launcher`).
 
-**Build the launcher:**
-
-```bash
-# Play launcher (for testing; .aab / .apk)
-./gradlew assemblePlayLauncherDebug    # Debug APK
-./gradlew bundlePlayLauncherRelease    # Release AAB
-
-# Direct launcher (sideload; includes auto-updates)
-./gradlew assembleDirectLauncherDebug  # Debug APK
-./gradlew assembleDirectLauncherRelease # Release APK
-```
+- **Direct release (both APKs):** `./gradlew assembleDirectRelease` — produces the main app and launcher APKs.
+- **Launcher-only (debug or single variant):**
+  - Play: `assemblePlayLauncherDebug`, `bundlePlayLauncherRelease`
+  - Direct: `assembleDirectLauncherDebug`, `assembleDirectLauncherRelease`
 
 **Install and test:**
 
@@ -323,9 +300,27 @@ SeerrTV can be built as an **Android TV launcher** — a variant that can replac
      ```bash
      adb shell pm disable-user --user 0 com.google.android.tvlauncher
      ```
-     (To find your device's launcher package: `adb shell cmd package resolve-activity -a android.intent.action.MAIN -c android.intent.category.HOME`. To restore the original: `adb shell pm enable <package>`.)
+     To find your device's launcher package name: `adb shell cmd package resolve-activity -a android.intent.action.MAIN -c android.intent.category.HOME`.
    - **Via device:** Some devices have Settings → Apps → Default apps → Home app (or similar) where you can pick the launcher.
 5. Press **Home** on the remote; SeerrTV Launcher should open. Use the **Apps** row at the top to open other installed TV apps.
+
+**Restoring the default launcher**
+
+To switch back to the stock Android TV / Google TV home screen:
+
+1. **Re-enable the stock launcher** via ADB (use the same package name you disabled earlier):
+   - **Google TV** (Chromecast with Google TV, many recent devices):
+     ```bash
+     adb shell pm enable --user 0 com.google.android.apps.tv.launcherx
+     ```
+   - **Android TV** (older devices, some set-top boxes):
+     ```bash
+     adb shell pm enable --user 0 com.google.android.tvlauncher
+     ```
+2. If you don't remember the package name, list home-capable apps:  
+   `adb shell cmd package resolve-activity -a android.intent.action.MAIN -c android.intent.category.HOME`  
+   Then run: `adb shell pm enable --user 0 <package_name>`.
+3. Press **Home** on the remote; the system may show a launcher picker—choose the stock launcher. On some devices the stock launcher becomes active again automatically once re-enabled.
 
 **Launcher-specific behavior:**
 
@@ -333,14 +328,14 @@ SeerrTV can be built as an **Android TV launcher** — a variant that can replac
 - From the top bar, **Down** goes to the Apps row first, then to content categories.
 - For more detail (intent filters, features, phases), see [docs/LAUNCHER_ANALYSIS.md](docs/LAUNCHER_ANALYSIS.md).
 
-#### Build Variants Summary
+#### Build variants
 
-| Variant | Output | Auto-Updates | Permissions | Use Case |
-|---------|--------|--------------|-------------|----------|
-| `play` / `playApp` | `.aab` | ❌ Disabled | Minimal | Google Play Store |
-| `direct` / `directApp` | `.apk` | ✅ Enabled | Full | Sideloading, websites |
-| `playLauncher` | `.aab`/`.apk` | ❌ Disabled | Minimal | TV launcher (Play) |
-| `directLauncher` | `.apk` | ✅ Enabled | Full | TV launcher (sideload) |
+| Task / variant | Output | Use case |
+|----------------|--------|----------|
+| `bundlePlayRelease` | `.aab` | Play Store (main app) |
+| `assembleDirectRelease` | app + launcher `.apk` | Direct/sideload (GitHub Releases) |
+| `playLauncher` | `.aab`/`.apk` | TV launcher from Play |
+| `directLauncher` | `.apk` | TV launcher, sideload (auto-update) |
 
 #### Signing Configuration
 
@@ -381,21 +376,7 @@ For detailed signing setup instructions, see [Signing Setup Guide](docs/SIGNING_
 - Default value points to `https://seerrtv.devmesh.ca`
 - This file is gitignored for security
 
-**Release Workflow**:
-1. **For Play Store**: 
-   - macOS/Linux: Build with `./gradlew bundlePlayRelease`
-   - Windows: Build with `gradlew.bat bundlePlayRelease`
-   - Upload the generated `.aab` to Play Console
-2. **For Direct Distribution**: 
-   - macOS/Linux: Build with `./gradlew assembleDirectRelease`
-   - Windows: Build with `gradlew.bat assembleDirectRelease`
-   - Upload the generated `.apk` to a GitHub Release
-   - The app automatically checks `https://api.github.com/repos/devmesh-git/seerrtv/releases/latest` for updates
-   - Ensure the release tag follows semantic versioning (e.g., `v0.26.4`)
-
-**Note**: On Windows, you can also use `./gradlew` in Git Bash, WSL, or PowerShell. The `gradlew.bat` command works in all Windows shells including Command Prompt.
-
-Both builds share the same codebase and features - only the update mechanism and permissions differ based on the build variant.
+**Release:** Play Store → `./gradlew bundlePlayRelease`, upload the `.aab` to Play Console. Direct → `./gradlew assembleDirectRelease`, upload `SeerrTV-vX.Y.Z.apk` and `SeerrTV-vX.Y.Z-launcher.apk` to a GitHub Release (tag e.g. `v0.26.4`). The app checks GitHub Releases for updates.
 
 ## App Configuration
 
@@ -534,10 +515,10 @@ For users who prefer to sideload builds, direct APK releases are available on Gi
 
 ### Build Variants
 
-| Distribution Method | Build Variant | File Type | Auto-Updates |
-|---------------------|---------------|-----------|--------------|
-| Play Store | `play` | `.aab` | Via Play Store |
-| Direct/Sideload | `direct` | `.apk` | Via GitHub Releases |
+| Distribution | Build task | File type | Updates |
+|--------------|------------|-----------|---------|
+| Play Store | `bundlePlayRelease` | `.aab` | Play Store |
+| Direct/sideload | `assembleDirectRelease` | `.apk` | GitHub Releases |
 
 ## FAQ & Troubleshooting
 
@@ -644,6 +625,19 @@ A:
 **Q: Where can I get help with issues not covered here?**
 
 A: Join the [Seerr Community Discord](https://discord.gg/nTFk3jHbk5) - the official community for support and discussions. You can also create a GitHub issue with the `question` label.
+
+### Launcher
+
+**Q: How do I restore the default (stock) launcher?**
+
+A: If you set SeerrTV Launcher as your home screen and want to go back to the stock Android TV / Google TV launcher, re-enable it via ADB (see [Restoring the default launcher](#restoring-the-default-launcher) in the Launcher build section):
+
+- **Google TV:** `adb shell pm enable --user 0 com.google.android.apps.tv.launcherx`
+- **Android TV:** `adb shell pm enable --user 0 com.google.android.tvlauncher`
+
+Then press **Home**; choose the stock launcher if a picker appears. If you don't know your device's launcher package, use:  
+`adb shell cmd package resolve-activity -a android.intent.action.MAIN -c android.intent.category.HOME`  
+then `adb shell pm enable --user 0 <package_name>`.
 
 ## License
 

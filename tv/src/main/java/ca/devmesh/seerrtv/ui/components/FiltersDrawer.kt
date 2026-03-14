@@ -193,7 +193,8 @@ private fun FiltersDrawerContent(
     onScreenChange: (FilterScreen) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var activeFilterCount by remember { mutableIntStateOf(filters.activeCount()) }
+    // Derive from filters so drawer always reflects current state (fixes "Filters (1)" but no indicator/clear)
+    val activeFilterCount = filters.activeCount()
     var selectedIndex by remember { mutableIntStateOf(0) }
     var currentScreen by remember { mutableStateOf<FilterScreen>(FilterScreen.Categories) }
     
@@ -205,11 +206,6 @@ private fun FiltersDrawerContent(
 
     // Get filter sections for navigation
     val filterSections = getFilterSections(filters.mediaType)
-    
-    // Update active count when filters change
-    LaunchedEffect(filters) {
-        activeFilterCount = filters.activeCount()
-    }
     
     // Notify parent of screen changes
     LaunchedEffect(currentScreen) {
@@ -231,28 +227,54 @@ private fun FiltersDrawerContent(
         }
     }
     
-    // Handle system Back for the drawer.
-    // - From sub-screens: Back returns to Categories
-    // - From Categories: Back closes the drawer via onDismiss()
-    BackHandler(enabled = true) {
-        if (BuildConfig.DEBUG) {
-            Log.d("FiltersDrawer", "🔙 BackHandler: Handling back, currentScreen: $currentScreen")
-        }
-        
+    // When a sub-screen handles Back (key event), it sets currentScreen = Categories. The same
+    // Back press can also trigger BackHandler, which would then see Categories and call onDismiss().
+    // Guard: don't dismiss if we just transitioned from a sub-screen (within ~400ms).
+    var lastBackFromSubscreenTime by remember { mutableLongStateOf(0L) }
+    val subscreenBackGuardMs = 400L
+    
+    // Shared back action so both BackHandler and onKeyEvent use the same logic (avoids double-handling / stuck back)
+    val performBackAction: () -> Unit = {
         when (currentScreen) {
             FilterScreen.Categories -> {
-                // Close the drawer when on the main Categories screen
-                if (BuildConfig.DEBUG) {
-                    Log.d("FiltersDrawer", "🔙 BackHandler: Dismissing drawer from Categories")
+                val now = System.currentTimeMillis()
+                if (now - lastBackFromSubscreenTime >= subscreenBackGuardMs) {
+                    if (BuildConfig.DEBUG) {
+                        Log.d("FiltersDrawer", "🔙 Back: Dismissing drawer from Categories")
+                    }
+                    focusManager.clearFocus(force = true)
+                    onDismiss()
+                } else if (BuildConfig.DEBUG) {
+                    Log.d("FiltersDrawer", "🔙 Back: Ignoring dismiss - just returned from sub-screen")
                 }
-                focusManager.clearFocus(force = true)
-                onDismiss()
             }
             else -> {
-                // Back from sub-screen returns to categories
+                if (BuildConfig.DEBUG) {
+                    Log.d("FiltersDrawer", "🔙 Back: Returning to Categories from $currentScreen")
+                }
                 currentScreen = FilterScreen.Categories
                 selectedIndex = 0
             }
+        }
+    }
+    
+    // Debounce back to avoid double delivery on fast devices (e.g. Shield)
+    var lastBackPressTime by remember { mutableLongStateOf(0L) }
+    val backPressDebounceMs = 300L
+    
+    // Handle system Back for the drawer (e.g. from BackPressedDispatcher).
+    // - From sub-screens: Back returns to Categories
+    // - From Categories: Back closes the drawer via onDismiss()
+    BackHandler(enabled = true) {
+        val currentTime = System.currentTimeMillis()
+        if (currentTime - lastBackPressTime > backPressDebounceMs) {
+            lastBackPressTime = currentTime
+            if (BuildConfig.DEBUG) {
+                Log.d("FiltersDrawer", "🔙 BackHandler: Handling back, currentScreen: $currentScreen")
+            }
+            performBackAction()
+        } else if (BuildConfig.DEBUG) {
+            Log.d("FiltersDrawer", "🔙 BackHandler: Debounced - ignoring rapid back")
         }
     }
     
@@ -318,6 +340,18 @@ private fun FiltersDrawerContent(
                         context = "FiltersDrawer"
                     ) { keyEvent ->
                         when {
+                            // Consume Back here so it never propagates to parent/DpadController (fixes "stuck" back on fast devices)
+                            keyEvent.key == Key.Back && keyEvent.type == KeyEventType.KeyDown -> {
+                                val now = System.currentTimeMillis()
+                                if (now - lastBackPressTime > backPressDebounceMs) {
+                                    lastBackPressTime = now
+                                    if (BuildConfig.DEBUG) {
+                                        Log.d("FiltersDrawer", "🔙 onKeyEvent: Consuming Back, currentScreen: $currentScreen")
+                                    }
+                                    performBackAction()
+                                }
+                                true
+                            }
                             keyEvent.key == Key.DirectionUp && keyEvent.type == KeyEventType.KeyDown -> {
                                 if (selectedIndex > 0) {
                                     selectedIndex--
@@ -399,8 +433,7 @@ private fun FiltersDrawerContent(
                         activeFilterCount = activeFilterCount,
                         selectedIndex = selectedIndex,
                         listState = listState,
-                        filterSections = filterSections,
-                        mediaType = filters.mediaType
+                        filterSections = filterSections
                     )
                 }
                 else -> {
@@ -408,7 +441,12 @@ private fun FiltersDrawerContent(
                         currentScreen = currentScreen,
                         viewModel = viewModel,
                         filters = filters,
-                        onFiltersChange = onFiltersChange
+                        onFiltersChange = onFiltersChange,
+                        onBackToCategories = {
+                            lastBackFromSubscreenTime = System.currentTimeMillis()
+                            currentScreen = FilterScreen.Categories
+                            selectedIndex = 0
+                        }
                     )
                 }
             }
@@ -426,7 +464,6 @@ private fun RenderCategoriesScreen(
     selectedIndex: Int,
     listState: LazyListState,
     filterSections: List<String>,
-    mediaType: MediaType,
 ) {
     // Header
     Text(
@@ -465,7 +502,7 @@ private fun RenderCategoriesScreen(
         // Filter sections
         items(filterSections) { sectionTitle ->
             val sectionIndex = filterSections.indexOf(sectionTitle)
-            val isActive = isFilterActive(sectionTitle, filters, mediaType)
+            val isActive = isFilterActive(sectionTitle, filters)
             FilterMenuItemWithIndicator(
                 title = sectionTitle,
                 isFocused = sectionIndex + clearAllOffset == selectedIndex,
@@ -503,7 +540,8 @@ private fun RenderFilterSubScreen(
     currentScreen: FilterScreen,
     viewModel: MediaDiscoveryViewModel,
     filters: BrowseModels.MediaFilters,
-    onFiltersChange: (BrowseModels.MediaFilters) -> Unit
+    onFiltersChange: (BrowseModels.MediaFilters) -> Unit,
+    onBackToCategories: () -> Unit
 ) {
     // Header with back navigation
     Row(
@@ -523,14 +561,16 @@ private fun RenderFilterSubScreen(
         FilterScreen.ReleaseDate -> {
             ReleaseDateFilterContent(
                 filters = filters,
-                onFiltersChange = onFiltersChange
+                onFiltersChange = onFiltersChange,
+                onBack = onBackToCategories
             )
         }
         FilterScreen.FirstAirDate -> {
             // First Air Date uses same UI as Release Date but for series
             ReleaseDateFilterContent(
                 filters = filters,
-                onFiltersChange = onFiltersChange
+                onFiltersChange = onFiltersChange,
+                onBack = onBackToCategories
             )
         }
         FilterScreen.Genres -> {
@@ -541,7 +581,8 @@ private fun RenderFilterSubScreen(
                 itemLabel = { it.name },
                 onItemsSelected = { selectedGenres ->
                     onFiltersChange(filters.copy(genres = selectedGenres.map { it.id }))
-                }
+                },
+                onBack = onBackToCategories
             )
         }
         FilterScreen.Keywords -> {
@@ -566,7 +607,8 @@ private fun RenderFilterSubScreen(
                     }
                     onFiltersChange(filters.copy(keywords = newIds))
                 },
-                onClearSearch = { viewModel.clearKeywordSearch() }
+                onClearSearch = { viewModel.clearKeywordSearch() },
+                onBack = onBackToCategories
             )
         }
         FilterScreen.Language -> {
@@ -580,7 +622,8 @@ private fun RenderFilterSubScreen(
                 },
                 onClear = {
                     onFiltersChange(filters.copy(originalLanguage = null))
-                }
+                },
+                onBack = onBackToCategories
             )
         }
         FilterScreen.ContentRating -> {
@@ -592,7 +635,8 @@ private fun RenderFilterSubScreen(
                 itemLabel = { "${it.certification} - ${it.meaning}" },
                 onItemsSelected = { selectedRatings ->
                     onFiltersChange(filters.copy(contentRatings = selectedRatings.map { it.certification }))
-                }
+                },
+                onBack = onBackToCategories
             )
         }
         FilterScreen.Runtime -> {
@@ -607,7 +651,8 @@ private fun RenderFilterSubScreen(
                 },
                 onClear = {
                     onFiltersChange(filters.copy(runtimeMin = null, runtimeMax = null))
-                }
+                },
+                onBack = onBackToCategories
             )
         }
         FilterScreen.UserScore -> {
@@ -623,7 +668,8 @@ private fun RenderFilterSubScreen(
                 },
                 onClear = {
                     onFiltersChange(filters.copy(userScoreMin = null, userScoreMax = null))
-                }
+                },
+                onBack = onBackToCategories
             )
         }
         FilterScreen.VoteCount -> {
@@ -638,7 +684,8 @@ private fun RenderFilterSubScreen(
                 },
                 onClear = {
                     onFiltersChange(filters.copy(voteCountMin = null, voteCountMax = null))
-                }
+                },
+                onBack = onBackToCategories
             )
         }
         FilterScreen.Studios -> {
@@ -667,7 +714,8 @@ private fun RenderFilterSubScreen(
                     viewModel.clearSelectedStudio()
                     onFiltersChange(filters.copy(studio = null))
                 },
-                onClearSearch = { viewModel.clearStudioSearch() }
+                onClearSearch = { viewModel.clearStudioSearch() },
+                onBack = onBackToCategories
             )
         }
         FilterScreen.Networks -> {
@@ -678,14 +726,16 @@ private fun RenderFilterSubScreen(
                 itemLabel = { it.name },
                 onItemsSelected = { selectedNetworks ->
                     onFiltersChange(filters.copy(networks = selectedNetworks.map { it.id }))
-                }
+                },
+                onBack = onBackToCategories
             )
         }
         FilterScreen.StreamingServices -> {
             StreamingServicesFilterContent(
                 viewModel = viewModel,
                 filters = filters,
-                onFiltersChange = onFiltersChange
+                onFiltersChange = onFiltersChange,
+                onBack = onBackToCategories
             )
         }
         FilterScreen.Region -> {
@@ -699,7 +749,8 @@ private fun RenderFilterSubScreen(
                 },
                 onClear = {
                     onFiltersChange(filters.copy(region = null))
-                }
+                },
+                onBack = onBackToCategories
             )
         }
         else -> {
@@ -892,7 +943,7 @@ private fun isFilterScreenActive(screen: FilterScreen, filters: BrowseModels.Med
  * Map section title string to FilterScreen
  */
 @Composable
-private fun getFilterScreenFromTitle(sectionTitle: String, mediaType: MediaType): FilterScreen? {
+private fun getFilterScreenFromTitle(sectionTitle: String): FilterScreen? {
     return when (sectionTitle) {
         stringResource(R.string.filter_releaseDate) -> FilterScreen.ReleaseDate
         stringResource(R.string.filter_firstAirDate) -> FilterScreen.FirstAirDate
@@ -915,8 +966,8 @@ private fun getFilterScreenFromTitle(sectionTitle: String, mediaType: MediaType)
  * Check if a filter is active (backward compatibility)
  */
 @Composable
-private fun isFilterActive(sectionTitle: String, filters: BrowseModels.MediaFilters, mediaType: MediaType): Boolean {
-    val screen = getFilterScreenFromTitle(sectionTitle, mediaType) ?: return false
+private fun isFilterActive(sectionTitle: String, filters: BrowseModels.MediaFilters): Boolean {
+    val screen = getFilterScreenFromTitle(sectionTitle) ?: return false
     return isFilterScreenActive(screen, filters)
 }
 
@@ -936,7 +987,8 @@ private data class DatePickerState(
 @Composable
 private fun ReleaseDateFilterContent(
     filters: BrowseModels.MediaFilters,
-    onFiltersChange: (BrowseModels.MediaFilters) -> Unit
+    onFiltersChange: (BrowseModels.MediaFilters) -> Unit,
+    onBack: () -> Unit = {}
 ) {
     var selectedIndex by remember { mutableIntStateOf(0) }
     var datePickerState by remember { mutableStateOf(DatePickerState()) }
@@ -984,6 +1036,7 @@ private fun ReleaseDateFilterContent(
                         selectedIndex = selectedIndex,
                         maxIndex = dateOptions.size - 1,
                         onIndexChange = { selectedIndex = it },
+                        onBack = onBack,
                         onEnter = { index ->
                             // Handle date selection
                             when (index) {
@@ -1219,7 +1272,8 @@ private fun <T> FilterListSelection(
     selectedItem: T?,
     itemLabel: (T) -> String,
     onItemSelected: (T) -> Unit,
-    onClear: () -> Unit
+    onClear: () -> Unit,
+    onBack: (() -> Unit)? = null
 ) {
     var selectedIndex by remember { mutableIntStateOf(0) }
     val listState = rememberLazyListState()
@@ -1234,7 +1288,7 @@ private fun <T> FilterListSelection(
     
     // Auto-scroll to selected item - only if item is not visible
     LaunchedEffect(selectedIndex) {
-        if (selectedIndex >= 0 && selectedIndex < totalItems) {
+        if (selectedIndex in 0..<totalItems) {
             // Small delay to ensure UI has updated
             delay(50)
             
@@ -1272,6 +1326,7 @@ private fun <T> FilterListSelection(
                     selectedIndex = selectedIndex,
                     maxIndex = totalItems - 1,
                     onIndexChange = { selectedIndex = it },
+                    onBack = onBack,
                     onEnter = { index ->
                         if (index == 0) {
                             onClear()
@@ -1311,7 +1366,8 @@ private fun <T> FilterMultiListSelection(
     items: List<T>,
     selectedItems: List<T>,
     itemLabel: (T) -> String,
-    onItemsSelected: (List<T>) -> Unit
+    onItemsSelected: (List<T>) -> Unit,
+    onBack: (() -> Unit)? = null
 ) {
     var selectedIndex by remember { mutableIntStateOf(0) }
     val listState = rememberLazyListState()
@@ -1361,6 +1417,7 @@ private fun <T> FilterMultiListSelection(
                     selectedIndex = selectedIndex,
                     maxIndex = items.size - 1,
                     onIndexChange = { selectedIndex = it },
+                    onBack = onBack,
                     onEnter = { index ->
                         val item = items[index]
                         val newSelection = if (selectedItems.contains(item)) {
@@ -1415,7 +1472,8 @@ private fun <T> FilterSearchSelection(
     itemLabel: (T) -> String,
     onSearch: (String) -> Unit,
     onItemSelected: (T) -> Unit,
-    onClearSearch: () -> Unit
+    onClearSearch: () -> Unit,
+    onBack: (() -> Unit)? = null
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedIndex by remember { mutableIntStateOf(0) } // 0 is search bar, 1+ are results
@@ -1427,7 +1485,7 @@ private fun <T> FilterSearchSelection(
     // Debounce search
     LaunchedEffect(searchQuery) {
         if (searchQuery.length >= 2) {
-            kotlinx.coroutines.delay(500)
+            delay(500)
             onSearch(searchQuery)
         } else if (searchQuery.isEmpty()) {
             onClearSearch()
@@ -1477,6 +1535,12 @@ private fun <T> FilterSearchSelection(
                     .onPreviewKeyEvent { event ->
                         if (event.type == KeyEventType.KeyDown) {
                             return@onPreviewKeyEvent when (event.nativeKeyEvent.keyCode) {
+                                android.view.KeyEvent.KEYCODE_BACK -> {
+                                    if (onBack != null) {
+                                        onBack()
+                                        true
+                                    } else false
+                                }
                                 android.view.KeyEvent.KEYCODE_DPAD_DOWN -> {
                                     // Navigate to results
                                     focusManager.clearFocus(force = true)
@@ -1525,6 +1589,12 @@ private fun <T> FilterSearchSelection(
                         Log.d("FilterSearchSelection", "🎮 LazyColumn key event: ${keyEvent.nativeKeyEvent.keyCode}, selectedIndex: $selectedIndex")
                     }
                     when {
+                        keyEvent.key == Key.Back && keyEvent.type == KeyEventType.KeyDown -> {
+                            if (onBack != null) {
+                                onBack()
+                                true
+                            } else false
+                        }
                         keyEvent.key == Key.DirectionUp && keyEvent.type == KeyEventType.KeyDown -> {
                             if (selectedIndex > 1) {
                                 selectedIndex--
@@ -1598,7 +1668,8 @@ private fun FilterRangeSelection(
     step: Float = 1f,
     valueFormatter: (Float) -> String = { it.toInt().toString() },
     onRangeChanged: (Float?, Float?) -> Unit,
-    onClear: () -> Unit
+    onClear: () -> Unit,
+    onBack: (() -> Unit)? = null
 ) {
     var selectedMin by remember { mutableFloatStateOf(currentMin ?: minValue) }
     var selectedMax by remember { mutableFloatStateOf(currentMax ?: maxValue) }
@@ -1616,6 +1687,12 @@ private fun FilterRangeSelection(
             .focusable()
             .onKeyEvent { keyEvent ->
                 when {
+                    keyEvent.key == Key.Back && keyEvent.type == KeyEventType.KeyDown -> {
+                        if (onBack != null) {
+                            onBack()
+                            true
+                        } else false
+                    }
                     keyEvent.key == Key.DirectionUp && keyEvent.type == KeyEventType.KeyDown -> {
                         if (activeSlider > 0) {
                             activeSlider--
@@ -1858,7 +1935,8 @@ private fun <T> FilterSearchSelectionSingle(
     onSearch: (String) -> Unit,
     onItemSelected: (T) -> Unit,
     onClearSelection: () -> Unit,
-    onClearSearch: () -> Unit
+    onClearSearch: () -> Unit,
+    onBack: (() -> Unit)? = null
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedIndex by remember { mutableIntStateOf(if (currentSelectionLabel != null) 0 else 1) }
@@ -1871,7 +1949,7 @@ private fun <T> FilterSearchSelectionSingle(
     // Debounce search
     LaunchedEffect(searchQuery) {
         if (searchQuery.length >= 2) {
-            kotlinx.coroutines.delay(500)
+            delay(500)
             onSearch(searchQuery)
         } else if (searchQuery.isEmpty()) {
             onClearSearch()
@@ -1912,6 +1990,12 @@ private fun <T> FilterSearchSelectionSingle(
                     .onKeyEvent { event ->
                         if (event.type == KeyEventType.KeyDown) {
                             when {
+                                event.key == Key.Back -> {
+                                    if (onBack != null) {
+                                        onBack()
+                                        true
+                                    } else false
+                                }
                                 event.key == Key.DirectionDown -> {
                                     selectedIndex = 1
                                     searchFieldFocusRequester.requestFocus()
@@ -1994,6 +2078,12 @@ private fun <T> FilterSearchSelectionSingle(
                     .onPreviewKeyEvent { event ->
                         if (event.type == KeyEventType.KeyDown) {
                             return@onPreviewKeyEvent when (event.nativeKeyEvent.keyCode) {
+                                android.view.KeyEvent.KEYCODE_BACK -> {
+                                    if (onBack != null) {
+                                        onBack()
+                                        true
+                                    } else false
+                                }
                                 android.view.KeyEvent.KEYCODE_DPAD_UP -> {
                                     if (currentSelectionLabel != null && selectedIndex == 1) {
                                         selectedIndex = 0
@@ -2054,6 +2144,12 @@ private fun <T> FilterSearchSelectionSingle(
                 .onPreviewKeyEvent { keyEvent ->
                     val offset = if (currentSelectionLabel != null) 2 else 1
                     when {
+                        keyEvent.key == Key.Back && keyEvent.type == KeyEventType.KeyDown -> {
+                            if (onBack != null) {
+                                onBack()
+                                true
+                            } else false
+                        }
                         keyEvent.key == Key.DirectionUp && keyEvent.type == KeyEventType.KeyDown -> {
                             if (selectedIndex > offset) {
                                 selectedIndex--
@@ -2213,7 +2309,8 @@ private fun RegionChangeConfirmationDialog(
 private fun StreamingServicesFilterContent(
     viewModel: MediaDiscoveryViewModel,
     filters: BrowseModels.MediaFilters,
-    onFiltersChange: (BrowseModels.MediaFilters) -> Unit
+    onFiltersChange: (BrowseModels.MediaFilters) -> Unit,
+    onBack: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val imageLoader = SeerrTV.imageLoader
@@ -2271,7 +2368,7 @@ private fun StreamingServicesFilterContent(
     // Request focus on list when dropdown expands
     LaunchedEffect(isRegionDropdownExpanded) {
         if (isRegionDropdownExpanded) {
-            kotlinx.coroutines.delay(50)
+            delay(50)
             regionListFocusRequester.requestFocus()
         }
     }
@@ -2314,6 +2411,10 @@ private fun StreamingServicesFilterContent(
                 }
                 .onPreviewKeyEvent { keyEvent ->
                     when {
+                        keyEvent.key == Key.Back && keyEvent.type == KeyEventType.KeyDown && !isRegionDropdownExpanded -> {
+                            onBack()
+                            true
+                        }
                         KeyUtils.isEnterKey(keyEvent.nativeKeyEvent.keyCode) && keyEvent.type == KeyEventType.KeyDown -> {
                             // Toggle dropdown only on Enter
                             isRegionDropdownExpanded = !isRegionDropdownExpanded
@@ -2420,7 +2521,7 @@ private fun StreamingServicesFilterContent(
                                 true
                             }
                             keyEvent.key == Key.Back && keyEvent.type == KeyEventType.KeyDown -> {
-                                // Collapse dropdown on back
+                                // Collapse dropdown on back; second back (on region button) will call onBack
                                 isRegionDropdownExpanded = false
                                 regionButtonFocusRequester.requestFocus()
                                 true
@@ -2487,6 +2588,10 @@ private fun StreamingServicesFilterContent(
                 }
                 .onPreviewKeyEvent { keyEvent ->
                     when {
+                        keyEvent.key == Key.Back && keyEvent.type == KeyEventType.KeyDown -> {
+                            onBack()
+                            true
+                        }
                         keyEvent.key == Key.DirectionUp && keyEvent.type == KeyEventType.KeyDown -> {
                             // If in top row (indices 0-3), move focus to region pulldown
                             if (selectedProviderIndex < 4) {
@@ -2638,7 +2743,7 @@ private fun StreamingServicesFilterContent(
     
     // Request focus on region button initially
     LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(100) // Small delay to ensure parent has finished setup
+        delay(100) // Small delay to ensure parent has finished setup
         focusManager.clearFocus(force = true)
         regionButtonFocusRequester.requestFocus()
     }

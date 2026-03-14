@@ -1,5 +1,48 @@
 # Changelog
 
+## 0.26.16
+
+### Direct Distribution & Updates
+
+#### Update check (direct flavor)
+- **Correct APK per flavor** – The in-app update check now selects the right asset from GitHub Releases: the main app looks for `SeerrTV-vX.Y.Z.apk` and the launcher build looks for `SeerrTV-vX.Y.Z-launcher.apk`, so each flavor is offered only its own update.
+- **Fallbacks** – If release assets use the legacy single-APK layout, the app still finds the appropriate file (first non-launcher `.apk` for main app, first `-launcher.apk` for launcher).
+
+#### Build & Gradle
+- **Single entry points for direct** – `assembleDirectRelease` and `assembleDirectDebug` each build both the main app and launcher APKs in one run (no need to run two tasks).
+- **Custom APK naming** – Direct release APKs are renamed after build to `SeerrTV-vX.Y.Z.apk` and `SeerrTV-vX.Y.Z-launcher.apk` for consistent uploads to GitHub Releases.
+- **Play build disambiguation** – `bundlePlayRelease` and `bundlePlayDebug` are defined so they build the main Play Store app (playApp); use `bundlePlayAppRelease` / `bundlePlayLauncherRelease` etc. when you need a specific variant.
+- **Configuration-cache safe** – `printBuildOutputs` uses only serializable task inputs (no `Project` capture), so the build works with the configuration cache enabled.
+- **Simplified finalizers** – Output paths are printed only after the four main tasks (`assembleDirectDebug`, `assembleDirectRelease`, `bundlePlayDebug`, `bundlePlayRelease`). The generic `assembleDebug` is no longer a primary target.
+
+### Navigation & Focus
+
+#### Filters Drawer
+- **Active filter count** – The drawer now derives the active filter count directly from `filters.activeCount()` instead of syncing via state and `LaunchedEffect`, so the "Filters (N)" label and clear/indicator stay in sync with the current filter state.
+- **Back handling** – Back from a sub-screen and Back from Categories are handled with a shared action; a short guard prevents dismissing the drawer when Back was used to return from a sub-screen (avoids double-handling), and back presses are debounced to avoid double delivery on fast devices (e.g. Shield).
+
+#### Top Bar
+- **Search screen focus** – On the search route the Top Bar remaps Search to Settings only when the current Top Bar focus is actually Search, so the user can move to Settings/Series/Movies and no longer gets stuck with focus repeatedly reset to Settings.
+- **Back in Top Bar** – Back while focus is in the Top Bar now returns focus to the underlying screen (main, details, search, discovery, browse, person) instead of being consumed with no effect, fixing users getting stuck (e.g. on the search screen).
+
+### Documentation
+
+#### README
+- **Build tasks table** – Added a single table listing the four main build tasks (Play debug/release, Direct debug/release) and their outputs.
+- **Unified build sections** – Play and Direct distribution sections shortened to one code block each; platform notes condensed.
+- **Launcher section** – Simplified to stress `assembleDirectRelease` for both direct APKs and list launcher-only tasks only when needed.
+- **Build variants** – Table updated to reference task names (`bundlePlayRelease`, `assembleDirectRelease`) and note that direct debug also produces both app and launcher APKs.
+- **Release workflow** – Release steps under signing reduced to one paragraph.
+
+### Files Modified
+- `tv/build.gradle.kts` – Version 0.26.16 (versionCode 119); `appVersionName`; rename tasks for direct release APKs; `assembleDirectDebug` / `assembleDirectRelease` / `bundlePlayDebug` / `bundlePlayRelease` entry points; `printBuildOutputs` configuration-cache safe and finalizer list updated.
+- `tv/src/main/java/ca/devmesh/seerrtv/util/UpdateManager.kt` – APK asset selection by `IS_LAUNCHER_BUILD` and `SeerrTV-v*` / `-launcher.apk` naming with fallbacks.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/components/FiltersDrawer.kt` – Active filter count derived from filters; shared Back action with sub-screen guard and debounce.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/components/TopBarController.kt` – Search-screen focus remap only when Top Bar focus is Search; Back in Top Bar returns focus to underlying screen.
+- `README.md` – Build tasks table, consolidated Play/Direct/Launcher sections, build variants and release workflow updates.
+
+---
+
 ## 0.26.15
 
 ### Bug Fixes

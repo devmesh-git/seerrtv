@@ -116,15 +116,15 @@ fun TopBarController(
         }
     }
     
-    // Ensure an initial focus target when entering TopBar on routes where Search icon is hidden
+    // On search screen the Search icon is hidden; remap TopBar(Search) to Settings so something is focused.
+    // Only remap when focus is actually Search — do not override when user has moved to Settings/Series/Movies
+    // or they could never leave Settings (LaunchedEffect would keep resetting to Settings on every focus change).
     LaunchedEffect(appFocusManager.currentFocus) {
         val currentRoute = navController.currentDestination?.route
         val baseRoute = currentRoute?.substringBefore("/")
-        if (appFocusManager.currentFocus is AppFocusState.TopBar) {
-            if (baseRoute == "search") {
-                // Default to Settings so the user sees a highlight
-                appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Settings))
-            }
+        val focus = appFocusManager.currentFocus
+        if (focus is AppFocusState.TopBar && baseRoute == "search" && focus.focus == TopBarFocus.Search) {
+            appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Settings))
         }
     }
 
@@ -272,6 +272,53 @@ fun TopBarController(
         }
     }
     
+    // When Back is pressed in TopBar, return focus to the underlying screen (same as Down).
+    // Otherwise Back would be consumed and do nothing, leaving the user stuck (e.g. on search screen).
+    val handleBack: () -> Unit = {
+        when (val focus = appFocusManager.currentFocus) {
+            is AppFocusState.TopBar -> {
+                val currentRoute = navController.currentDestination?.route
+                val baseRoute = currentRoute?.substringBefore("/")
+                when {
+                    currentRoute == "main" -> {
+                        if (BuildConfig.DEBUG) Log.d("TopBarController", "🔄 handleBack: Returning to MainScreen")
+                        if (BuildConfig.IS_LAUNCHER_BUILD) {
+                            appFocusManager.setFocus(AppFocusState.MainScreen(ca.devmesh.seerrtv.ui.MainScreenFocusState.AppsRow(0)))
+                        } else {
+                            appFocusManager.setFocus(AppFocusState.MainScreen(ca.devmesh.seerrtv.ui.MainScreenFocusState.CategoryRow(ca.devmesh.seerrtv.viewmodel.MediaCategory.RECENTLY_ADDED)))
+                        }
+                    }
+                    baseRoute == "details" -> {
+                        if (BuildConfig.DEBUG) Log.d("TopBarController", "🔄 handleBack: Returning to MediaDetails")
+                        appFocusManager.setFocus(AppFocusState.DetailsScreen(ca.devmesh.seerrtv.ui.focus.DetailsFocusState.Overview))
+                    }
+                    baseRoute == "search" -> {
+                        if (BuildConfig.DEBUG) Log.d("TopBarController", "🔄 handleBack: Returning to Discovery Screen (search)")
+                        appFocusManager.setFocus(AppFocusState.DiscoveryScreen(ca.devmesh.seerrtv.ui.focus.DiscoveryFocusState.Search))
+                    }
+                    baseRoute == "mediaDiscovery" -> {
+                        if (BuildConfig.DEBUG) Log.d("TopBarController", "🔄 handleBack: Returning to Discovery Grid")
+                        appFocusManager.setFocus(AppFocusState.DiscoveryScreen(ca.devmesh.seerrtv.ui.focus.DiscoveryFocusState.Grid(0, 0)))
+                    }
+                    baseRoute == "browse" -> {
+                        if (BuildConfig.DEBUG) Log.d("TopBarController", "🔄 handleBack: Returning to Browse Screen")
+                        appFocusManager.setFocus(AppFocusState.BrowseScreen(ca.devmesh.seerrtv.ui.BrowseFocusState.Search))
+                    }
+                    baseRoute == "person" -> {
+                        if (BuildConfig.DEBUG) Log.d("TopBarController", "🔄 handleBack: Returning to Person screen")
+                        appFocusManager.setFocus(AppFocusState.DetailsScreen(ca.devmesh.seerrtv.ui.focus.DetailsFocusState.Cast))
+                    }
+                    else -> {
+                        if (BuildConfig.DEBUG) Log.d("TopBarController", "🔄 handleBack: Unknown route - $currentRoute")
+                    }
+                }
+            }
+            else -> {
+                if (BuildConfig.DEBUG) Log.d("TopBarController", "🔄 handleBack: Not in TopBar focus - $focus")
+            }
+        }
+    }
+    
     // Register TopBar with DPAD controller
     val topBarConfig = createTopBarDpadConfig(
         route = "topbar",
@@ -282,12 +329,7 @@ fun TopBarController(
         onRight = handleRight,
         onEnter = handleEnter,
         onRefresh = onRefresh,
-        onBack = {
-            // TopBar back handling - could be used for special cases
-            if (BuildConfig.DEBUG) {
-                Log.d("TopBarController", "🔄 handleBack: TopBar back pressed")
-            }
-        }
+        onBack = handleBack
     )
     
     LaunchedEffect(topBarConfig) {
