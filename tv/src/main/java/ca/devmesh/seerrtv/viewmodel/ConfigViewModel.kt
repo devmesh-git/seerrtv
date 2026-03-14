@@ -53,22 +53,30 @@ class ConfigViewModel @Inject constructor(
     }
 
     suspend fun testBaseConnection(config: SeerrConfig): ApiValidationResult {
-        // Update our current configuration
-        apiService.updateConfig(config)
-        // Test the connection
+        // Clean bad input (spaces, pasted full URLs, wrong protocol) then validate
+        val sanitized = apiService.sanitizeConfigForApi(config)
+        apiService.validateBaseUrl(sanitized)?.let { errorMessage ->
+            Log.e("ConfigViewModel", "Base URL validation failed: $errorMessage")
+            return ApiValidationResult.Error(errorMessage)
+        }
+        apiService.updateConfig(sanitized)
         val result = apiService.testBaseConnection()
-        // Return the ApiValidationResult
         return result
     }
 
     suspend fun validateAndSaveConfig(config: SeerrConfig, useBrowserValidation: Boolean = false): ApiValidationResult {
         Log.d("ConfigViewModel", "Validating and saving new configuration")
-        apiService.updateConfig(config)
+        val sanitized = apiService.sanitizeConfigForApi(config)
+        apiService.validateBaseUrl(sanitized)?.let { errorMessage ->
+            Log.e("ConfigViewModel", "Base URL validation failed: $errorMessage")
+            return ApiValidationResult.Error(errorMessage)
+        }
+        apiService.updateConfig(sanitized)
         return when (val result = if (useBrowserValidation) apiService.validateApi() else apiService.testAuth()) {
             is ApiValidationResult.Success -> {
                 try {
-                    // Only update the main API service and save config if validation succeeds
-                    SharedPreferencesUtil.saveConfig(context, config, true)
+                    // Persist the sanitized config so stored values are clean
+                    SharedPreferencesUtil.saveConfig(context, sanitized, true)
                     Log.d("ConfigViewModel", "Configuration saved and validated successfully")
                     // Load Radarr and Sonarr data for the new configuration
                     apiService.loadRadarrConfiguration()

@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.26.15
+
+### Bug Fixes
+
+#### Configuration & API URL Handling
+- **Fixed crash on invalid server URL** – Prevented `IllegalArgumentException` from OkHttp (`HttpUrl$Builder.host`) when the server hostname was empty, contained spaces, or was otherwise malformed (e.g. from browser-based config or stored bad data). Validation now runs before any network call or config save and returns a clear error to the user instead of crashing.
+- **URL sanitization** – Server host input is now cleaned before validation and use: leading/trailing and internal whitespace are collapsed (e.g. `exa mple.com` → `example.com`), pasted full URLs have protocol and path stripped, and protocol is normalized to `http` or `https`. Sanitized values are used for API requests and persisted, so both manual and browser config flows store clean hostname and protocol.
+
+### Technical Improvements
+
+#### Code Quality
+- **OkHttp URL parsing** – Replaced deprecated `HttpUrl.parse(url)` with the Kotlin extension `url.toHttpUrlOrNull()` to align with current OkHttp API and avoid deprecation warnings.
+
+### Files Modified
+- `tv/build.gradle.kts` – Version bumped to 0.26.15 (versionCode 118).
+- `tv/src/main/java/ca/devmesh/seerrtv/data/SeerrApiService.kt` – Added `sanitizeConfigForApi`, `validateBaseUrl`; `buildApiUrl` uses sanitized host/protocol; switched to `toHttpUrlOrNull()`.
+- `tv/src/main/java/ca/devmesh/seerrtv/viewmodel/ConfigViewModel.kt` – Sanitize config before validation and use sanitized config for `updateConfig` and `saveConfig`.
+- `tv/src/main/java/ca/devmesh/seerrtv/util/SharedPreferencesUtil.kt` – Added `sanitizeHostnameForApi` and `sanitizeProtocolForApi`.
+
+---
+
 ## 0.26.14
 
 ### Navigation & Focus

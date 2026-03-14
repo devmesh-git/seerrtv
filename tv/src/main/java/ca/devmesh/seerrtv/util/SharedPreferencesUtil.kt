@@ -46,6 +46,45 @@ object SharedPreferencesUtil {
         
         return normalized
     }
+
+    /**
+     * Aggressively sanitizes user- or server-supplied host input to produce a best-effort
+     * host string for API base URL building. Use before validation so we can accept
+     * pasted URLs and fix common mistakes instead of only failing.
+     *
+     * - Trims and strips protocol (http/https)
+     * - Removes path, query, and fragment
+     * - Collapses internal whitespace (e.g. "exa mple.com" -> "example.com")
+     * - When stripPort is true, removes port; otherwise keeps host:port for main Seerr URL
+     */
+    fun sanitizeHostnameForApi(hostname: String, stripPort: Boolean = false): String {
+        var s = hostname
+            .trim()
+            .replace(Regex("^(https?://)", RegexOption.IGNORE_CASE), "")
+            .trim()
+        s = s.split('/').firstOrNull() ?: s
+        s = s.split('?').firstOrNull() ?: s
+        s = s.split('#').firstOrNull() ?: s
+        s = s.replace(Regex("\\s+"), "")
+        s = s.trim()
+        if (stripPort) {
+            s = s.split(':').firstOrNull() ?: s
+            s = s.trim()
+        }
+        return s
+    }
+
+    /**
+     * Sanitizes protocol to a value safe for building API URLs.
+     * Returns "https" only when input is explicitly "https" (case-insensitive); otherwise "http".
+     */
+    fun sanitizeProtocolForApi(protocol: String): String {
+        return when (protocol.trim().lowercase()) {
+            "https" -> "https"
+            else -> "http"
+        }
+    }
+
     private const val KEY_PROTOCOL = "protocol"
     private const val KEY_HOSTNAME = "hostname"
     private const val KEY_CLOUDFLARE_ENABLED = "cloudflare_enabled"

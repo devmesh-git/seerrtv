@@ -38,7 +38,6 @@ import ca.devmesh.seerrtv.model.SonarrResult
 import ca.devmesh.seerrtv.model.SonarrServerInfo
 import ca.devmesh.seerrtv.model.TV
 import ca.devmesh.seerrtv.model.Region
-import ca.devmesh.seerrtv.model.Language
 import ca.devmesh.seerrtv.model.Keyword
 import ca.devmesh.seerrtv.model.ContentRating
 import ca.devmesh.seerrtv.model.Provider
@@ -70,7 +69,6 @@ import javax.net.ssl.SSLSocketFactory
 import javax.net.ssl.X509TrustManager
 import kotlin.math.min
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.json.Json
@@ -83,6 +81,7 @@ import kotlinx.serialization.Serializable
 import okhttp3.ConnectionPool
 import okhttp3.Dns
 import okhttp3.OkHttpClient
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 object TrustAllCerts {
     val trustAllCerts = arrayOf<X509TrustManager>(@SuppressLint("CustomX509TrustManager")
@@ -175,15 +174,60 @@ class SeerrApiService @Inject constructor(
         paginationStates[endpoint] = MutablePaginationInfo()
     }
 
+    /**
+     * Returns a copy of the config with hostname and protocol sanitized for API use.
+     * Use this before validation and before updateConfig/save so we clean bad input
+     * (pasted URLs, spaces, wrong protocol) instead of only failing.
+     */
+    fun sanitizeConfigForApi(config: SeerrConfig): SeerrConfig {
+        return config.copy(
+            protocol = SharedPreferencesUtil.sanitizeProtocolForApi(config.protocol),
+            hostname = SharedPreferencesUtil.sanitizeHostnameForApi(config.hostname, stripPort = false)
+        )
+    }
+
     private fun buildApiUrl(config: SeerrConfig): String {
-        // Normalize hostname defensively to handle any edge cases (don't strip port for main Seerr hostname)
-        val normalizedHostname = SharedPreferencesUtil.normalizeHostname(config.hostname, stripPort = false)
-        // Construct URL and normalize any double slashes
-        val url = "${config.protocol}://${normalizedHostname}/api/v1"
-            .replace(Regex("([^:])//+"), "$1/") // Replace multiple slashes with single slash, but not after :
-        
-        return url.also {
-            require(it.isNotBlank()) { "API URL must not be blank" }
+        // Use sanitized host/protocol so even stored or legacy configs get cleaned
+        val protocol = SharedPreferencesUtil.sanitizeProtocolForApi(config.protocol)
+        val hostname = SharedPreferencesUtil.sanitizeHostnameForApi(config.hostname, stripPort = false)
+        val url = "$protocol://$hostname/api/v1"
+            .replace(Regex("([^:])//+"), "$1/")
+
+        require(url.isNotBlank()) { "API URL must not be blank" }
+
+        val parsed = url.toHttpUrlOrNull()
+        if (parsed == null) {
+            Log.e("SeerrApiService", "Invalid API base URL: $url")
+        }
+        require(parsed != null) { "Invalid server URL. Please check the hostname and protocol." }
+
+        return url
+    }
+
+    /**
+     * Validate a SeerrConfig's base URL before attempting to save or use it.
+     * Validation is done on a sanitized copy (whitespace collapsed, protocol/path stripped)
+     * so we accept fixable input; if still invalid after sanitization, returns an error message.
+     *
+     * @return null if valid, or a user-friendly error message if invalid.
+     */
+    fun validateBaseUrl(config: SeerrConfig): String? {
+        val sanitized = sanitizeConfigForApi(config)
+        val hostname = sanitized.hostname
+        if (hostname.isBlank()) {
+            return "Server hostname cannot be empty."
+        }
+
+        val url = "${sanitized.protocol}://$hostname/api/v1"
+        val parsed = url.toHttpUrlOrNull()
+        if (parsed == null) {
+            Log.e("SeerrApiService", "Invalid API base URL during validation: $url")
+        }
+
+        return if (parsed == null) {
+            "Server address is invalid. Please use a valid URL like https://example.com."
+        } else {
+            null
         }
     }
 
@@ -1299,8 +1343,7 @@ class SeerrApiService @Inject constructor(
         
         val result = when (ratingsEndpoint) {
             "ratingscombined" -> {
-                val combinedResult = executeApiCall<RatingsCombinedResponse>(endpoint)
-                when (combinedResult) {
+                when (val combinedResult = executeApiCall<RatingsCombinedResponse>(endpoint)) {
                     is ApiResult.Success -> ApiResult.Success(
                         RatingsResponse(
                             rt = combinedResult.data.rt,
@@ -1312,8 +1355,7 @@ class SeerrApiService @Inject constructor(
                 }
             }
             "ratings" -> {
-                val flatResult = executeApiCall<RatingsFlatResponse>(endpoint)
-                when (flatResult) {
+                when (val flatResult = executeApiCall<RatingsFlatResponse>(endpoint)) {
                     is ApiResult.Success -> ApiResult.Success(
                         RatingsResponse(
                             rt = if (flatResult.data.criticsScore != null || flatResult.data.audienceScore != null) {
@@ -1416,7 +1458,7 @@ class SeerrApiService @Inject constructor(
     private fun String.encodeForOverseerr(): String {
         return URLEncoder.encode(this, StandardCharsets.UTF_8.toString())
             .replace("+", "%20") // Replace + with %20 for spaces
-            .replace("*", "%2A") // Replace * with %2A for asterisks")
+            .replace("*", "%2A") // Replace * with %2A for asterisks
     }
 
     suspend fun testBaseConnection(): ApiValidationResult = withContext(Dispatchers.IO) {
@@ -1578,8 +1620,7 @@ class SeerrApiService @Inject constructor(
                     is ApiResult.Success -> {
                         Log.d("SeerrApiService", "✅ Login successful, testing token with /auth/me")
                         // Test if the token works by making a request to /auth/me
-                        val tokenTestResponse = executeApiCall<AuthMeResponse>("auth/me")
-                        when (tokenTestResponse) {
+                        when (val tokenTestResponse = executeApiCall<AuthMeResponse>("auth/me")) {
                             is ApiResult.Success -> {
                                 Log.d("SeerrApiService", "✅ Authentication successful")
                                 val user = tokenTestResponse.data
@@ -1971,7 +2012,7 @@ class SeerrApiService @Inject constructor(
                     val authToken = jsonResponse["authToken"]?.jsonPrimitive?.content
 
                     // Check if we have a valid auth token
-                    if (authToken == null || authToken.isBlank() || authToken == "null" || authToken.length < 2) {
+                    if (authToken.isNullOrBlank() || authToken == "null" || authToken.length < 2) {
                         return ApiResult.Error(Exception("Waiting for user authentication"))
                     }
 
@@ -2048,9 +2089,7 @@ class SeerrApiService @Inject constructor(
             
             try {
                 // Use executeApiCall with HttpResponse to keep all auth headers and settings
-                val httpResult = executeApiCall<HttpResponse>(localizedEndpoint)
-
-                when (httpResult) {
+                when (val httpResult = executeApiCall<HttpResponse>(localizedEndpoint)) {
                     is ApiResult.Success -> {
                         val responseBody = httpResult.data.bodyAsText()
                         try {
@@ -2165,9 +2204,7 @@ class SeerrApiService @Inject constructor(
             
             try {
                 // Use executeApiCall with HttpResponse to keep all auth headers and settings
-                val httpResult = executeApiCall<HttpResponse>(localizedEndpoint)
-
-                when (httpResult) {
+                when (val httpResult = executeApiCall<HttpResponse>(localizedEndpoint)) {
                     is ApiResult.Success -> {
                         val responseBody = httpResult.data.bodyAsText()
                         try {
