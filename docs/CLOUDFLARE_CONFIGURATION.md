@@ -32,15 +32,15 @@ Before configuring Cloudflare Access for SeerrTV, you need:
 ### 1.1 Access Cloudflare Zero Trust Dashboard
 
 1. Log in to your [Cloudflare dashboard](https://dash.cloudflare.com/)
-2. Navigate to **Zero Trust** → **Access** → **Applications**
+2. Navigate to **Zero Trust** → **Access controls** → **Applications**
 3. Click **"Add an application"**
 
 ### 1.2 Configure Your Application
 
 1. **Select Application Type**: Choose **"Self-hosted"**
 2. **Application Name**: Enter a descriptive name (e.g., "Seerr Server", "Overseerr Server", or "Jellyseerr Server")
-3. **Application Domain**: Enter your server's domain (e.g., `yourdomain.com`, `seerr.yourdomain.com`, `overseerr.yourdomain.com`, or `jellyseerr.yourdomain.com`)
-4. **Path**: Set to `/` or the specific path where your Seerr, Overseerr, or Jellyseerr server is hosted
+3. **Add public hostname**: Enter your server's domain (e.g., `yourdomain.com`, `seerr.yourdomain.com`, `overseerr.yourdomain.com`, or `jellyseerr.yourdomain.com`)
+4. **Path**: Set to `api/v1` or the specific path where your Seerr, Overseerr, or Jellyseerr server is hosted
 
 ### 1.3 Configure Access Policies
 
@@ -67,9 +67,9 @@ Before configuring Cloudflare Access for SeerrTV, you need:
 
 ### 2.1 Generate Service Token
 
-1. In your Cloudflare Zero Trust dashboard, go to **Access** → **Service Tokens**
+1. In your Cloudflare Zero Trust dashboard, go to **Access** → **Service credentials**
 2. Click **"Create Service Token"**
-3. **Token Name**: Enter a descriptive name (e.g., "SeerrTV Mobile App")
+3. **Token Name**: Enter a descriptive name (e.g., "SeerrAPI")
 4. **Client ID**: This will be automatically generated
 5. **Client Secret**: This will be automatically generated
 6. **Expiration**: Set an appropriate expiration date (recommended: 1 year)
@@ -78,8 +78,23 @@ Before configuring Cloudflare Access for SeerrTV, you need:
 
 1. **Application**: Select the application you created for your Seerr, Overseerr, or Jellyseerr server
 2. **Policies**: Choose policies that allow service token access
-   - **ServiceToken**: Include your service token in this policy
    - **serviceTokenBypass**: This policy allows service tokens to bypass authentication
+     - Policy Name: ServiceTokenBypass
+     - Action: Bypass
+     - Session Duration: 24 hours
+     - Include:
+       - Selector: Service Token
+       - Value: [Token Created Above]
+   - **ServiceToken**: Include your service token in this policy
+     - Policy Name: ServiceToken
+     - Action: Allow
+     - Session Duration: 24 hours
+     - Include:
+       - Selector: Service Token
+       - Value: [Token Created Above]
+     - Require:
+       - Selector: Service Token
+       - Value: [Token Created Above]
    - **Important**: The service token must be included in the "Include" rules of your access policies
 3. **IP Addresses**: Optionally restrict to specific IP addresses
 
