@@ -154,6 +154,10 @@
     <string name="mainScreen_pressUpToRefresh">Druk OMHOOG om alle categorieën te vernieuwen</string>
     <string name="mainScreen_refreshed">Vernieuwd!</string>
     <string name="mainScreen_settings">Instellingen</string>
+    <string name="mainScreen_appsRow">Apps</string>
+    <string name="mainScreen_appOrderSaved">App-volgorde opgeslagen</string>
+    <string name="mainScreen_reorderModeHint">Sorteren: links/rechts om te verplaatsen, Enter of Terug om op te slaan</string>
+    <string name="mainScreen_appsRowReorderTitle">Apps (sorteren)</string>
     <string name="mediaDetails_cast">Cast</string>
     <string name="mediaDetails_crew">Crew</string>
     <string name="mediaDetails_errorSubmittingRequest">Fout bij indienen verzoek: %1$s</string>

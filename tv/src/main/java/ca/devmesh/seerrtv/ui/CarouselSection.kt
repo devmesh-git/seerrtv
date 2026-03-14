@@ -57,11 +57,7 @@ fun CarouselSection(
             text = context.getString(category.titleResId),
             style = MaterialTheme.typography.headlineMedium,
             color = Color.White,
-            modifier = Modifier.padding(
-                start = 0.dp,
-                top = 0.dp,
-                bottom = if (isSelected) 8.dp else 4.dp
-            )
+            modifier = Modifier.padding(bottom = 8.dp)
         )
 
         if (isCategoryCardType) {

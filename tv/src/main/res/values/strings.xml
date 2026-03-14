@@ -154,6 +154,10 @@
     <string name="mainScreen_pressUpToRefresh">Press UP to refresh all categories</string>
     <string name="mainScreen_refreshed">Refreshed!</string>
     <string name="mainScreen_settings">Settings</string>
+    <string name="mainScreen_appsRow">Apps</string>
+    <string name="mainScreen_appOrderSaved">App order saved</string>
+    <string name="mainScreen_reorderModeHint">Reorder: Left/Right to move, Enter or Back to save</string>
+    <string name="mainScreen_appsRowReorderTitle">Apps (reorder)</string>
     <string name="mediaDetails_cast">Cast</string>
     <string name="mediaDetails_crew">Crew</string>
     <string name="mediaDetails_errorSubmittingRequest">Error submitting request: %1$s</string>

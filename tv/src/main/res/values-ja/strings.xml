@@ -154,6 +154,10 @@
     <string name="mainScreen_pressUpToRefresh">上を押すと全カテゴリーを更新します</string>
     <string name="mainScreen_refreshed">更新完了！</string>
     <string name="mainScreen_settings">設定</string>
+    <string name="mainScreen_appsRow">アプリ</string>
+    <string name="mainScreen_appOrderSaved">アプリの並び順を保存しました</string>
+    <string name="mainScreen_reorderModeHint">並べ替え：左右で移動、Enterまたは戻るで保存</string>
+    <string name="mainScreen_appsRowReorderTitle">アプリ（並べ替え）</string>
     <string name="mediaDetails_cast">キャスト</string>
     <string name="mediaDetails_crew">スタッフ</string>
     <string name="mediaDetails_errorSubmittingRequest">リクエスト送信エラー: %1$s</string>

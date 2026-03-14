@@ -154,6 +154,10 @@
     <string name="mainScreen_pressUpToRefresh">Appuyez sur HAUT pour actualiser toutes les catégories</string>
     <string name="mainScreen_refreshed">Actualisé !</string>
     <string name="mainScreen_settings">Paramètres</string>
+    <string name="mainScreen_appsRow">Applications</string>
+    <string name="mainScreen_appOrderSaved">Ordre des applications enregistré</string>
+    <string name="mainScreen_reorderModeHint">Réorganiser : Gauche/Droite pour déplacer, Entrée ou Retour pour enregistrer</string>
+    <string name="mainScreen_appsRowReorderTitle">Applications (réorganiser)</string>
     <string name="mediaDetails_cast">Distribution</string>
     <string name="mediaDetails_crew">Équipe</string>
     <string name="mediaDetails_errorSubmittingRequest">Erreur lors de la soumission de la demande : %1$s</string>

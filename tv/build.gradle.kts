@@ -65,6 +65,7 @@ android {
         buildConfigField("String", "VERSION_NAME", "\"${defaultConfig.versionName}\"")
         buildConfigField("Boolean", "DEBUG", "true")
         buildConfigField("Boolean", "IS_DIRECT_FLAVOR", "false")
+        buildConfigField("Boolean", "IS_LAUNCHER_BUILD", "false")
         buildConfigField("String", "BROWSER_CONFIG_BASE_URL", "\"${browserConfigProperties.getProperty("browser.config.base.url", "https://seerrtv.devmesh.ca")}\"")
         vectorDrawables {
             useSupportLibrary = true
@@ -96,6 +97,7 @@ android {
     }
 
     flavorDimensions += "distribution"
+    flavorDimensions += "mode"
     productFlavors {
         create("play") {
             dimension = "distribution"
@@ -104,6 +106,19 @@ android {
         create("direct") {
             dimension = "distribution"
             buildConfigField("Boolean", "IS_DIRECT_FLAVOR", "true")
+        }
+
+        create("app") {
+            dimension = "mode"
+            // Standard TV app behavior (tile on system home)
+            applicationId = "ca.devmesh.seerrtv"
+            buildConfigField("Boolean", "IS_LAUNCHER_BUILD", "false")
+        }
+        create("launcher") {
+            dimension = "mode"
+            // Launcher build: can coexist with the standard app
+            applicationId = "ca.devmesh.seerrtv.launcher"
+            buildConfigField("Boolean", "IS_LAUNCHER_BUILD", "true")
         }
     }
     ndkVersion = "27.0.12077973"

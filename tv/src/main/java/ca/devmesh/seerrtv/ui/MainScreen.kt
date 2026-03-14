@@ -44,6 +44,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -67,6 +68,9 @@ import ca.devmesh.seerrtv.ui.components.AuthenticationErrorHandler
 import ca.devmesh.seerrtv.ui.position.ScrollPositionManager
 import ca.devmesh.seerrtv.util.CommonUtil
 import ca.devmesh.seerrtv.util.Permission
+import ca.devmesh.seerrtv.util.TvAppInfo
+import ca.devmesh.seerrtv.util.getInstalledTvAppsWithSavedOrder
+import ca.devmesh.seerrtv.util.saveAppRowOrder
 import ca.devmesh.seerrtv.ui.focus.AppFocusManager
 import ca.devmesh.seerrtv.ui.focus.AppFocusState
 import ca.devmesh.seerrtv.ui.focus.TopBarFocus
@@ -80,8 +84,13 @@ import coil3.compose.AsyncImage
 import coil3.ImageLoader
 import coil3.request.crossfade
 import coil3.request.ImageRequest
+import kotlin.math.min
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+
+// Layout constants for main screen (single source of truth for row alignment and heights)
+private val MEDIA_DETAILS_AREA_HEIGHT = 150.dp
+private val ROW_SCROLL_ANCHOR = 100.dp
 
 // Ordered list of categories - defined once for the entire file
 private val ORDERED_CATEGORIES = listOf(
@@ -114,10 +123,14 @@ sealed class MainScreenFocusState {
     // Media item focus - specific item within a category
     data class MediaItem(val category: MediaCategory, val index: Int) : MainScreenFocusState()
 
+    /** Launcher build only: focus on the "Apps" row with a selected app index. */
+    data class AppsRow(val selectedIndex: Int) : MainScreenFocusState()
+
     override fun toString(): String {
         return when (this) {
             is CategoryRow -> "CategoryRow(${category.name})"
             is MediaItem -> "MediaItem(${category.name}, $index)"
+            is AppsRow -> "AppsRow($selectedIndex)"
         }
     }
 }
@@ -231,8 +244,7 @@ fun MainScreen(
     LaunchedEffect(currentAppFocus, selectedCategory.value, selectedMediaIndex.value) {
         when (currentAppFocus) {
             is AppFocusState.MainScreen -> {
-                val mainScreenFocus = currentAppFocus.focus
-                when (mainScreenFocus) {
+                when (val mainScreenFocus = currentAppFocus.focus) {
                     // TopBar focus is now handled by TopBarController
                     is MainScreenFocusState.CategoryRow -> {
                         // Sync category from focus to local state
@@ -275,6 +287,9 @@ fun MainScreen(
                                 appFocusManager.setFocus(AppFocusState.MainScreen(MainScreenFocusState.MediaItem(selectedCategory.value, selectedMediaIndex.value)))
                             }
                         }
+                    }
+                    is MainScreenFocusState.AppsRow -> {
+                        // No local state to sync for Apps row; index lives in focus only
                     }
                 }
             }
@@ -320,7 +335,7 @@ fun MainScreen(
         }
     }
 
-    // Pre-load media details once when a request is selected (cache-only; no force refresh)
+    // Preload media details once when a request is selected (cache-only; no force refresh)
     LaunchedEffect(mediaState.selectedRequest) {
         mediaState.selectedRequest?.let { request ->
             val id = request.media.tmdbId.toString()
@@ -441,6 +456,28 @@ fun MainScreen(
         }
     }
 
+    // Launcher build: mutable list so we can reorder; order persisted via getInstalledTvAppsWithSavedOrder/saveAppRowOrder
+    val installedApps = remember { mutableStateListOf<TvAppInfo>() }
+    LaunchedEffect(context, BuildConfig.IS_LAUNCHER_BUILD) {
+        if (BuildConfig.IS_LAUNCHER_BUILD) {
+            installedApps.clear()
+            installedApps.addAll(getInstalledTvAppsWithSavedOrder(context))
+        } else {
+            installedApps.clear()
+        }
+    }
+    val isReorderMode = remember { mutableStateOf(false) }
+    val enterLongPressStartTime = remember { mutableStateOf<Long?>(null) }
+    val holdToReorderProgress = remember { mutableFloatStateOf(0f) }
+    val isOnAppsRow = (currentAppFocus as? AppFocusState.MainScreen)?.focus is MainScreenFocusState.AppsRow
+    val appsRowSelectedIndex = when (currentAppFocus) {
+        is AppFocusState.MainScreen -> when (val m = currentAppFocus.focus) {
+            is MainScreenFocusState.AppsRow -> m.selectedIndex
+            else -> 0
+        }
+        else -> 0
+    }
+
     // Define visibleCategories at the MainScreen level for use throughout the function
     // Only calculate visible categories after initial load is complete to avoid filtering out categories that are still loading
     val visibleCategories = if (isInitialLoad) {
@@ -492,16 +529,23 @@ fun MainScreen(
     
     // Navigation handlers for DpadController (defined after visibleCategories to avoid scope issues)
     val handleUp: () -> Unit = {
-        when (val focus = currentAppFocus) {
+        when (currentAppFocus) {
             is AppFocusState.MainScreen -> {
-                when (focus.focus) {
+                when (currentAppFocus.focus) {
+                    is MainScreenFocusState.AppsRow -> {
+                        // Launcher only: from Apps row, Up goes to TopBar
+                        appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Search))
+                    }
                     // TopBar navigation is now handled by TopBarController
                     is MainScreenFocusState.CategoryRow, is MainScreenFocusState.MediaItem -> {
-                        // Navigate up to previous category or top bar
+                        // Navigate up to previous category, Apps row (launcher), or top bar
                         val currentIndex = visibleCategories.indexOf(selectedCategory.value)
                         if (currentIndex == 0) {
-                            // Navigate to TopBar - handoff control to TopBarController
-                            appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Search))
+                            if (BuildConfig.IS_LAUNCHER_BUILD) {
+                                appFocusManager.setFocus(AppFocusState.MainScreen(MainScreenFocusState.AppsRow(appsRowSelectedIndex)))
+                            } else {
+                                appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Search))
+                            }
                         } else if (currentIndex > 0) {
                             // Save the current category before changing
                             val oldCategory = selectedCategory.value
@@ -536,9 +580,28 @@ fun MainScreen(
     }
     
     val handleDown: () -> Unit = {
-        when (val focus = currentAppFocus) {
+        when (currentAppFocus) {
+            is AppFocusState.TopBar -> {
+                // Launcher: Down from top bar on main route goes to apps row
+                if (navController.currentDestination?.route == "main" && BuildConfig.IS_LAUNCHER_BUILD) {
+                    appFocusManager.setFocus(AppFocusState.MainScreen(MainScreenFocusState.AppsRow(0)))
+                }
+            }
             is AppFocusState.MainScreen -> {
-                when (focus.focus) {
+                when (currentAppFocus.focus) {
+                    is MainScreenFocusState.AppsRow -> {
+                        // Launcher only: from Apps row, Down goes to first category
+                        if (visibleCategories.isNotEmpty()) {
+                            selectedCategory.value = visibleCategories[0]
+                            updateSelectedIndex(selectedCategory, selectedMediaIndex, 0, force = true)
+                            ScrollPositionManager.saveScrollPosition("${visibleCategories[0].name}_scroll", 0)
+                            viewModel.forceCarouselReset(visibleCategories[0], animate = true)
+                            setSelection(
+                                if (isCategoryCardCategory(visibleCategories[0])) CategoryType.CATEGORY_CARD else CategoryType.MEDIA
+                            )
+                            appFocusManager.setFocus(AppFocusState.MainScreen(MainScreenFocusState.CategoryRow(visibleCategories[0])))
+                        }
+                    }
                     // TopBar navigation is now handled by TopBarController
                     is MainScreenFocusState.CategoryRow, is MainScreenFocusState.MediaItem -> {
                         val currentIndex = visibleCategories.indexOf(selectedCategory.value)
@@ -588,9 +651,24 @@ fun MainScreen(
     }
     
     val handleLeft: () -> Unit = {
-        when (val focus = currentAppFocus) {
+        if (isReorderMode.value && currentAppFocus is AppFocusState.MainScreen && currentAppFocus.focus is MainScreenFocusState.AppsRow) {
+            val idx = currentAppFocus.focus.selectedIndex
+            if (idx > 0 && idx < installedApps.size) {
+                val a = installedApps[idx]
+                installedApps[idx] = installedApps[idx - 1]
+                installedApps[idx - 1] = a
+                saveAppRowOrder(context, installedApps.map { it.packageName })
+                appFocusManager.setFocus(AppFocusState.MainScreen(MainScreenFocusState.AppsRow(idx - 1)))
+            }
+        } else when (currentAppFocus) {
             is AppFocusState.MainScreen -> {
-                when (focus.focus) {
+                when (currentAppFocus.focus) {
+                    is MainScreenFocusState.AppsRow -> {
+                        val idx = currentAppFocus.focus.selectedIndex
+                        if (idx > 0) {
+                            appFocusManager.setFocus(AppFocusState.MainScreen(MainScreenFocusState.AppsRow(idx - 1)))
+                        }
+                    }
                     // TopBar navigation is now handled by TopBarController
                     is MainScreenFocusState.CategoryRow, is MainScreenFocusState.MediaItem -> {
                         // Get the appropriate data for the current category
@@ -630,12 +708,28 @@ fun MainScreen(
     }
     
     val handleRight: () -> Unit = {
+        if (isReorderMode.value && currentAppFocus is AppFocusState.MainScreen && currentAppFocus.focus is MainScreenFocusState.AppsRow) {
+            val idx = currentAppFocus.focus.selectedIndex
+            if (idx >= 0 && idx < installedApps.size - 1) {
+                val a = installedApps[idx]
+                installedApps[idx] = installedApps[idx + 1]
+                installedApps[idx + 1] = a
+                saveAppRowOrder(context, installedApps.map { it.packageName })
+                appFocusManager.setFocus(AppFocusState.MainScreen(MainScreenFocusState.AppsRow(idx + 1)))
+            }
+        } else {
         if (BuildConfig.DEBUG) {
             Log.d("MainScreen", "🔄 handleRight called - currentAppFocus: $currentAppFocus")
         }
-        when (val focus = currentAppFocus) {
+        when (currentAppFocus) {
             is AppFocusState.MainScreen -> {
-                when (focus.focus) {
+                when (currentAppFocus.focus) {
+                    is MainScreenFocusState.AppsRow -> {
+                        val idx = currentAppFocus.focus.selectedIndex
+                        if (idx < installedApps.size - 1) {
+                            appFocusManager.setFocus(AppFocusState.MainScreen(MainScreenFocusState.AppsRow(idx + 1)))
+                        }
+                    }
                     // TopBar navigation is now handled by TopBarController
                     is MainScreenFocusState.CategoryRow, is MainScreenFocusState.MediaItem -> {
                         // Get the current category and check if it was recently reset
@@ -650,7 +744,7 @@ fun MainScreen(
                                 val isLoadingMore = viewModel.isLoadingMoreCategory(currentCategory)
                                 val hasMorePages = currentCategoryData.paginationInfo?.hasMorePages != false
                                 
-                                // Only allow moving right if not at last item or we've reached the absolute end
+                                // Only allow moving right if not at last item, or we've reached the absolute end
                                 if (!isAtLastItem || !hasMorePages) {
                                     // Use updateSelectedIndex to ensure ScrollPositionManager is updated
                                     val newIndex = (selectedMediaIndex.value + 1).coerceAtMost(mediaCount - 1)
@@ -690,7 +784,7 @@ fun MainScreen(
                                 val isLoadingMore = viewModel.isLoadingMoreCategory(currentCategory)
                                 val hasMorePages = currentCategoryData.paginationInfo?.hasMorePages != false
                                 
-                                // Only allow moving right if not at last item or we've reached the absolute end
+                                // Only allow moving right if not at last item, or we've reached the absolute end
                                 if (!isAtLastItem || !hasMorePages) {
                                     // Use updateSelectedIndex to ensure ScrollPositionManager is updated
                                     val newIndex = (selectedMediaIndex.value + 1).coerceAtMost(mediaCount - 1)
@@ -727,16 +821,31 @@ fun MainScreen(
             else -> {
                 // Other focus states don't affect MainScreen navigation
                 if (BuildConfig.DEBUG) {
-                    Log.d("MainScreen", "🔄 handleRight: Other focus state - $focus")
+                    Log.d("MainScreen", "🔄 handleRight: Other focus state - $currentAppFocus")
                 }
             }
+        }
         }
     }
     
     val handleEnter: () -> Unit = {
-        when (val focus = currentAppFocus) {
+        if (isReorderMode.value) {
+            isReorderMode.value = false
+            Toast.makeText(context, context.getString(R.string.mainScreen_appOrderSaved), Toast.LENGTH_SHORT).show()
+        } else when (currentAppFocus) {
             is AppFocusState.MainScreen -> {
-                when (focus.focus) {
+                when (currentAppFocus.focus) {
+                    is MainScreenFocusState.AppsRow -> {
+                        if (appsRowSelectedIndex in installedApps.indices) {
+                            try {
+                                val app = installedApps[appsRowSelectedIndex]
+                                context.startActivity(app.launchIntent)
+                            } catch (e: Exception) {
+                                if (BuildConfig.DEBUG) Log.e("MainScreen", "Failed to launch app", e)
+                                Toast.makeText(context, "Could not open app", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
                     // TopBar actions are now handled by TopBarController
                     is MainScreenFocusState.CategoryRow, is MainScreenFocusState.MediaItem -> {
                         // Handle media/category card selection
@@ -789,22 +898,41 @@ fun MainScreen(
         onLeft = handleLeft,
         onRight = handleRight,
         onEnter = handleEnter,
+        onEnterLongPress = if (BuildConfig.IS_LAUNCHER_BUILD) {
+            {
+                isReorderMode.value = true
+                Toast.makeText(context, context.getString(R.string.mainScreen_reorderModeHint), Toast.LENGTH_SHORT).show()
+            }
+        } else null,
+        onEnterLongPressProgress = if (BuildConfig.IS_LAUNCHER_BUILD) { { started, startTimeMillis ->
+            enterLongPressStartTime.value = if (started) startTimeMillis else null
+        } } else null,
         onRefresh = {
             // Handle refresh when triggered by DpadController
             uiState.showRefreshHint = false
             uiState.isRefreshRowVisible = true
 
+            // Launcher: reload installed apps so new/removed apps appear
+            if (BuildConfig.IS_LAUNCHER_BUILD) {
+                installedApps.clear()
+                installedApps.addAll(getInstalledTvAppsWithSavedOrder(context))
+            }
+
             // Trigger the actual refresh (spinner shows while isRefreshing=true)
             coroutineScope.launch {
                 viewModel.refreshAllCategories()
-                // Keep focus management the same after refresh completes
-                if (visibleCategories.isNotEmpty()) {
-                    selectedCategory.value = visibleCategories[0]
-                    updateSelectedIndex(selectedCategory, selectedMediaIndex, 0, force = true)
-                    viewModel.forceCarouselReset(selectedCategory.value, animate = true)
-                    mediaState.selectedCategoryType = CategoryType.MEDIA
+                // After refresh: launcher goes to apps row, else first category
+                if (BuildConfig.IS_LAUNCHER_BUILD) {
+                    appFocusManager.setFocus(AppFocusState.MainScreen(MainScreenFocusState.AppsRow(0)))
+                } else {
+                    if (visibleCategories.isNotEmpty()) {
+                        selectedCategory.value = visibleCategories[0]
+                        updateSelectedIndex(selectedCategory, selectedMediaIndex, 0, force = true)
+                        viewModel.forceCarouselReset(selectedCategory.value, animate = true)
+                        mediaState.selectedCategoryType = CategoryType.MEDIA
+                    }
+                    appFocusManager.setFocus(AppFocusState.MainScreen(MainScreenFocusState.CategoryRow(selectedCategory.value)))
                 }
-                appFocusManager.setFocus(AppFocusState.MainScreen(MainScreenFocusState.CategoryRow(selectedCategory.value)))
             }
 
             // Fallback auto-hide in case isRefreshing callback is missed
@@ -814,20 +942,27 @@ fun MainScreen(
             }
         },
         onBack = {
-            // Show exit confirmation on MainScreen via double-back
-            uiState.backPressCount++
-            if (uiState.backPressCount == 1) {
-                Toast.makeText(
-                    context,
-                    context.getString(R.string.mainScreen_pressBackAgainToExit),
-                    Toast.LENGTH_SHORT
-                ).show()
-                coroutineScope.launch {
-                    delay(2000)
-                    uiState.backPressCount = 0
+            if (isReorderMode.value) {
+                isReorderMode.value = false
+                Toast.makeText(context, context.getString(R.string.mainScreen_appOrderSaved), Toast.LENGTH_SHORT).show()
+            } else if (BuildConfig.IS_LAUNCHER_BUILD) {
+                // Launcher is the home screen; don't offer to exit (Back is consumed, no-op)
+            } else {
+                // Show exit confirmation on MainScreen via double-back (non-launcher app only)
+                uiState.backPressCount++
+                if (uiState.backPressCount == 1) {
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.mainScreen_pressBackAgainToExit),
+                        Toast.LENGTH_SHORT
+                    ).show()
+                    coroutineScope.launch {
+                        delay(2000)
+                        uiState.backPressCount = 0
+                    }
+                } else if (uiState.backPressCount == 2) {
+                    (context as? Activity)?.finish()
                 }
-            } else if (uiState.backPressCount == 2) {
-                (context as? Activity)?.finish()
             }
         }
     )
@@ -835,6 +970,19 @@ fun MainScreen(
     // Register the screen configuration with the DpadController
     LaunchedEffect(dpadConfig) {
         dpadController.registerScreen(dpadConfig)
+    }
+
+    // Drive hold-to-reorder progress (0..1 over 1.2s) while Enter is held on Apps row
+    LaunchedEffect(enterLongPressStartTime.value) {
+        val start = enterLongPressStartTime.value ?: run {
+            holdToReorderProgress.floatValue = 0f
+            return@LaunchedEffect
+        }
+        repeat(25) {
+            delay(50)
+            holdToReorderProgress.floatValue = min(1f, (System.currentTimeMillis() - start) / 1200f)
+        }
+        holdToReorderProgress.floatValue = 0f
     }
 
     // CONSOLIDATED: UI state management effects (refresh hint, modal handling, navigation)
@@ -1226,7 +1374,7 @@ fun MainScreen(
             val savedIndex = ScrollPositionManager.getUserIndex(categoryKey)
 
             // Only restore the saved index if NOT from DOWN navigation AND the category wasn't 
-            // recently reset AND there's a valid saved index greater than 0
+            // recently reset AND there's a valid-saved index greater than 0
             if (savedIndex > 0 && !fromDownNavigation) {
                 if (BuildConfig.DEBUG) {
                     Log.d(
@@ -1406,30 +1554,36 @@ fun MainScreen(
             val shouldSetInitialFocus = currentCategory == MediaCategory.RECENTLY_ADDED || currentCategory !in visibleCategories
             
             if (shouldSetInitialFocus) {
-                // After initial load, prioritize RECENTLY_ADDED if it's available in the filtered list
-                val targetCategory = if (visibleCategories.contains(MediaCategory.RECENTLY_ADDED)) {
-                    MediaCategory.RECENTLY_ADDED
-                } else {
-                    visibleCategories[0]
-                }
-                
-                if (targetCategory != selectedCategory.value) {
-                    selectedCategory.value = targetCategory
-                    updateSelectedIndex(selectedCategory, selectedMediaIndex, 0, force = true)
-                }
-                
-                // Set focus to the target category
-                appFocusManager.setFocus(
-                    AppFocusState.MainScreen(
-                        MainScreenFocusState.CategoryRow(targetCategory)
+                if (BuildConfig.IS_LAUNCHER_BUILD) {
+                    // Launcher: default to apps row when screen first loads
+                    appFocusManager.setFocus(
+                        AppFocusState.MainScreen(MainScreenFocusState.AppsRow(0))
                     )
-                )
-                
-                if (BuildConfig.DEBUG) {
-                    Log.d("MainScreen", "🚀 NAVIGATION ENTRY: Processing null with refreshRequired=false")
-                    Log.d("MainScreen", "🔄 Selection change detected: category=${selectedCategory.value}, media=none, card=none")
-                    Log.d("MainScreen", "🎯 Requested focus to main container")
-                    Log.d("MainScreen", "🔙 Back to main route, focusing category ${selectedCategory.value}")
+                    if (BuildConfig.DEBUG) {
+                        Log.d("MainScreen", "🚀 LAUNCHER: Initial focus set to Apps row")
+                    }
+                } else {
+                    // Non-launcher: after initial load, prioritize RECENTLY_ADDED if available
+                    val targetCategory = if (visibleCategories.contains(MediaCategory.RECENTLY_ADDED)) {
+                        MediaCategory.RECENTLY_ADDED
+                    } else {
+                        visibleCategories[0]
+                    }
+                    if (targetCategory != selectedCategory.value) {
+                        selectedCategory.value = targetCategory
+                        updateSelectedIndex(selectedCategory, selectedMediaIndex, 0, force = true)
+                    }
+                    appFocusManager.setFocus(
+                        AppFocusState.MainScreen(
+                            MainScreenFocusState.CategoryRow(targetCategory)
+                        )
+                    )
+                    if (BuildConfig.DEBUG) {
+                        Log.d("MainScreen", "🚀 NAVIGATION ENTRY: Processing null with refreshRequired=false")
+                        Log.d("MainScreen", "🔄 Selection change detected: category=${selectedCategory.value}, media=none, card=none")
+                        Log.d("MainScreen", "🎯 Requested focus to main container")
+                        Log.d("MainScreen", "🔙 Back to main route, focusing category ${selectedCategory.value}")
+                    }
                 }
             }
         } else if (currentBackStackEntry == "discovery_to_main") {
@@ -1451,6 +1605,12 @@ fun MainScreen(
 
                     // Also reset any UI state that might be blocking navigation
                     uiState.ignoreKeyEvents = false
+
+                    // Launcher: reload installed apps so newly installed/removed apps appear
+                    if (BuildConfig.IS_LAUNCHER_BUILD) {
+                        installedApps.clear()
+                        installedApps.addAll(getInstalledTvAppsWithSavedOrder(context))
+                    }
 
                     if (BuildConfig.DEBUG) {
                         Log.d("MainScreen", "🔄 App resumed, cleared navigation locks")
@@ -1486,7 +1646,7 @@ fun MainScreen(
             label = ""
         ) { media -> MediaBackdrop(context, media, imageLoader) }
 
-        // Content
+        // Content: three regions – (1) Top bar in MainActivity, (2) Media details fixed height, (3) Rows fill rest
         Column(modifier = Modifier.fillMaxSize()) {
             AnimatedVisibility(
                 visible = uiState.isRefreshRowVisible,
@@ -1511,13 +1671,7 @@ fun MainScreen(
                 }
             }
 
-            // Top bar is now handled by the persistent MainTopBar component
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            // Pass the forced update parameter to ensure the details area refreshes
-            // We need to decide which media object to display
-            // If there's a special category card selected, create a media object for it
+            // Region 2: Media details – fixed height slot (content or empty when on apps row)
             val mediaToDisplay = remember(
                 selectedCategory.value,
                 selectedMediaIndex.value,
@@ -1557,39 +1711,39 @@ fun MainScreen(
                 }
             }
 
-            // Show the details area with the appropriate media object
-            MediaDetailsArea(mediaToDisplay, forceDetailsUpdate.intValue)
-
-            // Derive isInTopBar directly from currentAppFocus to avoid staleness
-            val isInTopBarNow = remember(currentAppFocus) {
-                when (currentAppFocus) {
-                    is AppFocusState.TopBar -> true
-                    // TopBar focus is now handled by TopBarController
-                    else -> false
+            Box(modifier = Modifier.height(MEDIA_DETAILS_AREA_HEIGHT)) {
+                val showMediaDetails = !(BuildConfig.IS_LAUNCHER_BUILD && isOnAppsRow)
+                if (showMediaDetails) {
+                    MediaDetailsArea(mediaToDisplay, forceDetailsUpdate.intValue)
                 }
             }
 
+            val isInTopBarNow = remember(currentAppFocus) { currentAppFocus is AppFocusState.TopBar }
             if (BuildConfig.DEBUG) {
                 Log.d("MainScreen", "➡️ Passing isInTopBar=$isInTopBarNow to ScrollableCategoriesSection (focus=$currentAppFocus)")
             }
-
-            ScrollableCategoriesSection(
-                categories = visibleCategories.also { 
-                    if (BuildConfig.DEBUG) {
-                        Log.d("MainScreen", "🎬 Rendering ScrollableCategoriesSection with ${it.size} categories: ${it.map { cat -> cat.name }}")
-                    }
-                },
-                categoryData = categoryData,
-                categoryCardData = categoryCardData,
-                selectedCategory = selectedCategory,
-                selectedMediaIndex = selectedMediaIndex,
-                context = context,
-                imageLoader = imageLoader,
-                viewModel = viewModel,
-                isInTopBar = isInTopBarNow, // Use direct focus-derived value
-                // Add a way to trigger the force update from child components
-                // Pass selectedCategoryCard
-            )
+            Box(modifier = Modifier.weight(1f)) {
+                ScrollableCategoriesSection(
+                    categories = visibleCategories.also {
+                        if (BuildConfig.DEBUG) {
+                            Log.d("MainScreen", "🎬 Rendering ScrollableCategoriesSection with ${it.size} categories: ${it.map { cat -> cat.name }}")
+                        }
+                    },
+                    categoryData = categoryData,
+                    categoryCardData = categoryCardData,
+                    selectedCategory = selectedCategory,
+                    selectedMediaIndex = selectedMediaIndex,
+                    context = context,
+                    imageLoader = imageLoader,
+                    viewModel = viewModel,
+                    isInTopBar = isInTopBarNow,
+                installedApps = if (BuildConfig.IS_LAUNCHER_BUILD) installedApps else null,
+                appsRowSelectedIndex = appsRowSelectedIndex,
+                isOnAppsRow = isOnAppsRow,
+                isReorderMode = isReorderMode.value,
+                holdToReorderProgress = holdToReorderProgress.floatValue
+                )
+            }
         }
 
 
@@ -1711,7 +1865,12 @@ fun ScrollableCategoriesSection(
     context: Context,
     imageLoader: ImageLoader,
     viewModel: SeerrViewModel,
-    isInTopBar: Boolean
+    isInTopBar: Boolean,
+    installedApps: List<TvAppInfo>? = null,
+    appsRowSelectedIndex: Int = 0,
+    isOnAppsRow: Boolean = false,
+    isReorderMode: Boolean = false,
+    holdToReorderProgress: Float = 0f
 ) {
     if (BuildConfig.DEBUG) {
         Log.d("ScrollableCategoriesSection", "🎬 ScrollableCategoriesSection called with ${categories.size} categories: ${categories.map { it.name }}")
@@ -1765,17 +1924,31 @@ fun ScrollableCategoriesSection(
         LazyColumn(
             state = listState,
             contentPadding = PaddingValues(
-                top = 0.dp,
+                top = if (installedApps != null) 4.dp else 0.dp,
                 bottom = 16.dp
-            ), // Added significant bottom padding to ensure last item is fully visible
+            ),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
+            if (installedApps != null) {
+                item(key = "apps_row") {
+                    Box(modifier = Modifier.padding(start = 8.dp)) {
+                        InstalledAppsRow(
+                            apps = installedApps,
+                            selectedIndex = appsRowSelectedIndex,
+                            isRowFocused = isOnAppsRow,
+                            isReorderMode = isReorderMode,
+                            holdToReorderProgress = holdToReorderProgress
+                        )
+                    }
+                }
+            }
             // Use the derived value directly to avoid recreating the list on recomposition
             itemsIndexed(categories) { index, category ->
                 if (BuildConfig.DEBUG && index == 0) {
                     Log.d("ScrollableCategoriesSection", "🎬 LazyColumn rendering ${categories.size} categories")
                 }
-                val isSelected = category == selectedCategory.value && !isInTopBar
+                // Don't highlight any category row when focus is on the apps row (launcher)
+                val isSelected = category == selectedCategory.value && !isInTopBar && !isOnAppsRow
                 if (BuildConfig.DEBUG && index < 2) {
                     Log.d(
                         "ScrollableCategoriesSection",
@@ -1830,23 +2003,23 @@ fun ScrollableCategoriesSection(
         }
     }
 
-    // Optimize scrolling by animating only when the selected category changes
-    LaunchedEffect(selectedCategory.value) {
-        val index = categories.indexOf(selectedCategory.value)
-        if (index != -1) {
-            // Calculate if we're near the end of the list
-            val isNearEnd = index >= categories.size - 3
-
-            // Use different scroll offset based on position in list
-            if (isNearEnd) {
-                // For items near the end, use a negative offset to push them up in the viewport
-                // This ensures the last few categories are fully visible and not cut off
-                listState.animateScrollToItem(index = index, scrollOffset = -100)
-            } else {
-                // For other items, use the regular top alignment
-                listState.animateScrollToItem(index = index, scrollOffset = 0)
+    // Scroll so the focused row stays at the same Y (ROW_SCROLL_ANCHOR)
+    val hasAppsRow = installedApps != null
+    val density = LocalDensity.current
+    val fixedScrollOffsetPx = -with(density) { ROW_SCROLL_ANCHOR.roundToPx() }
+    LaunchedEffect(selectedCategory.value, isOnAppsRow, hasAppsRow) {
+        val listIndex = when {
+            hasAppsRow && isOnAppsRow -> 0
+            else -> {
+                val categoryIndex = categories.indexOf(selectedCategory.value)
+                if (categoryIndex == -1) return@LaunchedEffect
+                categoryIndex + if (hasAppsRow) 1 else 0
             }
         }
+        val totalItems = categories.size + if (hasAppsRow) 1 else 0
+        val isNearEnd = listIndex >= totalItems - 3
+        val scrollOffset = if (isNearEnd) -100 else fixedScrollOffsetPx
+        listState.animateScrollToItem(index = listIndex, scrollOffset = scrollOffset)
     }
 }
 
@@ -1970,12 +2143,11 @@ fun MediaDetailsArea(media: Media?, forceUpdate: Int = 0) {
             }
         }
 
-        // Create a stable modifier that won't cause recompositions
         val boxModifier = remember {
             Modifier
                 .fillMaxWidth()
-                .height(150.dp)
-                .padding(start = 8.dp, top = 8.dp, bottom = 16.dp, end = 0.dp)
+                .height(MEDIA_DETAILS_AREA_HEIGHT)
+                .padding(start = 8.dp, top = 24.dp, bottom = 16.dp, end = 0.dp)
         }
 
         // Create a stable column modifier that doesn't use align
@@ -1985,7 +2157,9 @@ fun MediaDetailsArea(media: Media?, forceUpdate: Int = 0) {
 
         Box(modifier = boxModifier) {
             Column(
-                modifier = columnModifier.then(Modifier.align(Alignment.BottomStart))
+                modifier = columnModifier
+                    .padding(top = 8.dp)
+                    .then(Modifier.align(Alignment.TopStart))
             ) {
                 if (isSpecialCategory) {
                     // And show the category name as the subtitle

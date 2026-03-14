@@ -154,6 +154,10 @@
     <string name="mainScreen_pressUpToRefresh">按上键刷新所有类别</string>
     <string name="mainScreen_refreshed">已刷新！</string>
     <string name="mainScreen_settings">设置</string>
+    <string name="mainScreen_appsRow">应用</string>
+    <string name="mainScreen_appOrderSaved">应用顺序已保存</string>
+    <string name="mainScreen_reorderModeHint">重新排序：左/右移动，Enter 或返回保存</string>
+    <string name="mainScreen_appsRowReorderTitle">应用（重新排序）</string>
     <string name="mediaDetails_cast">演员</string>
     <string name="mediaDetails_crew">工作人员</string>
     <string name="mediaDetails_errorSubmittingRequest">提交请求时出错：%1$s</string>

@@ -154,6 +154,10 @@
     <string name="mainScreen_pressUpToRefresh">Drücken Sie AUF, um alle Kategorien zu aktualisieren</string>
     <string name="mainScreen_refreshed">Aktualisiert!</string>
     <string name="mainScreen_settings">Einstellungen</string>
+    <string name="mainScreen_appsRow">Apps</string>
+    <string name="mainScreen_appOrderSaved">App-Reihenfolge gespeichert</string>
+    <string name="mainScreen_reorderModeHint">Sortieren: Links/Rechts zum Verschieben, Eingabe oder Zurück zum Speichern</string>
+    <string name="mainScreen_appsRowReorderTitle">Apps (sortieren)</string>
     <string name="mediaDetails_cast">Besetzung</string>
     <string name="mediaDetails_crew">Crew</string>
     <string name="mediaDetails_errorSubmittingRequest">Fehler beim Einreichen der Anfrage: %1$s</string>

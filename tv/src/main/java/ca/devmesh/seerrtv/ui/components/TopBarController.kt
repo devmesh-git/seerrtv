@@ -63,7 +63,11 @@ fun TopBarController(
                         if (BuildConfig.DEBUG) {
                             Log.d("TopBarController", "🔄 handleDown: Returning to MainScreen")
                         }
-                        appFocusManager.setFocus(AppFocusState.MainScreen(ca.devmesh.seerrtv.ui.MainScreenFocusState.CategoryRow(ca.devmesh.seerrtv.viewmodel.MediaCategory.RECENTLY_ADDED)))
+                        if (BuildConfig.IS_LAUNCHER_BUILD) {
+                            appFocusManager.setFocus(AppFocusState.MainScreen(ca.devmesh.seerrtv.ui.MainScreenFocusState.AppsRow(0)))
+                        } else {
+                            appFocusManager.setFocus(AppFocusState.MainScreen(ca.devmesh.seerrtv.ui.MainScreenFocusState.CategoryRow(ca.devmesh.seerrtv.viewmodel.MediaCategory.RECENTLY_ADDED)))
+                        }
                     }
                     baseRoute == "details" -> {
                         if (BuildConfig.DEBUG) {

@@ -177,14 +177,18 @@ For detailed configuration guides, see:
 
 3. **Build and run**:
    ```bash
-   # Debug build
+   # Debug build (standard app)
    ./gradlew assembleDirectDebug
    
    # Or build and install directly on connected device/emulator
    ./gradlew installDirectDebug
+   
+   # Launcher flavor (Apps row, reorder, home screen) — use this to test launcher features
+   ./gradlew :tv:installPlayLauncherDebug
+   adb shell am start -n ca.devmesh.seerrtv.launcher/ca.devmesh.seerrtv.MainActivity
    ```
 
-4. **See [Development Setup](#development-setup) below for detailed build instructions**
+4. **See [Development Setup](#development-setup) below for detailed build instructions**, including the [Launcher build](#launcher-build-optional) for the TV home-screen variant.
 
 ## Requirements
 
@@ -279,12 +283,64 @@ The direct build:
 - Contains `REQUEST_INSTALL_PACKAGES` permission
 - Generates `.apk` files for direct installation
 
+#### Launcher build (optional)
+
+SeerrTV can be built as an **Android TV launcher** — a variant that can replace the device home screen so SeerrTV opens when the user presses Home or turns on the TV. The launcher build uses a separate application ID (`ca.devmesh.seerrtv.launcher`) so it can be installed alongside the regular app.
+
+**Build the launcher:**
+
+```bash
+# Play launcher (for testing; .aab / .apk)
+./gradlew assemblePlayLauncherDebug    # Debug APK
+./gradlew bundlePlayLauncherRelease    # Release AAB
+
+# Direct launcher (sideload; includes auto-updates)
+./gradlew assembleDirectLauncherDebug  # Debug APK
+./gradlew assembleDirectLauncherRelease # Release APK
+```
+
+**Install and test:**
+
+1. **Build** one of the launcher variants above.
+2. **Install on a device or emulator:**
+   - **One-liner** (build and install on connected device/emulator):
+     ```bash
+     ./gradlew :tv:installPlayLauncherDebug
+     ```
+   - **Manual install** (after building):
+     ```bash
+     adb install -r tv/build/outputs/apk/playLauncher/debug/tv-playLauncher-debug.apk
+     ```
+     Use the same path for `directLauncher` if you built that variant (`tv/build/outputs/apk/directLauncher/debug/...`).
+3. **Emulator:** Start your Android TV emulator (Device Manager in Android Studio, or `emulator -avd <your_tv_avd_name>`), then run the install command above.
+4. **Set SeerrTV Launcher as the default home screen** (required for Home to open SeerrTV):
+   - **Via ADB** (most reliable): disable the current default launcher, then press **Home**; the system will offer SeerrTV Launcher.
+     **Google TV** (Chromecast with Google TV, many recent devices):
+     ```bash
+     adb shell pm disable-user --user 0 com.google.android.apps.tv.launcherx
+     ```
+     **Android TV** (older devices, some set-top boxes):
+     ```bash
+     adb shell pm disable-user --user 0 com.google.android.tvlauncher
+     ```
+     (To find your device's launcher package: `adb shell cmd package resolve-activity -a android.intent.action.MAIN -c android.intent.category.HOME`. To restore the original: `adb shell pm enable <package>`.)
+   - **Via device:** Some devices have Settings → Apps → Default apps → Home app (or similar) where you can pick the launcher.
+5. Press **Home** on the remote; SeerrTV Launcher should open. Use the **Apps** row at the top to open other installed TV apps.
+
+**Launcher-specific behavior:**
+
+- The main screen shows an **Apps** row listing other installed Android TV apps; D-pad Left/Right to move, Enter to launch.
+- From the top bar, **Down** goes to the Apps row first, then to content categories.
+- For more detail (intent filters, features, phases), see [docs/LAUNCHER_ANALYSIS.md](docs/LAUNCHER_ANALYSIS.md).
+
 #### Build Variants Summary
 
 | Variant | Output | Auto-Updates | Permissions | Use Case |
 |---------|--------|--------------|-------------|----------|
-| `play` | `.aab` | ❌ Disabled | Minimal | Google Play Store |
-| `direct` | `.apk` | ✅ Enabled | Full | Sideloading, websites |
+| `play` / `playApp` | `.aab` | ❌ Disabled | Minimal | Google Play Store |
+| `direct` / `directApp` | `.apk` | ✅ Enabled | Full | Sideloading, websites |
+| `playLauncher` | `.aab`/`.apk` | ❌ Disabled | Minimal | TV launcher (Play) |
+| `directLauncher` | `.apk` | ✅ Enabled | Full | TV launcher (sideload) |
 
 #### Signing Configuration
 

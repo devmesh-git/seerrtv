@@ -72,6 +72,10 @@ data class ScreenDpadConfig(
     val onLeft: (() -> Unit)? = null,
     val onRight: (() -> Unit)? = null,
     val onEnter: (() -> Unit)? = null,
+    /** Called when Enter is long-pressed (e.g. hold to reorder apps row). If null, long-press is ignored. */
+    val onEnterLongPress: (() -> Unit)? = null,
+    /** Called when Enter down/up on Apps row: (true, startTimeMillis) on down, (false, null) on up. Use to show hold progress. */
+    val onEnterLongPressProgress: ((Boolean, Long?) -> Unit)? = null,
     val onRefresh: (() -> Unit)? = null,
     val onBack: (() -> Unit)? = null
 )
@@ -118,6 +122,9 @@ class DpadControllerImpl : DpadController {
     private val savedStates = mutableMapOf<String, DpadState>()
     // Time window during which we will consume Back KeyUp to avoid system handling after we popped
     private var consumeBackKeyUpUntil: Long = 0L
+    // Long-press Enter: wait for KeyUp to decide short (launch) vs long (e.g. reorder)
+    private var pendingEnterConfig: ScreenDpadConfig? = null
+    private var pendingEnterDownTime: Long = 0L
     
     override fun registerScreen(config: ScreenDpadConfig) {
         registeredScreens[config.route] = config
@@ -136,7 +143,6 @@ class DpadControllerImpl : DpadController {
     override fun onKeyEvent(event: KeyEvent): Boolean {
         val currentConfig = getCurrentScreenConfig() ?: return false
 
-        // Proactively consume Back KeyUp shortly after we handled Back on KeyDown
         if (event.type == KeyEventType.KeyUp) {
             if (event.key == Key.Back) {
                 val now = System.currentTimeMillis()
@@ -146,6 +152,21 @@ class DpadControllerImpl : DpadController {
                     }
                     return true
                 }
+            }
+            // Enter long-press: on KeyUp decide short press (onEnter) vs long press (onEnterLongPress)
+            if ((event.key == Key.Enter || event.key == Key.DirectionCenter) && pendingEnterConfig != null) {
+                val config = pendingEnterConfig!!
+                config.onEnterLongPressProgress?.invoke(false, null)
+                val duration = System.currentTimeMillis() - pendingEnterDownTime
+                pendingEnterConfig = null
+                pendingEnterDownTime = 0L
+                if (duration >= 1200L && config.onEnterLongPress != null) {
+                    if (BuildConfig.DEBUG) Log.d("DpadController", "⏎ Enter long-press (${duration}ms)")
+                    config.onEnterLongPress()
+                } else if (config.onEnter != null) {
+                    config.onEnter()
+                }
+                return true
             }
             return false
         }
@@ -163,7 +184,25 @@ class DpadControllerImpl : DpadController {
                 Key.DirectionDown -> handleDown(currentConfig)
                 Key.DirectionLeft -> handleLeft(currentConfig)
                 Key.DirectionRight -> handleRight(currentConfig)
-                Key.Enter, Key.DirectionCenter -> handleEnter(currentConfig)
+                Key.Enter, Key.DirectionCenter -> {
+                    if (currentConfig.onEnterLongPress != null) {
+                        val focus = currentConfig.focusManager.currentFocus
+                        if (focus is AppFocusState.MainScreen && focus.focus is MainScreenFocusState.AppsRow) {
+                            // Only record down time on initial KeyDown; ignore repeat KeyDowns so long-press duration isn't reset
+                            if (pendingEnterConfig == null) {
+                                pendingEnterConfig = currentConfig
+                                pendingEnterDownTime = System.currentTimeMillis()
+                                currentConfig.onEnterLongPressProgress?.invoke(true, pendingEnterDownTime)
+                                if (BuildConfig.DEBUG) Log.d("DpadController", "⏎ Enter down on Apps row, waiting for KeyUp (short=launch, long=reorder)")
+                            }
+                            true
+                        } else {
+                            handleEnter(currentConfig)
+                        }
+                    } else {
+                        handleEnter(currentConfig)
+                    }
+                }
                 Key.Back -> handleBack(currentConfig)
                 else -> false
             }
@@ -352,8 +391,8 @@ class DpadControllerImpl : DpadController {
             is AppFocusState.TopBar -> DpadSection.TopBar
             is AppFocusState.MainScreen -> {
                 when (focus.focus) {
-                    // TopBar navigation now handled by TopBarController
                     is MainScreenFocusState.CategoryRow, is MainScreenFocusState.MediaItem -> DpadSection.Grid
+                    is MainScreenFocusState.AppsRow -> DpadSection.Grid
                 }
             }
             is AppFocusState.DiscoveryScreen -> {

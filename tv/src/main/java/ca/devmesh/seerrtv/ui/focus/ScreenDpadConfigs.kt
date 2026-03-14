@@ -16,6 +16,8 @@ fun createMainScreenDpadConfig(
     onLeft: (() -> Unit)? = null,
     onRight: (() -> Unit)? = null,
     onEnter: (() -> Unit)? = null,
+    onEnterLongPress: (() -> Unit)? = null,
+    onEnterLongPressProgress: ((Boolean, Long?) -> Unit)? = null,
     onRefresh: (() -> Unit)? = null,
     onBack: (() -> Unit)? = null
 ): ScreenDpadConfig {
@@ -49,6 +51,8 @@ fun createMainScreenDpadConfig(
         onLeft = onLeft,
         onRight = onRight,
         onEnter = onEnter,
+        onEnterLongPress = onEnterLongPress,
+        onEnterLongPressProgress = onEnterLongPressProgress,
         onRefresh = onRefresh,
         onBack = onBack
     )
@@ -358,7 +362,7 @@ fun getDpadConfigForRoute(
     onBack: (() -> Unit)? = null
 ): ScreenDpadConfig {
     return when (route) {
-        "main" -> createMainScreenDpadConfig(route, focusManager, onRefresh, onBack)
+        "main" -> createMainScreenDpadConfig(route = route, focusManager = focusManager, onRefresh = onRefresh, onBack = onBack)
         "search", "mediaDiscovery" -> createMediaDiscoveryDpadConfig(route, focusManager, onRefresh, onBack)
         "browse_movies", "browse_series" -> createMediaBrowseDpadConfig(route, focusManager, onRefresh, onBack)
         "details" -> createMediaDetailsDpadConfig(route, focusManager, onRefresh, onBack)
