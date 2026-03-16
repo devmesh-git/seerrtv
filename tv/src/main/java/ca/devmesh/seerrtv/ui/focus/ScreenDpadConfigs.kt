@@ -319,6 +319,30 @@ fun createPersonScreenDpadConfig(
 }
 
 /**
+ * Creates the DPAD configuration for the Settings screen.
+ * Minimal config: Back goes through DpadController (consumes KeyUp, avoids double-back).
+ * Directional/Enter remain handled by native Compose focus.
+ */
+fun createSettingsScreenDpadConfig(
+    route: String,
+    focusManager: AppFocusManager,
+    onBack: (() -> Unit)? = null
+): ScreenDpadConfig {
+    return ScreenDpadConfig(
+        route = route,
+        focusManager = focusManager,
+        sections = listOf(DpadSection.List),
+        transitions = DpadTransitions(
+            upTransitions = mapOf(DpadSection.List to DpadSection.List),
+            downTransitions = mapOf(DpadSection.List to DpadSection.List),
+            leftTransitions = mapOf(DpadSection.List to DpadSection.List),
+            rightTransitions = mapOf(DpadSection.List to DpadSection.List)
+        ),
+        onBack = onBack
+    )
+}
+
+/**
  * Creates the DPAD configuration for the Config screen
  */
 fun createConfigScreenDpadConfig(
@@ -373,6 +397,7 @@ fun getDpadConfigForRoute(
             onBack = onBack
         )
         "config" -> createConfigScreenDpadConfig(route, focusManager, onRefresh, onBack)
+        "settings" -> createSettingsScreenDpadConfig(route, focusManager, onBack)
         else -> {
             // Default configuration for unknown routes
             ScreenDpadConfig(

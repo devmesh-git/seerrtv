@@ -2,7 +2,8 @@ import java.io.File
 import java.util.Properties
 
 // Single source for app version; used in defaultConfig and for direct-release APK naming
-val appVersionName = "0.26.16"
+val appVersionName = "0.26.17"
+val appVersionCode = 120
 
 plugins {
     // https://developer.android.com/jetpack/androidx/releases/hilt
@@ -63,7 +64,7 @@ android {
         applicationId = "ca.devmesh.seerrtv"
         minSdk = 25
         targetSdk = 36
-        versionCode = 119
+        versionCode = appVersionCode
         versionName = appVersionName
         buildConfigField("String", "VERSION_NAME", "\"${defaultConfig.versionName}\"")
         buildConfigField("Boolean", "DEBUG", "true")

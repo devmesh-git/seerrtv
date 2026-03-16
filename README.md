@@ -433,7 +433,7 @@ The app is optimized for TV remote control navigation:
 **Get Help:**
 - 🎯 **Discord**: [Join the Seerr Community Discord](https://discord.gg/nTFk3jHbk5) - Official community for support, discussions, and release announcements
 - 📋 **GitHub Issues**: Create an issue on GitHub for bug reports and feature requests
-- 🌐 **Community Website**: Visit the [Seerr community website](https://seerr.dev/)
+- 🌐 **Community Website**: Visit the [Seerr community website](https://seerr.dev)
 
 **Contribute:**
 - 🙌 **Contributing Guide**: See our [Contributing Guidelines](CONTRIBUTING.md) to get started

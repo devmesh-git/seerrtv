@@ -1047,7 +1047,7 @@ fun MainScreen(
             "🚀 NAVIGATION ENTRY: Processing $currentBackStackEntry with refreshRequired=${viewModel.refreshRequired().value}"
         )
 
-        if (currentBackStackEntry == "discovery_to_main" || currentBackStackEntry == "details_to_main") {
+        if (currentBackStackEntry == "discovery_to_main" || currentBackStackEntry == "details_to_main" || currentBackStackEntry == "settings_to_main") {
 
             // Common setup for both navigation types
             ScrollPositionManager.setPostNavigationState(true)
@@ -1546,13 +1546,18 @@ fun MainScreen(
 
     // Set initial focus when data becomes available
     LaunchedEffect(visibleCategories, isInitialLoad, categoryData, currentBackStackEntry) {
+        if (BuildConfig.DEBUG) {
+            Log.d("MainScreen", "🔍 LaunchedEffect(initialFocus): currentBackStackEntry=$currentBackStackEntry, skipDiscovery=${currentBackStackEntry == "discovery_to_main"}, skipSettings=${currentBackStackEntry == "settings_to_main"}")
+        }
         // Only set initial focus when we have data loaded and not in initial load state
-        // Skip this logic when returning from discovery to preserve restored focus state
-        if (!isInitialLoad && visibleCategories.isNotEmpty() && currentBackStackEntry != "discovery_to_main") {
+        // Skip this logic when returning from discovery/settings/details to preserve restored focus state
+        if (!isInitialLoad && visibleCategories.isNotEmpty() && currentBackStackEntry != "discovery_to_main" && currentBackStackEntry != "settings_to_main" && currentBackStackEntry != "details_to_main") {
             // Check if selectedCategory is null or not in visible categories
             val currentCategory = selectedCategory.value
             val shouldSetInitialFocus = currentCategory == MediaCategory.RECENTLY_ADDED || currentCategory !in visibleCategories
-            
+            if (BuildConfig.DEBUG) {
+                Log.d("MainScreen", "🔍 LaunchedEffect(initialFocus): shouldSetInitialFocus=$shouldSetInitialFocus (currentCategory=$currentCategory)")
+            }
             if (shouldSetInitialFocus) {
                 if (BuildConfig.IS_LAUNCHER_BUILD) {
                     // Launcher: default to apps row when screen first loads

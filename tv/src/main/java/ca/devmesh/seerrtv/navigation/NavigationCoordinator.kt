@@ -23,7 +23,7 @@ import kotlinx.coroutines.launch
  * The coordinator acts as a wrapper around existing systems, ensuring no breaking changes.
  */
 class NavigationCoordinator(
-    navController: NavController,
+    private val navController: NavController,
     private val appFocusManager: AppFocusManager,
     private val dpadController: DpadController,
     private val scope: CoroutineScope
@@ -76,7 +76,9 @@ class NavigationCoordinator(
         }
         
         if (BuildConfig.DEBUG) {
-            Log.d("NavigationCoordinator", "🔄 Route changed: $previousRouteValue -> $newRoute (full route: ${destination.route})")
+            val curr = navController.currentBackStackEntry?.destination?.route?.split("/")?.firstOrNull()
+            val prev = navController.previousBackStackEntry?.destination?.route?.split("/")?.firstOrNull()
+            Log.d("NavigationCoordinator", "🔄 Route changed: $previousRouteValue -> $newRoute (full: ${destination.route}) | current=$curr, previous=$prev")
         }
         
         // Update route state
@@ -122,6 +124,7 @@ class NavigationCoordinator(
             previousRoute == "mediaDiscovery" && newRoute == "main" -> false
             // Skip restoration when returning from details (preserves existing business rule)
             previousRoute == "details" && newRoute == "main" -> false
+            previousRoute == "settings" && newRoute == "main" -> false
             else -> true
         }
         
@@ -149,6 +152,7 @@ class NavigationCoordinator(
         val entryType = when {
             previousRoute == "mediaDiscovery" && newRoute == "main" -> "discovery_to_main"
             previousRoute == "details" && newRoute == "main" -> "details_to_main"
+            previousRoute == "settings" && newRoute == "main" -> "settings_to_main"
             else -> null
         }
         
@@ -201,6 +205,12 @@ class NavigationCoordinator(
                 ignoreBackUntil = System.currentTimeMillis() + 350L
                 if (BuildConfig.DEBUG) {
                     Log.d("NavigationCoordinator", "🔕 Debouncing back on main until $ignoreBackUntil after details return")
+                }
+            }
+            previousRoute == "settings" && newRoute == "main" -> {
+                ignoreBackUntil = System.currentTimeMillis() + 350L
+                if (BuildConfig.DEBUG) {
+                    Log.d("NavigationCoordinator", "🔕 Debouncing back on main until $ignoreBackUntil after settings return")
                 }
             }
         }

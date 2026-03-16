@@ -65,7 +65,7 @@ import ca.devmesh.seerrtv.ui.focus.AppFocusState
 import ca.devmesh.seerrtv.ui.focus.TopBarFocus
 import ca.devmesh.seerrtv.ui.focus.DpadController
 import ca.devmesh.seerrtv.ui.focus.rememberDpadController
-import ca.devmesh.seerrtv.ui.SettingsMenu
+import ca.devmesh.seerrtv.ui.SettingsScreen
 import ca.devmesh.seerrtv.ui.focus.AppFocusManager
 import ca.devmesh.seerrtv.ui.components.TopBarController
 import ca.devmesh.seerrtv.util.SharedPreferencesUtil
@@ -201,7 +201,7 @@ class MainActivity : AppCompatActivity() {
                                             "MainActivity",
                                             "Authentication error during token refresh, showing auth modal"
                                         )
-                                        handleConnectionError(isAuthenticationError = true)
+                                        handleAuthenticationError()
                                     }
                                     // Don't show error to user unless it's a critical failure
                                     // The automatic retry logic in executeApiCall will handle most cases
@@ -238,8 +238,8 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun handleConnectionError(isAuthenticationError: Boolean = false) {
-        isAuthError = isAuthenticationError
+    private fun handleAuthenticationError() {
+        isAuthError = true
         showConnectionErrorDialog = true
     }
 
@@ -271,7 +271,7 @@ class MainActivity : AppCompatActivity() {
             try {
                 apiService.updateConfig(config)
                 // Small delay to ensure HTTP client is fully ready after refresh
-                kotlinx.coroutines.delay(100)
+                delay(100)
                 addLoadingStep(getString(R.string.splashScreen_checkingConnection))
 
                 Log.d("MainActivity", "🔗 Testing base connection...")
@@ -454,17 +454,17 @@ class MainActivity : AppCompatActivity() {
                                 ) {
                                     apiValidationError =
                                         getString(R.string.splashScreen_errorAuthFailed)
-                                    handleConnectionError(isAuthenticationError = true)
+                                    handleAuthenticationError()
                                 } else {
                                     apiValidationError = authResult.message
-                                    handleConnectionError(isAuthenticationError = true)
+                                    handleAuthenticationError()
                                 }
                             }
 
                             is ApiValidationResult.CloudflareRequired -> {
                                 apiValidationError =
                                     getString(R.string.splashScreen_errorCloudflareRequired)
-                                handleConnectionError(isAuthenticationError = true)
+                                handleAuthenticationError()
                             }
                         }
                     }
@@ -475,13 +475,13 @@ class MainActivity : AppCompatActivity() {
                             "❌ Base connection failed: ${connectionResult.message}"
                         )
                         apiValidationError = connectionResult.message
-                        handleConnectionError(isAuthenticationError = true)
+                        handleAuthenticationError()
                     }
 
                     is ApiValidationResult.CloudflareRequired -> {
                         apiValidationError =
                             getString(R.string.splashScreen_errorCloudflareRequired)
-                        handleConnectionError(isAuthenticationError = true)
+                        handleAuthenticationError()
                     }
                 }
             } catch (e: CancellationException) {
@@ -491,10 +491,10 @@ class MainActivity : AppCompatActivity() {
                 val errorMessage = e.message ?: ""
                 if (errorMessage.contains("403") || errorMessage.contains("Access denied")) {
                     apiValidationError = getString(R.string.splashScreen_errorAuthFailed)
-                    handleConnectionError(isAuthenticationError = true)
+                    handleAuthenticationError()
                 } else {
                     apiValidationError = getString(R.string.splashScreen_errorConnectionFailed)
-                    handleConnectionError(isAuthenticationError = true)
+                    handleAuthenticationError()
                 }
             }
         }
@@ -542,9 +542,6 @@ class MainActivity : AppCompatActivity() {
                 dpadController = dpadController,
                 scope = coroutineScope
             )
-
-            // Settings menu state - moved from MainScreen to MainActivity for proper z-order
-            var isSettingsMenuVisible by remember { mutableStateOf(false) }
 
             // Top bar UI state lifted to MainActivity so MainTopBar can render hints/refresh row
             var topBarShowRefreshHint by remember { mutableStateOf(false) }
@@ -638,13 +635,11 @@ class MainActivity : AppCompatActivity() {
                             topBarFocusState = topBarFocusState,
                             dpadController = dpadController,
                             appFocusManager = appFocusManager,
-                            isSettingsMenuVisible = isSettingsMenuVisible,
-                            onSettingsMenuDismiss = { isSettingsMenuVisible = false },
-                            onOpenSettingsMenu = { isSettingsMenuVisible = true },
-                            onOpenConfigScreen = {
-                                navController.navigate("config")
-                            },
-                            discoveryViewModel = sharedDiscoveryViewModel
+                            onOpenSettingsMenu = {
+                                navController.navigate("settings") {
+                                    popUpTo("main") { inclusive = false }
+                                }
+                            }
                         ) {
                             // Add authentication error handler for splash screen validation errors
                             AuthenticationErrorHandler(
@@ -736,7 +731,7 @@ class MainActivity : AppCompatActivity() {
                                         appFocusManager = appFocusManager,
                                         dpadController = dpadController,
                                         currentBackStackEntry = currentBackStackEntry,
-                                        onFocusStateChange = { isInTopBar, isSearchFocused, isSettingsFocused, showRefreshHint, isRefreshRowVisible ->
+                                        onFocusStateChange = { _, _, _, showRefreshHint, isRefreshRowVisible ->
                                             topBarShowRefreshHint = showRefreshHint
                                             topBarIsRefreshRowVisible = isRefreshRowVisible
                                         }
@@ -785,6 +780,19 @@ class MainActivity : AppCompatActivity() {
                                         appFocusManager = appFocusManager,
                                         navigationManager = navigationManager,
                                         initialShowRequestModal = showRequestModal
+                                    )
+                                }
+                                composable(
+                                    route = "settings",
+                                    exitTransition = { fadeOut(animationSpec = tween(300)) },
+                                    popEnterTransition = { fadeIn(animationSpec = tween(300)) }
+                                ) {
+                                    SettingsScreen(
+                                        navController = navController,
+                                        onOpenConfigScreen = { navController.navigate("config") },
+                                        appFocusManager = appFocusManager,
+                                        dpadController = dpadController,
+                                        viewModel = sharedDiscoveryViewModel
                                     )
                                 }
                                 composable(
@@ -1032,11 +1040,7 @@ fun SeerrTVApp(
     topBarFocusState: TopBarFocusState,
     dpadController: DpadController,
     appFocusManager: AppFocusManager,
-    isSettingsMenuVisible: Boolean,
-    onSettingsMenuDismiss: () -> Unit,
     onOpenSettingsMenu: () -> Unit,
-    onOpenConfigScreen: () -> Unit,
-    discoveryViewModel: MediaDiscoveryViewModel,
     content: @Composable () -> Unit
 ) {
 
@@ -1048,6 +1052,11 @@ fun SeerrTVApp(
         val listener = NavController.OnDestinationChangedListener { _, destination, _ ->
             val newRoute = destination.route?.split("/")?.firstOrNull() ?: ""
             currentRoute = newRoute
+            if (BuildConfig.DEBUG) {
+                val curr = navController.currentBackStackEntry?.destination?.route
+                val prev = navController.previousBackStackEntry?.destination?.route
+                Log.d("SeerrTVApp", "📍 Route: $newRoute | current=$curr, previous=$prev")
+            }
         }
         navController.addOnDestinationChangedListener(listener)
         onDispose {
@@ -1055,7 +1064,7 @@ fun SeerrTVApp(
         }
     }
 
-    // Determine if top bar should be visible (not on splash or config screens)
+    // Determine if top bar should be visible (not on splash, config, or settings screens)
     val shouldShowTopBar =
         currentRoute in listOf("main", "search", "mediaDiscovery", "details", "person")
 
@@ -1126,12 +1135,5 @@ fun SeerrTVApp(
             )
         }
 
-        // Settings menu - render AFTER top bar to ensure it's on top of everything
-        SettingsMenu(
-            isVisible = isSettingsMenuVisible,
-            onDismiss = onSettingsMenuDismiss,
-            onOpenConfigScreen = onOpenConfigScreen,
-            viewModel = discoveryViewModel
-        )
     }
 }

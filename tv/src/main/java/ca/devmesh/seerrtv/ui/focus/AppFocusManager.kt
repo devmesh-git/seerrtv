@@ -96,6 +96,7 @@ sealed class AppFocusState {
     data class DiscoveryScreen(val focus: DiscoveryFocusState) : AppFocusState()
     data class BrowseScreen(val focus: BrowseFocusState) : AppFocusState()
     data class DetailsScreen(val focus: DetailsFocusState) : AppFocusState()
+    object SettingsScreen : AppFocusState()
 
     override fun toString(): String {
         return when (this) {
@@ -104,6 +105,7 @@ sealed class AppFocusState {
             is DiscoveryScreen -> "DiscoveryScreen(${focus})"
             is BrowseScreen -> "BrowseScreen(${focus})"
             is DetailsScreen -> "DetailsScreen(${focus})"
+            is SettingsScreen -> "SettingsScreen"
         }
     }
 }

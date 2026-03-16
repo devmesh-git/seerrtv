@@ -1,5 +1,51 @@
 # Changelog
 
+## 0.26.17
+
+### Settings Screen & Navigation
+
+#### Full-screen Settings Screen
+- **Dedicated `settings` route** – Settings is now a full-screen composable (`SettingsScreen`) instead of an overlay menu, with its own navigation destination and fade transitions.
+- **Two-panel layout** – Settings uses a left-hand menu list with auto-scrolling and a right-hand detail panel that shows contextual descriptions, hints, and summaries for each setting.
+- **Improved About section** – The About view now presents a richer layout with localized copy for the original author, community links, and a short community-driven project description.
+- **Update check UX** – On direct builds, the "Check for Update" row now shows a dedicated detail panel on the right and uses a localized "No update available" toast when no newer version is found.
+
+#### Focus & DPAD Integration
+- **Settings focus state** – Added a `SettingsScreen` entry to `AppFocusState` so the global focus manager can treat Settings as its own screen.
+- **DPAD config for Settings** – Introduced `createSettingsScreenDpadConfig` so Back is handled through `DpadController` (consuming KeyUp) while directional/Enter remain native Compose focus, avoiding double-Back issues.
+- **Main screen restore behavior** – `NavigationCoordinator` and `MainScreen` now treat returns from Settings like returns from Details/Discovery (`settings_to_main` entry type), restoring scroll/focus without re-running initial focus logic and briefly debouncing Back to avoid accidental exits.
+
+### Authentication & Error Handling
+
+#### Auth Error Flow
+- **Explicit `handleAuthenticationError`** – Replaced the generic `handleConnectionError(isAuthenticationError = true)` with a dedicated `handleAuthenticationError()` helper so all auth failures consistently set `isAuthError = true` and show the connection error dialog.
+- **Update validation flow** – Authentication, Cloudflare, and base-connection failures during configuration validation now all route through the unified auth error handler, improving consistency across error paths.
+
+### Build & Versioning
+
+#### Version Code Source of Truth
+- **Centralized version code** – Introduced `appVersionCode` alongside `appVersionName` in `tv/build.gradle.kts`, wiring `defaultConfig.versionCode` to this constant for a single, explicit source of truth.
+- **Version bump** – Bumped to version 0.26.17 (versionCode 120).
+
+### Documentation
+
+#### README
+- **Community site URL** – Normalized the Seerr community website link to `https://seerr.dev` (without trailing slash) for consistency with other references.
+
+### Files Modified
+- `tv/build.gradle.kts` – Added `appVersionCode` constant; wired `versionCode` to it; version bumped to 0.26.17 (versionCode 120).
+- `tv/src/main/java/ca/devmesh/seerrtv/MainActivity.kt` – Switched from `SettingsMenu` overlay to `SettingsScreen` route; added `settings` destination; introduced `handleAuthenticationError`; simplified delay call; adjusted top bar focus callback to ignore booleans.
+- `tv/src/main/java/ca/devmesh/seerrtv/navigation/NavigationCoordinator.kt` – Made `navController` a property; enhanced debug logging; added `settings_to_main` entry type and back debounce when returning from Settings.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/MainScreen.kt` – Treated `settings_to_main` like other return types when restoring scroll/focus; expanded initial-focus LaunchedEffect guard to skip when coming back from Settings/Details; added debug logging.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/SettingsMenu.kt` → `SettingsScreen.kt` – Renamed and refactored into full-screen Settings route with left/right panels, localized detail descriptions, improved About layout, DPAD integration, and updated update-check behavior and dialog lifecycle.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/focus/AppFocusManager.kt` – Added `AppFocusState.SettingsScreen` and `toString` support.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/focus/DpadController.kt` – Mapped `SettingsScreen` to an appropriate DPAD section for focus routing.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/focus/ScreenDpadConfigs.kt` – Added `createSettingsScreenDpadConfig` and routed `"settings"` through it in `getDpadConfigForRoute`.
+- `tv/src/main/res/values/strings.xml` and `values-*/strings.xml` – Added localized Settings descriptions, update-check texts, "no update" toast message, right-panel placeholder, and About copy (including `https://seerr.dev`); reused new strings inside `SettingsScreen`.
+- `README.md` – Updated Seerr community website URL to `https://seerr.dev`.
+
+---
+
 ## 0.26.16
 
 ### Direct Distribution & Updates

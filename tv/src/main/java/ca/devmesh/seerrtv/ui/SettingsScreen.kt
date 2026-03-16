@@ -1,10 +1,6 @@
 package ca.devmesh.seerrtv.ui
 
 import android.content.Context
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.Image
@@ -28,7 +24,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
 import ca.devmesh.seerrtv.BuildConfig
 import ca.devmesh.seerrtv.model.AuthType
 import ca.devmesh.seerrtv.R
@@ -45,254 +40,366 @@ import android.util.Log
 import ca.devmesh.seerrtv.data.SeerrApiService
 import ca.devmesh.seerrtv.data.ApiResult
 import ca.devmesh.seerrtv.model.Region
+import androidx.navigation.NavController
+import ca.devmesh.seerrtv.ui.focus.AppFocusManager
+import ca.devmesh.seerrtv.ui.focus.AppFocusState
+import ca.devmesh.seerrtv.ui.focus.DpadController
+import ca.devmesh.seerrtv.ui.focus.createSettingsScreenDpadConfig
 
+private const val SETTINGS_LEFT_PANEL_WIDTH_DP = 320
+private const val UPDATE_JSON_URL = "https://api.github.com/repos/devmesh-git/seerrtv/releases/latest"
+
+/**
+ * Full-screen Settings screen with two-panel layout: left = menu list, right = detail/submenu content.
+ */
 @Composable
-fun SettingsMenu(
-    isVisible: Boolean,
-    onDismiss: () -> Unit,
+fun SettingsScreen(
+    navController: NavController,
     onOpenConfigScreen: () -> Unit,
-    updateJsonUrl: String = "https://api.github.com/repos/devmesh-git/seerrtv/releases/latest",
+    appFocusManager: AppFocusManager,
+    dpadController: DpadController,
+    updateJsonUrl: String = UPDATE_JSON_URL,
     viewModel: ca.devmesh.seerrtv.viewmodel.MediaDiscoveryViewModel? = null
 ) {
     val context = LocalContext.current
     val focusRequester = remember { FocusRequester() }
+    val noUpdateText = stringResource(R.string.settingsMenu_noUpdateAvailable)
     val controller = remember {
-        SettingsMenuController(
-            onDismiss = onDismiss,
+        SettingsScreenController(
+            onDismiss = { navController.popBackStack() },
             onOpenConfigScreen = onOpenConfigScreen,
             hostname = SharedPreferencesUtil.getApiUrl(context) ?: "",
             context = context
         )
     }
-    
-    // Build menu items directly here, not in the controller
-    val menuItems = run {
-        val items = mutableListOf<MenuItem>()
-        items.add(MenuItem(context.getString(R.string.settingsMenu_configMenu), ""))
-        items.add(MenuItem(context.getString(R.string.settingsMenu_appLanguage), context.getString(controller.getAppLanguageLabelRes(controller.appLanguage))))
-        items.add(MenuItem(context.getString(R.string.settingsMenu_discoveryMenu), context.getString(controller.getDiscoveryLanguageLabelRes(controller.discoveryLanguage))))
-        items.add(MenuItem(context.getString(R.string.settingsMenu_defaultStreamingRegion), controller.getDefaultStreamingRegionDisplayName()))
-        items.add(MenuItem(context.getString(R.string.settingsMenu_folderSelection), if (controller.folderSelectionEnabled) context.getString(R.string.settingsMenu_enabled) else context.getString(R.string.settingsMenu_disabled)))
-        items.add(MenuItem(context.getString(R.string.settingsMenu_clockFormat), if (controller.use24HourClock) context.getString(R.string.settingsMenu_24Hour) else context.getString(R.string.settingsMenu_12Hour)))
-        items.add(MenuItem(context.getString(R.string.settingsMenu_trailerPlayer), if (controller.useTrailerWebView) context.getString(R.string.settingsMenu_trailerPlayer_inApp) else context.getString(R.string.settingsMenu_trailerPlayer_youtubeApp)))
-        if (BuildConfig.IS_DIRECT_FLAVOR) {
-            items.add(MenuItem("Check for Update", ""))
-        }
-        items.add(MenuItem(context.getString(R.string.settingsMenu_aboutMenu), ""))
-        items
-    }
-    
-    var showUpdateDialog by remember { mutableStateOf(false) }
+
+    val menuItems = buildMenuItems(controller)
+
     var updateInfoForDialog by remember { mutableStateOf<UpdateInfo?>(null) }
     var showToast by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
-    val contextForToast = LocalContext.current
-    
-    // Back button debouncing
-    var lastBackPressTime by remember { mutableLongStateOf(0L) }
-    val backPressDebounceMs = 500L // 500ms debounce
 
-    // Toast effect
     LaunchedEffect(showToast) {
         if (showToast) {
-            Toast.makeText(contextForToast, "No update available", Toast.LENGTH_LONG).show()
+            Toast.makeText(
+                context,
+                noUpdateText,
+                Toast.LENGTH_LONG
+            ).show()
             delay(5000)
         }
     }
 
-    // Request focus when menu becomes visible
-    LaunchedEffect(isVisible) {
-        if (isVisible) {
-            delay(100)
-            focusRequester.requestFocus()
+    // Back for pop is handled by DpadController (consumes KeyUp, avoids double-back).
+    // Only handle submenu back here since that's screen-internal state.
+    BackHandler {
+        if (controller.isSubMenuOpen) {
+            controller.handleBack()
         }
     }
-    
-    Box(modifier = Modifier.fillMaxSize()) {
-        AnimatedVisibility(
-            visible = isVisible,
-            enter = slideInHorizontally(
-                initialOffsetX = { it },
-                animationSpec = tween(durationMillis = 300)
-            ),
-            exit = slideOutHorizontally(
-                targetOffsetX = { it },
-                animationSpec = tween(durationMillis = 300)
-            ),
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .zIndex(10f) // Ensure settings menu appears above the top bar
-        ) {
-            // Handle back press with debouncing - placed inside AnimatedVisibility for proper interception
-            BackHandler {
-                val currentTime = System.currentTimeMillis()
-                if (currentTime - lastBackPressTime > backPressDebounceMs) {
-                    lastBackPressTime = currentTime
-                    if (BuildConfig.DEBUG) {
-                        Log.d("SettingsMenu", "Back button pressed - handling with debouncing")
-                    }
-                    // Use the controller's back handling logic
-                    controller.handleBack()
-                } else {
-                    if (BuildConfig.DEBUG) {
-                        Log.d("SettingsMenu", "Back button debounced - ignoring rapid back press")
-                    }
-                }
+
+    val dpadConfig = remember(dpadController, appFocusManager, navController) {
+        createSettingsScreenDpadConfig(
+            route = "settings",
+            focusManager = appFocusManager,
+            onBack = {
+                appFocusManager.clearSavedStates()
+                navController.popBackStack()
             }
-            
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .width(300.dp)
-                    .background(Color(0xFF1F2937))
-                    .focusRequester(focusRequester)
-                    .focusable()
-                    .onKeyEvent { event ->
-                        // Handle Enter/Right key for Check for Update
-                        if (BuildConfig.IS_DIRECT_FLAVOR &&
-                            controller.selectedIndex == 7 && // Check for Update is at index 7 in direct flavor (Trailer at 6)
-                            (event.key == Key.DirectionRight || KeyUtils.isEnterKey(event.nativeKeyEvent.keyCode)) &&
-                            event.type == KeyEventType.KeyDown
-                        ) {
-                            coroutineScope.launch {
-                                val updateInfo = checkForUpdateIfAvailable(context, updateJsonUrl)
-                                if (updateInfo == null) {
-                                    showToast = true
-                                } else {
-                                    updateInfoForDialog = updateInfo
-                                    showUpdateDialog = true
-                                }
-                            }
-                            true
+        )
+    }
+    LaunchedEffect(dpadConfig) {
+        dpadController.registerScreen(dpadConfig)
+    }
+
+    LaunchedEffect(Unit) {
+        appFocusManager.setFocus(AppFocusState.SettingsScreen)
+        delay(100)
+        focusRequester.requestFocus()
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFF1F2937))
+            .focusRequester(focusRequester)
+            .focusable()
+            .onKeyEvent { event ->
+                if (BuildConfig.IS_DIRECT_FLAVOR &&
+                    controller.selectedIndex == 7 &&
+                    (event.key == Key.DirectionRight || KeyUtils.isEnterKey(event.nativeKeyEvent.keyCode)) &&
+                    event.type == KeyEventType.KeyDown
+                ) {
+                    coroutineScope.launch {
+                        val updateInfo = checkForUpdateIfAvailable(context, updateJsonUrl)
+                        if (updateInfo == null) {
+                            showToast = true
                         } else {
-                            controller.handleKeyEvent(event)
+                            updateInfoForDialog = updateInfo
                         }
                     }
-            ) {
-                when {
-                    controller.isSubMenuOpen -> SubMenu(context, controller, viewModel)
-                    else -> MainMenu(menuItems, controller)
-                }
-
-                // Bottom info
-                Row(
-                    modifier = Modifier
-                        .align(Alignment.BottomStart)
-                        .fillMaxWidth()
-                        .height(60.dp)
-                        .background(Color(0xFF111827))
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = stringResource(R.string.common_versionPrefix) + BuildConfig.VERSION_NAME,
-                        color = Color.White.copy(alpha = 0.7f),
-                        fontSize = 12.sp
-                    )
+                    true
+                } else {
+                    controller.handleKeyEvent(event)
                 }
             }
-        }
-    }
-
-    // Show update dialog only in direct flavor
-    if (BuildConfig.IS_DIRECT_FLAVOR && showUpdateDialog && updateInfoForDialog != null) {
-        Dialog(onDismissRequest = {
-            showUpdateDialog = false
-            updateInfoForDialog = null
-        }) {
-            UpdateAvailableDialog(
-                context = context,
-                updateInfo = updateInfoForDialog!!,
-                updateJsonUrl = updateJsonUrl,
-                onClose = {
-                    showUpdateDialog = false
-                    updateInfoForDialog = null
-                }
-            )
-        }
-    }
-}
-
-@Composable
-fun MainMenu(menuItems: List<MenuItem>, controller: SettingsMenuController) {
-    val listState = rememberLazyListState()
-
-    // Auto-scroll when selected index changes
-    LaunchedEffect(controller.selectedIndex) {
-        // Map controller index to list index (add 1 for the header)
-        val listIndex = controller.selectedIndex + 1
-        
-        val layoutInfo = listState.layoutInfo
-        if (layoutInfo.visibleItemsInfo.isNotEmpty()) {
-            val visibleItems = layoutInfo.visibleItemsInfo
-            val firstVisibleIndex = listState.firstVisibleItemIndex
-            val lastVisibleIndex = visibleItems.last().index
-            
-            when {
-                // If near the top (first 2 menu items), always scroll to the very top to ensure "Settings" title is visible
-                listIndex <= 2 -> {
-                     listState.animateScrollToItem(0)
-                }
-                // If selected is 2nd last or last visible, scroll down (shift view down by 1)
-                listIndex >= lastVisibleIndex - 1 -> {
-                    val targetIndex = (firstVisibleIndex + 1).coerceAtMost(listState.layoutInfo.totalItemsCount - 1)
-                    if (targetIndex != firstVisibleIndex) {
-                        listState.animateScrollToItem(targetIndex)
-                    }
-                }
-                // If selected is 2nd or first visible (and > 2), scroll up (shift view up by 1)
-                listIndex <= firstVisibleIndex + 1 -> {
-                    val targetIndex = (firstVisibleIndex - 1).coerceAtLeast(0)
-                    if (targetIndex != firstVisibleIndex) {
-                        listState.animateScrollToItem(targetIndex)
-                    }
-                }
-                // Fallback: if completely off-screen, snap to it
-                listIndex < firstVisibleIndex || listIndex > lastVisibleIndex -> {
-                    listState.animateScrollToItem(listIndex)
-                }
-            }
-        } else {
-            listState.animateScrollToItem(listIndex)
-        }
-    }
-
-    LazyColumn(
-        state = listState,
-        modifier = Modifier
-            .fillMaxHeight()
-            .fillMaxWidth()
-            .background(Color(0xFF1F2937))
-            .padding(bottom = 60.dp)
     ) {
-        item {
+        // Left panel: menu list (use same color as version bar)
+        Column(
+            modifier = Modifier
+                .width(SETTINGS_LEFT_PANEL_WIDTH_DP.dp)
+                .fillMaxHeight()
+                .background(Color(0xFF111827))
+        ) {
             Text(
                 text = stringResource(R.string.settingsMenu_title),
                 style = MaterialTheme.typography.headlineMedium,
                 color = Color.White,
                 modifier = Modifier.padding(start = 24.dp, top = 24.dp, bottom = 24.dp)
             )
+            val listState = rememberLazyListState()
+            LaunchedEffect(controller.selectedIndex) {
+                val listIndex = controller.selectedIndex
+                if (listIndex >= 0) {
+                    listState.animateScrollToItem(listIndex)
+                }
+            }
+            LazyColumn(
+                state = listState,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+            ) {
+                itemsIndexed(menuItems) { index, item ->
+                    MenuItem(item, isSelected = index == controller.selectedIndex)
+                }
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(60.dp)
+                    .background(Color(0xFF111827))
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(R.string.common_versionPrefix) + BuildConfig.VERSION_NAME,
+                    color = Color.White.copy(alpha = 0.7f),
+                    fontSize = 12.sp
+                )
+            }
         }
-        itemsIndexed(menuItems) { index, item ->
-            MenuItem(item, isSelected = index == controller.selectedIndex)
+
+        // Right panel: detail / submenu content (keep original background color)
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .background(Color(0xFF1F2937))
+        ) {
+            when {
+                controller.isSubMenuOpen -> SubMenu(controller, viewModel)
+                controller.selectedIndex == 0 -> ConfigSummaryView(controller)
+                controller.selectedIndex == 1 -> ToggleDetailView(
+                    title = stringResource(R.string.settingsMenu_appLanguage),
+                    value = stringResource(controller.getAppLanguageLabelRes(controller.appLanguage)),
+                    description = stringResource(R.string.settingsMenu_appLanguageDescription)
+                )
+                controller.selectedIndex == 2 -> ToggleDetailView(
+                    title = stringResource(R.string.settingsMenu_discoveryMenu),
+                    value = stringResource(controller.getDiscoveryLanguageLabelRes(controller.discoveryLanguage)),
+                    description = stringResource(R.string.settingsMenu_discoveryLanguageDescription)
+                )
+                controller.selectedIndex == 3 -> ToggleDetailView(
+                    title = stringResource(R.string.settingsMenu_defaultStreamingRegion),
+                    value = controller.getDefaultStreamingRegionDisplayName(),
+                    description = stringResource(R.string.settingsMenu_defaultRegionDescription)
+                )
+                controller.selectedIndex == 4 -> ToggleDetailView(
+                    title = stringResource(R.string.settingsMenu_folderSelection),
+                    value = if (controller.folderSelectionEnabled) stringResource(R.string.settingsMenu_enabled) else stringResource(R.string.settingsMenu_disabled),
+                    description = stringResource(R.string.settingsMenu_folderSelectionDescription)
+                )
+                controller.selectedIndex == 5 -> ToggleDetailView(
+                    title = stringResource(R.string.settingsMenu_clockFormat),
+                    value = if (controller.use24HourClock) stringResource(R.string.settingsMenu_24Hour) else stringResource(R.string.settingsMenu_12Hour),
+                    description = stringResource(R.string.settingsMenu_clockFormatDescription)
+                )
+                controller.selectedIndex == 6 -> ToggleDetailView(
+                    title = stringResource(R.string.settingsMenu_trailerPlayer),
+                    value = if (controller.useTrailerWebView) stringResource(R.string.settingsMenu_trailerPlayer_inApp) else stringResource(R.string.settingsMenu_trailerPlayer_youtubeApp),
+                    description = stringResource(R.string.settingsMenu_trailerPlayerDescription)
+                )
+                BuildConfig.IS_DIRECT_FLAVOR && controller.selectedIndex == 7 -> CheckForUpdateDetailView()
+                (BuildConfig.IS_DIRECT_FLAVOR && controller.selectedIndex == 8) ||
+                (!BuildConfig.IS_DIRECT_FLAVOR && controller.selectedIndex == 7) -> AboutSubMenu()
+                else -> SettingsRightPanelPlaceholder()
+            }
+        }
+    }
+
+    if (BuildConfig.IS_DIRECT_FLAVOR && updateInfoForDialog != null) {
+        val closeUpdateDialog: () -> Unit = {
+            updateInfoForDialog = null
+        }
+        Dialog(onDismissRequest = closeUpdateDialog) {
+            UpdateAvailableDialog(
+                context = context,
+                updateInfo = updateInfoForDialog!!,
+                updateJsonUrl = updateJsonUrl,
+                onClose = closeUpdateDialog
+            )
         }
     }
 }
 
 @Composable
-fun SubMenu(context: Context, controller: SettingsMenuController, viewModel: ca.devmesh.seerrtv.viewmodel.MediaDiscoveryViewModel? = null) {
+private fun ToggleDetailView(title: String, value: String, description: String) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp)
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleLarge,
+            color = Color.White,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyLarge,
+            color = Color(0xFFBB86FC),
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+        Text(
+            text = description,
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.White.copy(alpha = 0.8f)
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = stringResource(R.string.settingsMenu_toggleHint),
+            style = MaterialTheme.typography.bodySmall,
+            color = Color.White.copy(alpha = 0.6f)
+        )
+    }
+}
+
+@Composable
+private fun ConfigSummaryView(controller: SettingsScreenController) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp)
+    ) {
+        Text(
+            text = stringResource(R.string.settingsMenu_configMenu),
+            style = MaterialTheme.typography.titleLarge,
+            color = Color.White,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        ConfigInfoItem(
+            label = stringResource(R.string.settingsMenu_hostname),
+            value = controller.hostname
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        ConfigInfoItem(
+            label = stringResource(R.string.settingsMenu_serverType),
+            value = controller.serverType
+        )
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        ConfigInfoItem(
+            label = stringResource(R.string.settingsMenu_mediaServerType),
+            value = when (controller.mediaServerType) {
+                "PLEX" -> stringResource(R.string.settingsMenu_mediaServerTypePlex)
+                "JELLYFIN" -> stringResource(R.string.settingsMenu_mediaServerTypeJellyfin)
+                "EMBY" -> stringResource(R.string.settingsMenu_mediaServerTypeEmby)
+                else -> stringResource(R.string.settingsMenu_mediaServerTypeNotConfigured)
+            }
+        )
+    }
+}
+
+@Composable
+private fun CheckForUpdateDetailView() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp)
+    ) {
+        Text(
+            text = stringResource(R.string.settingsMenu_checkForUpdateTitle),
+            style = MaterialTheme.typography.titleLarge,
+            color = Color.White,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+        Text(
+            text = stringResource(R.string.settingsMenu_checkForUpdateDescription),
+            style = MaterialTheme.typography.bodyLarge,
+            color = Color.White.copy(alpha = 0.9f)
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = stringResource(R.string.settingsMenu_checkForUpdateHint),
+            style = MaterialTheme.typography.bodySmall,
+            color = Color.White.copy(alpha = 0.6f)
+        )
+    }
+}
+
+@Composable
+private fun SettingsRightPanelPlaceholder() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        Text(
+            text = stringResource(R.string.settingsMenu_rightPanelPlaceholder),
+            style = MaterialTheme.typography.bodyLarge,
+            color = Color.White.copy(alpha = 0.6f)
+        )
+    }
+}
+
+@Composable
+private fun buildMenuItems(controller: SettingsScreenController): List<MenuItem> {
+    return buildList {
+        add(MenuItem(stringResource(R.string.settingsMenu_configMenu), ""))
+        add(MenuItem(stringResource(R.string.settingsMenu_appLanguage), stringResource(controller.getAppLanguageLabelRes(controller.appLanguage))))
+        add(MenuItem(stringResource(R.string.settingsMenu_discoveryMenu), stringResource(controller.getDiscoveryLanguageLabelRes(controller.discoveryLanguage))))
+        add(MenuItem(stringResource(R.string.settingsMenu_defaultStreamingRegion), controller.getDefaultStreamingRegionDisplayName()))
+        add(MenuItem(stringResource(R.string.settingsMenu_folderSelection), if (controller.folderSelectionEnabled) stringResource(R.string.settingsMenu_enabled) else stringResource(R.string.settingsMenu_disabled)))
+        add(MenuItem(stringResource(R.string.settingsMenu_clockFormat), if (controller.use24HourClock) stringResource(R.string.settingsMenu_24Hour) else stringResource(R.string.settingsMenu_12Hour)))
+        add(MenuItem(stringResource(R.string.settingsMenu_trailerPlayer), if (controller.useTrailerWebView) stringResource(R.string.settingsMenu_trailerPlayer_inApp) else stringResource(R.string.settingsMenu_trailerPlayer_youtubeApp)))
+        if (BuildConfig.IS_DIRECT_FLAVOR) {
+            add(MenuItem(stringResource(R.string.settingsMenu_checkForUpdateTitle), ""))
+        }
+        add(MenuItem(stringResource(R.string.settingsMenu_aboutMenu), ""))
+    }
+}
+
+@Composable
+fun SubMenu(controller: SettingsScreenController, viewModel: ca.devmesh.seerrtv.viewmodel.MediaDiscoveryViewModel? = null) {
     when (controller.currentSubMenu?.title) {
-        context.getString(R.string.settingsMenu_configMenu) -> ConfigApiSubMenu(controller)
-        context.getString(R.string.settingsMenu_appLanguage) -> AppLanguageSubMenu(controller)
-        context.getString(R.string.settingsMenu_discoveryMenu) -> DiscoveryLanguageSubMenu(controller)
-        context.getString(R.string.settingsMenu_defaultStreamingRegion) -> DefaultStreamingRegionSubMenu(controller, viewModel)
-        context.getString(R.string.settingsMenu_aboutMenu) -> AboutSubMenu()
+        stringResource(R.string.settingsMenu_configMenu) -> ConfigApiSubMenu(controller)
+        stringResource(R.string.settingsMenu_appLanguage) -> AppLanguageSubMenu(controller)
+        stringResource(R.string.settingsMenu_discoveryMenu) -> DiscoveryLanguageSubMenu(controller)
+        stringResource(R.string.settingsMenu_defaultStreamingRegion) -> DefaultStreamingRegionSubMenu(controller, viewModel)
+        stringResource(R.string.settingsMenu_aboutMenu) -> AboutSubMenu()
         else -> {} // Handle other sub-menus if needed
     }
 }
 
 @Composable
-fun ConfigApiSubMenu(controller: SettingsMenuController) {
+fun ConfigApiSubMenu(controller: SettingsScreenController) {
     Column(
         modifier = Modifier
             .fillMaxHeight()
@@ -393,74 +500,86 @@ fun ConfigInfoItem(label: String, value: String) {
 
 @Composable
 fun AboutSubMenu() {
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFF1F2937))
-            .padding(24.dp)
     ) {
-        AppLogo(
-            imageHeight = 150,
-            modifier = Modifier.align(Alignment.CenterHorizontally)
-        )
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-        Text(
-            text = stringResource(R.string.settingsMenu_thankYou),
-            style = MaterialTheme.typography.bodyLarge,
-            color = Color.White,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = "Original Author:",
-            style = MaterialTheme.typography.titleMedium,
-            color = Color(0xFFBB86FC),
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(bottom = 16.dp)
+        Column(
+            modifier = Modifier
+                // Center the content within the right panel, but keep it left-aligned
+                .align(Alignment.CenterStart)
+                .padding(start = 72.dp, end = 48.dp)
+                .widthIn(max = 600.dp),
+            horizontalAlignment = Alignment.Start
         ) {
-            Image(
-                painter = painterResource(id = R.drawable.devmesh_logo),
-                contentDescription = stringResource(R.string.common_devmeshLogo),
-                modifier = Modifier.size(24.dp)
+            AppLogo(
+                imageHeight = 150,
+                modifier = Modifier.align(Alignment.CenterHorizontally)
             )
-            Spacer(modifier = Modifier.width(8.dp))
+
+            Spacer(modifier = Modifier.height(24.dp))
+
             Text(
-                text = "devmesh.ca",
+                text = stringResource(R.string.settingsMenu_thankYou),
+                style = MaterialTheme.typography.titleLarge,
+                color = Color.White,
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
+
+            Text(
+                text = stringResource(R.string.settingsMenu_aboutIntro),
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.White.copy(alpha = 0.8f)
+            )
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text(
+                text = stringResource(R.string.settingsMenu_aboutOriginalAuthorLabel),
+                style = MaterialTheme.typography.titleMedium,
+                color = Color(0xFFBB86FC),
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(bottom = 16.dp)
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.devmesh_logo),
+                    contentDescription = stringResource(R.string.common_devmeshLogo),
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = stringResource(R.string.settingsMenu_aboutOriginalAuthorUrl),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color.White
+                )
+            }
+
+            Text(
+                text = stringResource(R.string.settingsMenu_aboutCommunityLabel),
+                style = MaterialTheme.typography.titleMedium,
+                color = Color(0xFFBB86FC),
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            Text(
+                text = stringResource(R.string.settingsMenu_aboutCommunityUrl),
                 style = MaterialTheme.typography.bodyLarge,
-                color = Color.White
+                color = Color(0xFF60A5FA)
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = stringResource(R.string.settingsMenu_aboutDescription),
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.White.copy(alpha = 0.75f)
             )
         }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = "Seerr Community:",
-            style = MaterialTheme.typography.titleMedium,
-            color = Color(0xFFBB86FC),
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-
-        Text(
-            text = "https://seerr.dev/",
-            style = MaterialTheme.typography.bodyLarge,
-            color = Color(0xFF60A5FA)
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Text(
-            text = "This project is now community-driven.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color.White.copy(alpha = 0.7f)
-        )
     }
 }
 
@@ -497,7 +616,7 @@ fun MenuItem(item: MenuItem, isSelected: Boolean) {
 }
 
 @Composable
-fun AppLanguageSubMenu(controller: SettingsMenuController) {
+fun AppLanguageSubMenu(controller: SettingsScreenController) {
     Column(
         modifier = Modifier
             .fillMaxHeight()
@@ -550,7 +669,7 @@ fun AppLanguageSubMenu(controller: SettingsMenuController) {
 }
 
 @Composable
-fun DiscoveryLanguageSubMenu(controller: SettingsMenuController) {
+fun DiscoveryLanguageSubMenu(controller: SettingsScreenController) {
     Column(
         modifier = Modifier
             .fillMaxHeight()
@@ -603,7 +722,7 @@ fun DiscoveryLanguageSubMenu(controller: SettingsMenuController) {
 
 @Composable
 fun DefaultStreamingRegionSubMenu(
-    controller: SettingsMenuController,
+    controller: SettingsScreenController,
     viewModel: ca.devmesh.seerrtv.viewmodel.MediaDiscoveryViewModel? = null
 ) {
     val context = LocalContext.current
@@ -751,7 +870,7 @@ fun DefaultStreamingRegionSubMenu(
         
         if (isLoading) {
             Text(
-                text = "Loading regions...",
+                text = stringResource(R.string.settingsMenu_loadingRegions),
                 color = Color.White,
                 style = MaterialTheme.typography.bodyLarge
             )
@@ -799,7 +918,7 @@ fun DefaultStreamingRegionSubMenu(
     }
 }
 
-class SettingsMenuController(
+class SettingsScreenController(
     private val onDismiss: () -> Unit,
     private val onOpenConfigScreen: () -> Unit,
     val hostname: String,
@@ -865,7 +984,7 @@ class SettingsMenuController(
 
     fun handleBack() {
         if (BuildConfig.DEBUG) {
-            Log.d("SettingsMenuController", "handleBack called - isSubMenuOpen: $isSubMenuOpen")
+            Log.d("SettingsScreenController", "handleBack called - isSubMenuOpen: $isSubMenuOpen")
         }
         if (isSubMenuOpen) {
             isSubMenuOpen = false
@@ -880,10 +999,10 @@ class SettingsMenuController(
             event.key == Key.DirectionUp && event.type == KeyEventType.KeyDown -> {
                 if (isSubMenuOpen) {
                     // Handle Default Streaming Region specially since it uses dynamic data
-                    if (currentSubMenu?.title == context.getString(R.string.settingsMenu_defaultStreamingRegion)) {
-                        subMenuSelectedIndex = (subMenuSelectedIndex - 1).coerceAtLeast(0)
+                    subMenuSelectedIndex = if (currentSubMenu?.title == context.getString(R.string.settingsMenu_defaultStreamingRegion)) {
+                        (subMenuSelectedIndex - 1).coerceAtLeast(0)
                     } else {
-                        subMenuSelectedIndex = (subMenuSelectedIndex - 1).coerceAtLeast(0)
+                        (subMenuSelectedIndex - 1).coerceAtLeast(0)
                     }
                 } else {
                     selectedIndex = (selectedIndex - 1).coerceAtLeast(0)
@@ -968,7 +1087,10 @@ class SettingsMenuController(
             }
 
             event.key == Key.DirectionLeft && event.type == KeyEventType.KeyDown -> {
-                handleBack()
+                // Left only closes submenu; exit Settings only via Back
+                if (isSubMenuOpen) {
+                    handleBack()
+                }
                 true
             }
 

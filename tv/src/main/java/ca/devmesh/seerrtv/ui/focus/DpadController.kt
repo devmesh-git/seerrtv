@@ -420,6 +420,7 @@ class DpadControllerImpl : DpadController {
                     else -> DpadSection.Details
                 }
             }
+            is AppFocusState.SettingsScreen -> DpadSection.Grid
         }
     }
     
