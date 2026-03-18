@@ -496,12 +496,6 @@ fun MainScreen(
         else -> 0
     }
 
-    // Derive the ordered list of rows. Re-read when discoverSliders change (custom sliders may have been
-    // merged into the order by the ViewModel after startup fetch).
-    val homeCategoryOrder = remember(discoverSliders) {
-        SharedPreferencesUtil.getHomeCategoryOrder(context, BuildConfig.IS_LAUNCHER_BUILD)
-    }
-
     fun mediaCategoryIdToEnum(id: String): MediaCategory? {
         return when (id) {
             "recently_added" -> MediaCategory.RECENTLY_ADDED
@@ -521,39 +515,55 @@ fun MainScreen(
     }
 
     // Build the combined ordered row list (standard built-in rows + custom slider rows)
-    val allActiveRows: List<ActiveRow> = remember(homeCategoryOrder, discoverSliders, isInitialLoad, categoryData, categoryCardData, customSliderData) {
+    // using ONLY the server-provided sliders as the source of truth for order/enabled.
+    val allActiveRows: List<ActiveRow> = remember(discoverSliders, isInitialLoad, categoryData, categoryCardData, customSliderData) {
         val userPermissions = viewModel.getCurrentUserPermissions() ?: 0
-        homeCategoryOrder
-            .filter { it != "apps" }
-            .mapNotNull { id ->
-                val category = mediaCategoryIdToEnum(id)
-                if (category != null) {
-                    // Built-in category
-                    if (!SharedPreferencesUtil.isHomeCategoryEnabled(context, id, BuildConfig.IS_LAUNCHER_BUILD)) return@mapNotNull null
+        discoverSliders
+            .sortedBy { it.order }
+            .mapNotNull { slider ->
+                // Server is the source of truth for enabled/disabled
+                if (!slider.enabled) return@mapNotNull null
+
+                if (slider.isBuiltIn) {
+                    val categoryId = slider.categoryId
+                    val category = mediaCategoryIdToEnum(categoryId) ?: return@mapNotNull null
+
+                    // Permission-based filtering for built-in rows
                     if (category == MediaCategory.RECENTLY_ADDED &&
-                        !CommonUtil.hasPermission(userPermissions, Permission.RECENT_VIEW)) return@mapNotNull null
+                        !CommonUtil.hasPermission(userPermissions, Permission.RECENT_VIEW)
+                    ) return@mapNotNull null
+
                     if (!isInitialLoad) {
                         val visible = if (isCategoryCardCategory(category)) {
-                            categoryCardData[category] !is ApiResult.Error || true
+                            when (categoryCardData[category]) {
+                                is ApiResult.Success,
+                                is ApiResult.Loading,
+                                is ApiResult.Error -> true
+                                else -> false
+                            }
                         } else {
-                            val result = categoryData[category]
-                            result !is ApiResult.Success || result.data.isNotEmpty()
+                            when (val result = categoryData[category]) {
+                                is ApiResult.Success -> result.data.isNotEmpty()
+                                is ApiResult.Loading,
+                                is ApiResult.Error -> true
+                                else -> false
+                            }
                         }
                         if (!visible) return@mapNotNull null
                     }
+
                     ActiveRow.Standard(category)
-                } else if (id.startsWith("custom_")) {
+                } else {
                     // Custom server-defined slider
-                    val sliderId = id.removePrefix("custom_").toIntOrNull() ?: return@mapNotNull null
-                    if (!SharedPreferencesUtil.isHomeCategoryEnabled(context, id, BuildConfig.IS_LAUNCHER_BUILD)) return@mapNotNull null
-                    val slider = discoverSliders.firstOrNull { it.id == sliderId } ?: return@mapNotNull null
-                    if (!slider.enabled || slider.data == null) return@mapNotNull null
+                    if (slider.data.isNullOrBlank()) return@mapNotNull null
+
                     if (!isInitialLoad) {
-                        val result = customSliderData[sliderId]
+                        val result = customSliderData[slider.id]
                         if (result is ApiResult.Success && result.data.isEmpty()) return@mapNotNull null
                     }
-                    ActiveRow.Custom(sliderId)
-                } else null
+
+                    ActiveRow.Custom(slider.id)
+                }
             }
     }
 
@@ -2364,7 +2374,8 @@ fun CustomSliderSection(
                         LazyRow(
                             state = lazyRowState,
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            contentPadding = PaddingValues(end = 16.dp)
+                            contentPadding = PaddingValues(horizontal = 16.dp),
+                            modifier = Modifier.fillMaxSize()
                         ) {
                             itemsIndexed(items) { idx, item ->
                                 val isItemSelected = isSelected && !isInTopBar && idx == selectedItemIndex

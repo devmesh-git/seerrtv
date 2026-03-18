@@ -531,29 +531,37 @@ class SeerrViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Fetches the list of discover sliders from the server, merges them into the
-     * locally-stored home category order, and kicks off content loading for each
-     * enabled custom slider.
-     */
     private suspend fun loadDiscoverSliders() {
         try {
-            val isLauncherBuild = ca.devmesh.seerrtv.BuildConfig.IS_LAUNCHER_BUILD
             when (val result = apiService.getDiscoverSliders()) {
                 is ApiResult.Success -> {
-                    _discoverSliders.value = result.data
-                    ca.devmesh.seerrtv.util.SharedPreferencesUtil.mergeServerSlidersIntoOrder(
-                        context, result.data, isLauncherBuild
-                    )
+                    // Always respect the server's order and enabled flags
+                    val ordered = result.data.sortedBy { it.order }
+                    _discoverSliders.value = ordered
+
+                    // Optionally cache custom slider metadata locally so we can still
+                    // show labels if we start up offline. This cache is informational
+                    // only and does NOT drive ordering or enabled state.
+                    ordered.filter { !it.isBuiltIn }.forEach { slider ->
+                        val categoryId = slider.categoryId
+                        ca.devmesh.seerrtv.util.SharedPreferencesUtil.saveCustomSliderMeta(
+                            context = context,
+                            categoryId = categoryId,
+                            title = slider.title ?: categoryId,
+                            typeValue = slider.type.value,
+                            data = slider.data
+                        )
+                    }
+
                     // Load content for each enabled custom slider
-                    result.data
+                    ordered
                         .filter { !it.isBuiltIn && it.enabled && it.data != null }
                         .forEach { slider ->
                             viewModelScope.launch {
                                 loadCustomSlider(slider.id, forceRefresh = true)
                             }
                         }
-                    Log.d(TAG, "Loaded ${result.data.size} discover sliders (${result.data.count { !it.isBuiltIn }} custom)")
+                    Log.d(TAG, "Loaded ${ordered.size} discover sliders (${ordered.count { !it.isBuiltIn }} custom)")
                 }
                 is ApiResult.Error -> {
                     Log.w(TAG, "Failed to load discover sliders: ${result.exception.message}")
@@ -639,6 +647,10 @@ class SeerrViewModel @Inject constructor(
             viewModelScope.launch {
                 _isRefreshing.value = true
                 try {
+                    // First, refresh the list of discover sliders from the server so any
+                    // new/removed/reordered sliders are reflected before we reload data.
+                    loadDiscoverSliders()
+
                     // Clear all loading states
                     categoryLoadingState.clear()
 

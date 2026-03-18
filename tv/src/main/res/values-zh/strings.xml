@@ -168,7 +168,6 @@
     <string name="mediaDetails_manageRequest">管理请求</string>
     <string name="mediaDetails_minutes">分钟</string>
     <string name="mediaDetails_noMediaPlayerFound">在此设备上未找到媒体播放器应用</string>
-    <string name="mediaDetails_noRequestPermission">无请求权限</string>
     <string name="mediaDetails_ok">确定</string>
     <string name="mediaDetails_playOnEmby">在 Emby 上播放</string>
     <string name="mediaDetails_playOnJellyfin">在 Jellyfin 上播放</string>
@@ -271,7 +270,6 @@
     <string name="settingsMenu_authType">认证类型</string>
     <string name="settingsMenu_clockFormat">时间格式</string>
     <string name="settingsMenu_configMenu">API配置</string>
-    <string name="settingsMenu_contactUs">联系我们</string>
     <string name="settingsMenu_debugMode">调试模式</string>
     <string name="settingsMenu_disabled">已禁用</string>
     <string name="settingsMenu_discoverLanguageDE">德语</string>
@@ -283,13 +281,8 @@
     <string name="settingsMenu_discoverLanguagePT">葡萄牙语</string>
     <string name="settingsMenu_discoverLanguageZH">中文</string>
     <string name="settingsMenu_discoveryMenu">发现语言</string>
-    <string name="settingsMenu_homeCategories">首页分类</string>
-    <string name="settingsMenu_homeCategoriesSelectHint">按右键或Enter键进行编辑 • 左键：返回菜单</string>
-    <string name="settingsMenu_homeCategoriesInstructions">Enter：切换开/关 • 右：拾取以排序 • 上/下：移动 • Enter 或 左：放置</string>
-    <string name="settingsMenu_homeCategoriesReorderHint">上/下：移动行 • Enter 或 左：放置</string>
     <string name="settingsMenu_defaultStreamingRegion">默认流媒体区域</string>
     <string name="settingsMenu_edit">编辑</string>
-    <string name="settingsMenu_reorder">重新排序</string>
     <string name="settingsMenu_enabled">已启用</string>
     <string name="settingsMenu_folderSelection">文件夹选择</string>
     <string name="settingsMenu_hostname">主机名</string>
@@ -317,17 +310,13 @@
     <string name="settingsMenu_checkForUpdateTitle">检查更新</string>
     <string name="settingsMenu_checkForUpdateDescription">检查是否有新版本可用。</string>
     <string name="settingsMenu_checkForUpdateHint">按 Enter 或 Right 进行检查。</string>
-    <string name="settingsMenu_resetHomeCategories">重置为默认</string>
     <string name="settingsMenu_rightPanelPlaceholder">选择项目以查看或更改设置。</string>
     <string name="settingsMenu_loadingRegions">正在加载地区…</string>
     <string name="settingsMenu_trailerPlayer">预告片播放器</string>
     <string name="settingsMenu_trailerPlayer_youtubeApp">YouTube 应用</string>
     <string name="settingsMenu_trailerPlayer_inApp">应用内播放器</string>
-    <string name="settingsMenu_reorderModeHint">使用上/下移动。按 Enter 完成。</string>
-    <string name="settingsMenu_done">完成</string>
     <string name="settingsMenu_title">设置</string>
     <string name="settingsMenu_username">账号</string>
-    <string name="settingsMenu_website">网站</string>
     <string name="splashScreen_authenticating">正在认证…</string>
     <string name="splashScreen_checkingConnection">正在检查连接…</string>
     <string name="splashScreen_checkingForUpdates">检查更新中…</string>

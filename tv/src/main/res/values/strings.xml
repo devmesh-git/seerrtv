@@ -168,7 +168,6 @@
     <string name="mediaDetails_manageRequest">Manage Request</string>
     <string name="mediaDetails_minutes">Minutes</string>
     <string name="mediaDetails_noMediaPlayerFound">No media player app found on this device</string>
-    <string name="mediaDetails_noRequestPermission">No Request Permission</string>
     <string name="mediaDetails_ok">OK</string>
     <string name="mediaDetails_playOnEmby">Play on Emby</string>
     <string name="mediaDetails_playOnJellyfin">Play on Jellyfin</string>
@@ -271,7 +270,6 @@
     <string name="settingsMenu_authType">Authentication Type</string>
     <string name="settingsMenu_clockFormat">Clock Format</string>
     <string name="settingsMenu_configMenu">Config API</string>
-    <string name="settingsMenu_contactUs">Contact us</string>
     <string name="settingsMenu_debugMode">Debug Mode</string>
     <string name="settingsMenu_disabled">Disabled</string>
     <string name="settingsMenu_discoverLanguageDE">German</string>
@@ -283,13 +281,8 @@
     <string name="settingsMenu_discoverLanguagePT">Portuguese</string>
     <string name="settingsMenu_discoverLanguageZH">Chinese</string>
     <string name="settingsMenu_discoveryMenu">Discovery Language</string>
-    <string name="settingsMenu_homeCategories">Home Categories</string>
-    <string name="settingsMenu_homeCategoriesSelectHint">Press Right or Enter to edit • Left: Back to menu</string>
-    <string name="settingsMenu_homeCategoriesInstructions">Enter: Toggle on/off • Right: Pick up to reorder • Left: Back to menu</string>
-    <string name="settingsMenu_homeCategoriesReorderHint">Up/Down: Move row • Enter or Left: Drop in place</string>
     <string name="settingsMenu_defaultStreamingRegion">Default Streaming Region</string>
     <string name="settingsMenu_edit">EDIT</string>
-    <string name="settingsMenu_reorder">Reorder</string>
     <string name="settingsMenu_enabled">Enabled</string>
     <string name="settingsMenu_folderSelection">Folder Selection</string>
     <string name="settingsMenu_hostname">Hostname</string>
@@ -322,12 +315,8 @@
     <string name="settingsMenu_trailerPlayer">Trailer Player</string>
     <string name="settingsMenu_trailerPlayer_youtubeApp">YouTube app</string>
     <string name="settingsMenu_trailerPlayer_inApp">In-app player</string>
-    <string name="settingsMenu_resetHomeCategories">Reset to defaults</string>
-    <string name="settingsMenu_reorderModeHint">Up/Down: Move row • Enter or Left: Drop in place</string>
-    <string name="settingsMenu_done">Done</string>
     <string name="settingsMenu_title">Settings</string>
     <string name="settingsMenu_username">Account</string>
-    <string name="settingsMenu_website">Website</string>
     <string name="splashScreen_authenticating">Authenticating…</string>
     <string name="splashScreen_checkingConnection">Checking Connection…</string>
     <string name="splashScreen_checkingForUpdates">Checking for updates…</string>

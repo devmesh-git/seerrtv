@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.27.01
+
+### Discover & Home Screen
+
+#### Server-driven discover categories (new)
+- **API as source of truth** – Discover rows (order, visibility, custom sliders) are now fully driven by `GET /api/v1/settings/discover`. The Seerr server’s discover settings define what appears on the home screen for all users.
+- **How it works** – The app fetches discover sliders from the API, sorted by `order` and filtered by `enabled`. Built-in categories (Recently Added, Trending, Popular Movies, etc.) and custom sliders configured on the server are shown in one unified list. No local overrides—what the server admin configures is what users see.
+- **Custom sliders** – Server-defined custom sliders are supported; titles are cached locally so labels resolve offline. Refresh updates both the slider list and content from the server.
+
+### Developer tools
+
+#### String resource checker
+- **`scripts/check_string_refs.py`** – New script to detect orphaned strings (defined but unused) and undefined strings (referenced but not in `strings.xml`). Run with `--orphaned` or `--undefined` for a specific check, or no args for both.
+
+### Build & Versioning
+
+- **Version bump** – Bumped to version 0.27.01 (versionCode 121).
+- **Gradle task robustness** – Relaxed `printBuildOutputs` inputs so the task no longer fails when `outputs/bundle` is absent (e.g., direct APK-only builds); it now only declares APK outputs as required and treats AABs as optional.
+
+### Files Modified
+- `tv/build.gradle.kts` – Version 0.27.01 (versionCode 121); `printBuildOutputs` task no longer declares `outputs/bundle` as a required input directory.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/SettingsScreen.kt` – Simplified settings menu; consolidated on server-driven discover.
+- `tv/src/main/java/ca/devmesh/seerrtv/util/SharedPreferencesUtil.kt` – Removed local discover order/enabled helpers; kept custom slider metadata caching.
+- `tv/src/main/res/values/strings.xml` and `values-*/strings.xml` – Removed orphaned string resources.
+- `scripts/check_string_refs.py` – New script for string reference validation.
+
+---
+
 ## 0.26.17
 
 ### Settings Screen & Navigation

@@ -168,7 +168,6 @@
     <string name="mediaDetails_manageRequest">Gestionar solicitud</string>
     <string name="mediaDetails_minutes">Minutos</string>
     <string name="mediaDetails_noMediaPlayerFound">No se encontró ninguna aplicación reproductora de medios en este dispositivo</string>
-    <string name="mediaDetails_noRequestPermission">Sin permiso de solicitud</string>
     <string name="mediaDetails_ok">OK</string>
     <string name="mediaDetails_playOnEmby">Reproducir en Emby</string>
     <string name="mediaDetails_playOnJellyfin">Reproducir en Jellyfin</string>
@@ -271,7 +270,6 @@
     <string name="settingsMenu_authType">Tipo de Autenticación</string>
     <string name="settingsMenu_clockFormat">Formato de hora</string>
     <string name="settingsMenu_configMenu">Configurar API</string>
-    <string name="settingsMenu_contactUs">Contactar</string>
     <string name="settingsMenu_debugMode">Modo Debug</string>
     <string name="settingsMenu_disabled">Deshabilitado</string>
     <string name="settingsMenu_discoverLanguageDE">Alemán</string>
@@ -283,13 +281,8 @@
     <string name="settingsMenu_discoverLanguagePT">Portugués</string>
     <string name="settingsMenu_discoverLanguageZH">Chino</string>
     <string name="settingsMenu_discoveryMenu">Idioma de descubrimiento</string>
-    <string name="settingsMenu_homeCategories">Categorías de inicio</string>
-    <string name="settingsMenu_homeCategoriesSelectHint">Pulsa Derecha o Enter para editar • Izquierda: Volver al menú</string>
-    <string name="settingsMenu_homeCategoriesInstructions">Enter: Activar/desactivar • Derecha: Tomar para reordenar • Arriba/Abajo: Mover • Enter o Izquierda: Soltar</string>
-    <string name="settingsMenu_homeCategoriesReorderHint">Arriba/Abajo: Mover fila • Enter o Izquierda: Soltar</string>
     <string name="settingsMenu_defaultStreamingRegion">Región de transmisión predeterminada</string>
     <string name="settingsMenu_edit">EDITAR</string>
-    <string name="settingsMenu_reorder">Reordenar</string>
     <string name="settingsMenu_enabled">Habilitado</string>
     <string name="settingsMenu_folderSelection">Selección de Carpeta</string>
     <string name="settingsMenu_hostname">Nombre del host</string>
@@ -317,17 +310,13 @@
     <string name="settingsMenu_checkForUpdateTitle">Buscar actualización</string>
     <string name="settingsMenu_checkForUpdateDescription">Compruebe si hay una nueva versión de la aplicación disponible.</string>
     <string name="settingsMenu_checkForUpdateHint">Pulse Intro o Derecha para comprobar.</string>
-    <string name="settingsMenu_resetHomeCategories">Restablecer predeterminados</string>
     <string name="settingsMenu_rightPanelPlaceholder">Seleccione un elemento para ver o cambiar su configuración.</string>
     <string name="settingsMenu_loadingRegions">Cargando regiones...</string>
     <string name="settingsMenu_trailerPlayer">Reproductor de tráilers</string>
     <string name="settingsMenu_trailerPlayer_youtubeApp">Aplicación YouTube</string>
     <string name="settingsMenu_trailerPlayer_inApp">Reproductor en la app</string>
-    <string name="settingsMenu_reorderModeHint">Usa Arriba/Abajo para mover. Pulsa Enter para terminar.</string>
-    <string name="settingsMenu_done">Listo</string>
     <string name="settingsMenu_title">Configuración</string>
     <string name="settingsMenu_username">Cuenta</string>
-    <string name="settingsMenu_website">Sitio Web</string>
     <string name="splashScreen_authenticating">Autenticando…</string>
     <string name="splashScreen_checkingConnection">Verificando Conexión…</string>
     <string name="splashScreen_checkingForUpdates">Verificando actualizaciones…</string>

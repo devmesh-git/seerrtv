@@ -2,7 +2,6 @@
 
 [![AI developed with Cursor](https://img.shields.io/badge/AI_developed-Cursor-6C5CE7?style=for-the-badge&labelColor=black&logo=cursor&logoColor=white)](https://cursor.com)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg?style=for-the-badge)
-![Version](https://img.shields.io/badge/version-0.26.4-green.svg?style=for-the-badge)
 ![GitHub release](https://img.shields.io/github/v/release/devmesh-git/seerrtv?style=for-the-badge)
 ![GitHub downloads](https://img.shields.io/github/downloads/devmesh-git/seerrtv/total?style=for-the-badge)
 [![Discord](https://img.shields.io/discord/1341827746070003815?color=5865F2&label=discord&labelColor=black&logo=discord&logoColor=white&style=for-the-badge)](https://discord.gg/nTFk3jHbk5)

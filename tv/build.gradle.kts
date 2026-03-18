@@ -291,7 +291,6 @@ tasks.register("printBuildOutputs") {
     apkRoot.set(layout.buildDirectory.dir("outputs/apk"))
     bundleRoot.set(layout.buildDirectory.dir("outputs/bundle"))
     inputs.dir(apkRoot)
-    inputs.dir(bundleRoot)
 
     doLast {
         val apkRootDir = apkRoot.get().asFile
