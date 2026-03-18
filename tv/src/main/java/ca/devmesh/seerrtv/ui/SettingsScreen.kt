@@ -27,8 +27,11 @@ import androidx.compose.ui.unit.sp
 import ca.devmesh.seerrtv.BuildConfig
 import ca.devmesh.seerrtv.model.AuthType
 import ca.devmesh.seerrtv.R
+import ca.devmesh.seerrtv.ui.components.ActionButton
 import ca.devmesh.seerrtv.ui.components.AppLogo
 import ca.devmesh.seerrtv.util.SharedPreferencesUtil
+import ca.devmesh.seerrtv.viewmodel.MediaCategory
+import ca.devmesh.seerrtv.viewmodel.getCategoryTitle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.ui.window.Dialog
@@ -48,6 +51,13 @@ import ca.devmesh.seerrtv.ui.focus.createSettingsScreenDpadConfig
 
 private const val SETTINGS_LEFT_PANEL_WIDTH_DP = 320
 private const val UPDATE_JSON_URL = "https://api.github.com/repos/devmesh-git/seerrtv/releases/latest"
+
+enum class SettingsMenuItem {
+    CONFIG_API, APP_LANGUAGE, DISCOVERY_LANGUAGE,
+    DEFAULT_STREAMING_REGION, HOME_CATEGORIES,
+    FOLDER_SELECTION, CLOCK_FORMAT, TRAILER_PLAYER,
+    CHECK_FOR_UPDATE, ABOUT
+}
 
 /**
  * Full-screen Settings screen with two-panel layout: left = menu list, right = detail/submenu content.
@@ -126,7 +136,7 @@ fun SettingsScreen(
             .focusable()
             .onKeyEvent { event ->
                 if (BuildConfig.IS_DIRECT_FLAVOR &&
-                    controller.selectedIndex == 7 &&
+                    controller.selectedItem == SettingsMenuItem.CHECK_FOR_UPDATE &&
                     (event.key == Key.DirectionRight || KeyUtils.isEnterKey(event.nativeKeyEvent.keyCode)) &&
                     event.type == KeyEventType.KeyDown
                 ) {
@@ -171,7 +181,18 @@ fun SettingsScreen(
                     .fillMaxWidth()
             ) {
                 itemsIndexed(menuItems) { index, item ->
-                    MenuItem(item, isSelected = index == controller.selectedIndex)
+                    val isSelected = index == controller.selectedIndex
+                    val menuItem = controller.menuItemOrder.getOrNull(index)
+                    val isSubMenuItem = menuItem in setOf(
+                        SettingsMenuItem.CONFIG_API, SettingsMenuItem.APP_LANGUAGE,
+                        SettingsMenuItem.DISCOVERY_LANGUAGE, SettingsMenuItem.DEFAULT_STREAMING_REGION,
+                        SettingsMenuItem.TRAILER_PLAYER, SettingsMenuItem.ABOUT
+                    )
+                    val isDimmed = isSelected && (
+                        (isSubMenuItem && controller.isSubMenuOpen) ||
+                        (menuItem == SettingsMenuItem.HOME_CATEGORIES && controller.homeCategoriesIsRightPanelActive)
+                    )
+                    MenuItem(item, isSelected = isSelected, isDimmed = isDimmed)
                 }
             }
             Row(
@@ -197,43 +218,60 @@ fun SettingsScreen(
                 .fillMaxHeight()
                 .background(Color(0xFF1F2937))
         ) {
+            val subMenuItems = setOf(
+                SettingsMenuItem.CONFIG_API, SettingsMenuItem.APP_LANGUAGE,
+                SettingsMenuItem.DISCOVERY_LANGUAGE, SettingsMenuItem.DEFAULT_STREAMING_REGION,
+                SettingsMenuItem.TRAILER_PLAYER, SettingsMenuItem.ABOUT
+            )
+            val isRightPanelFocused = (controller.selectedItem in subMenuItems && controller.isSubMenuOpen) ||
+                (controller.selectedItem == SettingsMenuItem.HOME_CATEGORIES && controller.homeCategoriesIsRightPanelActive)
             when {
                 controller.isSubMenuOpen -> SubMenu(controller, viewModel)
-                controller.selectedIndex == 0 -> ConfigSummaryView(controller)
-                controller.selectedIndex == 1 -> ToggleDetailView(
+                controller.selectedItem == SettingsMenuItem.CONFIG_API -> ConfigSummaryView(controller)
+                controller.selectedItem == SettingsMenuItem.APP_LANGUAGE -> ToggleDetailView(
                     title = stringResource(R.string.settingsMenu_appLanguage),
                     value = stringResource(controller.getAppLanguageLabelRes(controller.appLanguage)),
                     description = stringResource(R.string.settingsMenu_appLanguageDescription)
                 )
-                controller.selectedIndex == 2 -> ToggleDetailView(
+                controller.selectedItem == SettingsMenuItem.DISCOVERY_LANGUAGE -> ToggleDetailView(
                     title = stringResource(R.string.settingsMenu_discoveryMenu),
                     value = stringResource(controller.getDiscoveryLanguageLabelRes(controller.discoveryLanguage)),
                     description = stringResource(R.string.settingsMenu_discoveryLanguageDescription)
                 )
-                controller.selectedIndex == 3 -> ToggleDetailView(
+                controller.selectedItem == SettingsMenuItem.DEFAULT_STREAMING_REGION -> ToggleDetailView(
                     title = stringResource(R.string.settingsMenu_defaultStreamingRegion),
                     value = controller.getDefaultStreamingRegionDisplayName(),
                     description = stringResource(R.string.settingsMenu_defaultRegionDescription)
                 )
-                controller.selectedIndex == 4 -> ToggleDetailView(
+                controller.selectedItem == SettingsMenuItem.HOME_CATEGORIES -> HomeCategoriesDetailView(controller)
+                controller.selectedItem == SettingsMenuItem.FOLDER_SELECTION -> ToggleDetailView(
                     title = stringResource(R.string.settingsMenu_folderSelection),
                     value = if (controller.folderSelectionEnabled) stringResource(R.string.settingsMenu_enabled) else stringResource(R.string.settingsMenu_disabled),
                     description = stringResource(R.string.settingsMenu_folderSelectionDescription)
                 )
-                controller.selectedIndex == 5 -> ToggleDetailView(
+                controller.selectedItem == SettingsMenuItem.CLOCK_FORMAT -> ToggleDetailView(
                     title = stringResource(R.string.settingsMenu_clockFormat),
                     value = if (controller.use24HourClock) stringResource(R.string.settingsMenu_24Hour) else stringResource(R.string.settingsMenu_12Hour),
                     description = stringResource(R.string.settingsMenu_clockFormatDescription)
                 )
-                controller.selectedIndex == 6 -> ToggleDetailView(
+                controller.selectedItem == SettingsMenuItem.TRAILER_PLAYER -> ToggleDetailView(
                     title = stringResource(R.string.settingsMenu_trailerPlayer),
                     value = if (controller.useTrailerWebView) stringResource(R.string.settingsMenu_trailerPlayer_inApp) else stringResource(R.string.settingsMenu_trailerPlayer_youtubeApp),
                     description = stringResource(R.string.settingsMenu_trailerPlayerDescription)
                 )
-                BuildConfig.IS_DIRECT_FLAVOR && controller.selectedIndex == 7 -> CheckForUpdateDetailView()
-                (BuildConfig.IS_DIRECT_FLAVOR && controller.selectedIndex == 8) ||
-                (!BuildConfig.IS_DIRECT_FLAVOR && controller.selectedIndex == 7) -> AboutSubMenu()
+                controller.selectedItem == SettingsMenuItem.CHECK_FOR_UPDATE -> CheckForUpdateDetailView()
+                controller.selectedItem == SettingsMenuItem.ABOUT -> AboutSubMenu()
                 else -> SettingsRightPanelPlaceholder()
+            }
+            // Left accent strip rendered last so it draws on top of submenu content
+            if (isRightPanelFocused) {
+                Box(
+                    modifier = Modifier
+                        .width(3.dp)
+                        .fillMaxHeight()
+                        .background(Color(0xFF60A5FA))
+                        .align(Alignment.TopStart)
+                )
             }
         }
     }
@@ -371,18 +409,37 @@ private fun SettingsRightPanelPlaceholder() {
 
 @Composable
 private fun buildMenuItems(controller: SettingsScreenController): List<MenuItem> {
-    return buildList {
-        add(MenuItem(stringResource(R.string.settingsMenu_configMenu), ""))
-        add(MenuItem(stringResource(R.string.settingsMenu_appLanguage), stringResource(controller.getAppLanguageLabelRes(controller.appLanguage))))
-        add(MenuItem(stringResource(R.string.settingsMenu_discoveryMenu), stringResource(controller.getDiscoveryLanguageLabelRes(controller.discoveryLanguage))))
-        add(MenuItem(stringResource(R.string.settingsMenu_defaultStreamingRegion), controller.getDefaultStreamingRegionDisplayName()))
-        add(MenuItem(stringResource(R.string.settingsMenu_folderSelection), if (controller.folderSelectionEnabled) stringResource(R.string.settingsMenu_enabled) else stringResource(R.string.settingsMenu_disabled)))
-        add(MenuItem(stringResource(R.string.settingsMenu_clockFormat), if (controller.use24HourClock) stringResource(R.string.settingsMenu_24Hour) else stringResource(R.string.settingsMenu_12Hour)))
-        add(MenuItem(stringResource(R.string.settingsMenu_trailerPlayer), if (controller.useTrailerWebView) stringResource(R.string.settingsMenu_trailerPlayer_inApp) else stringResource(R.string.settingsMenu_trailerPlayer_youtubeApp)))
-        if (BuildConfig.IS_DIRECT_FLAVOR) {
-            add(MenuItem(stringResource(R.string.settingsMenu_checkForUpdateTitle), ""))
+    return controller.menuItemOrder.map { item ->
+        when (item) {
+            SettingsMenuItem.CONFIG_API -> MenuItem(stringResource(R.string.settingsMenu_configMenu), "")
+            SettingsMenuItem.APP_LANGUAGE -> MenuItem(
+                stringResource(R.string.settingsMenu_appLanguage),
+                stringResource(controller.getAppLanguageLabelRes(controller.appLanguage))
+            )
+            SettingsMenuItem.DISCOVERY_LANGUAGE -> MenuItem(
+                stringResource(R.string.settingsMenu_discoveryMenu),
+                stringResource(controller.getDiscoveryLanguageLabelRes(controller.discoveryLanguage))
+            )
+            SettingsMenuItem.DEFAULT_STREAMING_REGION -> MenuItem(
+                stringResource(R.string.settingsMenu_defaultStreamingRegion),
+                controller.getDefaultStreamingRegionDisplayName()
+            )
+            SettingsMenuItem.HOME_CATEGORIES -> MenuItem(stringResource(R.string.settingsMenu_homeCategories), "")
+            SettingsMenuItem.FOLDER_SELECTION -> MenuItem(
+                stringResource(R.string.settingsMenu_folderSelection),
+                if (controller.folderSelectionEnabled) stringResource(R.string.settingsMenu_enabled) else stringResource(R.string.settingsMenu_disabled)
+            )
+            SettingsMenuItem.CLOCK_FORMAT -> MenuItem(
+                stringResource(R.string.settingsMenu_clockFormat),
+                if (controller.use24HourClock) stringResource(R.string.settingsMenu_24Hour) else stringResource(R.string.settingsMenu_12Hour)
+            )
+            SettingsMenuItem.TRAILER_PLAYER -> MenuItem(
+                stringResource(R.string.settingsMenu_trailerPlayer),
+                if (controller.useTrailerWebView) stringResource(R.string.settingsMenu_trailerPlayer_inApp) else stringResource(R.string.settingsMenu_trailerPlayer_youtubeApp)
+            )
+            SettingsMenuItem.CHECK_FOR_UPDATE -> MenuItem(stringResource(R.string.settingsMenu_checkForUpdateTitle), "")
+            SettingsMenuItem.ABOUT -> MenuItem(stringResource(R.string.settingsMenu_aboutMenu), "")
         }
-        add(MenuItem(stringResource(R.string.settingsMenu_aboutMenu), ""))
     }
 }
 
@@ -393,8 +450,182 @@ fun SubMenu(controller: SettingsScreenController, viewModel: ca.devmesh.seerrtv.
         stringResource(R.string.settingsMenu_appLanguage) -> AppLanguageSubMenu(controller)
         stringResource(R.string.settingsMenu_discoveryMenu) -> DiscoveryLanguageSubMenu(controller)
         stringResource(R.string.settingsMenu_defaultStreamingRegion) -> DefaultStreamingRegionSubMenu(controller, viewModel)
+        stringResource(R.string.settingsMenu_trailerPlayer) -> TrailerPlayerSubMenu(controller)
         stringResource(R.string.settingsMenu_aboutMenu) -> AboutSubMenu()
-        else -> {} // Handle other sub-menus if needed
+        else -> {}
+    }
+}
+
+@Composable
+private fun HomeCategoriesDetailView(controller: SettingsScreenController) {
+    val context = LocalContext.current
+    val isLauncherBuild = BuildConfig.IS_LAUNCHER_BUILD
+    val order = controller.homeCategoriesOrder
+    val selectedIndex = controller.homeCategoriesSelectedIndex
+    val isInBottomRow = controller.homeCategoriesIsInBottomRow
+    val isReorderMode = controller.homeCategoriesIsReorderMode
+    val revision = controller.homeCategoriesRevision  // Read to recompose when we toggle enabled
+    val isRightPanelActive = controller.homeCategoriesIsRightPanelActive
+
+    LaunchedEffect(Unit) {
+        controller.refreshHomeCategoriesOrder()
+    }
+
+    @Composable
+    fun categoryIdToLabel(id: String): String {
+        return when (id) {
+            "apps" -> stringResource(R.string.mainScreen_appsRow)
+            "recently_added" -> getCategoryTitle(context, MediaCategory.RECENTLY_ADDED)
+            "recent_requests" -> getCategoryTitle(context, MediaCategory.RECENT_REQUESTS)
+            "trending" -> getCategoryTitle(context, MediaCategory.TRENDING)
+            "popular_movies" -> getCategoryTitle(context, MediaCategory.POPULAR_MOVIES)
+            "watchlist" -> getCategoryTitle(context, MediaCategory.WATCHLIST)
+            "upcoming_movies" -> getCategoryTitle(context, MediaCategory.UPCOMING_MOVIES)
+            "popular_series" -> getCategoryTitle(context, MediaCategory.POPULAR_SERIES)
+            "upcoming_series" -> getCategoryTitle(context, MediaCategory.UPCOMING_SERIES)
+            "movie_genres" -> getCategoryTitle(context, MediaCategory.MOVIE_GENRES)
+            "series_genres" -> getCategoryTitle(context, MediaCategory.SERIES_GENRES)
+            "studios" -> getCategoryTitle(context, MediaCategory.STUDIOS)
+            "networks" -> getCategoryTitle(context, MediaCategory.NETWORKS)
+            else -> SharedPreferencesUtil.getCustomSliderTitle(context, id) ?: id
+        }
+    }
+
+    val items = order.map { id ->
+        val enabled = SharedPreferencesUtil.isHomeCategoryEnabled(context, id, isLauncherBuild)
+        Triple(id, categoryIdToLabel(id), enabled)
+    }
+
+    val listState = rememberLazyListState()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp)
+    ) {
+        Text(
+            text = stringResource(R.string.settingsMenu_homeCategories),
+            style = MaterialTheme.typography.titleLarge,
+            color = Color.White,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+        Text(
+            text = stringResource(
+                when {
+                    !isRightPanelActive -> R.string.settingsMenu_homeCategoriesSelectHint
+                    isReorderMode -> R.string.settingsMenu_homeCategoriesReorderHint
+                    else -> R.string.settingsMenu_homeCategoriesInstructions
+                }
+            ),
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (isRightPanelActive) Color(0xFF60A5FA) else Color(0xFF9CA3AF),
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        LaunchedEffect(selectedIndex, isInBottomRow, isReorderMode) {
+            if (!isInBottomRow && items.isNotEmpty()) {
+                // In reorder mode, scroll to show the row above so user can see where they're moving
+                val scrollTarget = if (isReorderMode && selectedIndex > 0) {
+                    (selectedIndex - 1).coerceAtLeast(0)
+                } else {
+                    selectedIndex
+                }
+                listState.animateScrollToItem(scrollTarget)
+            } else if (isInBottomRow && items.isNotEmpty()) {
+                listState.animateScrollToItem(items.lastIndex)
+            }
+        }
+
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            state = listState,
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(items.size) { index ->
+                val (id, label, enabled) = items[index]
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(
+                            if (isRightPanelActive && !isInBottomRow && index == selectedIndex) {
+                                Color(0xFF374151)
+                            } else {
+                                Color(0xFF111827)
+                            }
+                        )
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        if (isReorderMode && index == selectedIndex) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.padding(end = 8.dp),
+                                verticalArrangement = Arrangement.spacedBy((-4).dp)
+                            ) {
+                                Text(
+                                    text = "▲",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF60A5FA),
+                                    lineHeight = 14.sp
+                                )
+                                Text(
+                                    text = "▼",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF60A5FA),
+                                    lineHeight = 14.sp
+                                )
+                            }
+                        }
+                        Column {
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = Color.White
+                            )
+                            if (id == "apps" && isLauncherBuild) {
+                                Text(
+                                    text = stringResource(R.string.mainScreen_appsRowReorderTitle),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.White.copy(alpha = 0.7f)
+                                )
+                            }
+                        }
+                    }
+                    if (id != "apps") {
+                        androidx.compose.material3.Switch(
+                            checked = enabled,
+                            onCheckedChange = null
+                        )
+                    }
+                }
+            }
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            ActionButton(
+                text = stringResource(R.string.settingsMenu_resetHomeCategories),
+                isFocused = isRightPanelActive && isInBottomRow,
+                backgroundColor = if (isRightPanelActive && isInBottomRow) Color(0xFF374151) else Color(0xFF111827),
+                contentColor = if (isRightPanelActive) Color(0xFF60A5FA) else Color(0xFF6B7280),
+                fillMaxWidth = false
+            )
+        }
     }
 }
 
@@ -584,19 +815,25 @@ fun AboutSubMenu() {
 }
 
 @Composable
-fun MenuItem(item: MenuItem, isSelected: Boolean) {
+fun MenuItem(item: MenuItem, isSelected: Boolean, isDimmed: Boolean = false) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .height(56.dp)
-            .background(if (isSelected) Color(0xFF374151) else Color.Transparent)
+            .background(
+                when {
+                    isDimmed -> Color(0xFF1E2836)  // Subtle passive selection: focus is on right panel
+                    isSelected -> Color(0xFF374151) // Active selection: left panel has focus
+                    else -> Color.Transparent
+                }
+            )
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = item.title,
             style = MaterialTheme.typography.bodyLarge,
-            color = Color.White
+            color = if (isDimmed) Color.White.copy(alpha = 0.5f) else Color.White
         )
         Spacer(modifier = Modifier.weight(1f))
         if (item.value.isNotEmpty()) {
@@ -712,6 +949,60 @@ fun DiscoveryLanguageSubMenu(controller: SettingsScreenController) {
                 )
                 Text(
                     text = stringResource(res),
+                    color = Color.White,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun TrailerPlayerSubMenu(controller: SettingsScreenController) {
+    val options = listOf(
+        stringResource(R.string.settingsMenu_trailerPlayer_inApp),
+        stringResource(R.string.settingsMenu_trailerPlayer_youtubeApp)
+    )
+    Column(
+        modifier = Modifier
+            .fillMaxHeight()
+            .fillMaxWidth()
+            .background(Color(0xFF1F2937))
+            .padding(24.dp)
+    ) {
+        Text(
+            text = stringResource(R.string.settingsMenu_trailerPlayer),
+            style = MaterialTheme.typography.titleLarge,
+            color = Color.White,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+        options.forEachIndexed { index, label ->
+            val isFocused = index == controller.subMenuSelectedIndex
+            val isSelected = (index == 0) == controller.useTrailerWebView
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .background(
+                        when {
+                            isFocused -> Color(0xFF374151)
+                            isSelected -> Color(0xFF23293A)
+                            else -> Color.Transparent
+                        }
+                    )
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                androidx.compose.material3.RadioButton(
+                    selected = isSelected,
+                    onClick = {},
+                    colors = androidx.compose.material3.RadioButtonDefaults.colors(
+                        selectedColor = Color(0xFFBB86FC),
+                        unselectedColor = Color.White
+                    )
+                )
+                Text(
+                    text = label,
                     color = Color.White,
                     style = MaterialTheme.typography.bodyLarge
                 )
@@ -924,6 +1215,21 @@ class SettingsScreenController(
     val hostname: String,
     private val context: Context
 ) {
+    val menuItemOrder: List<SettingsMenuItem> = buildList {
+        add(SettingsMenuItem.CONFIG_API)
+        add(SettingsMenuItem.APP_LANGUAGE)
+        add(SettingsMenuItem.DISCOVERY_LANGUAGE)
+        add(SettingsMenuItem.DEFAULT_STREAMING_REGION)
+        add(SettingsMenuItem.HOME_CATEGORIES)
+        add(SettingsMenuItem.FOLDER_SELECTION)
+        add(SettingsMenuItem.CLOCK_FORMAT)
+        add(SettingsMenuItem.TRAILER_PLAYER)
+        if (BuildConfig.IS_DIRECT_FLAVOR) add(SettingsMenuItem.CHECK_FOR_UPDATE)
+        add(SettingsMenuItem.ABOUT)
+    }
+
+    val selectedItem: SettingsMenuItem get() = menuItemOrder[selectedIndex]
+
     var selectedIndex by mutableIntStateOf(0)
     var isSubMenuOpen by mutableStateOf(false)
     var subMenuSelectedIndex by mutableIntStateOf(0)
@@ -948,6 +1254,19 @@ class SettingsScreenController(
     var defaultStreamingRegion by mutableStateOf(SharedPreferencesUtil.getDefaultStreamingRegion(context))
     var defaultStreamingRegionCount by mutableIntStateOf(0)
     var defaultStreamingRegions by mutableStateOf<List<Region>>(emptyList())
+
+    // Home Categories state
+    var homeCategoriesOrder by mutableStateOf(SharedPreferencesUtil.getHomeCategoryOrder(context, BuildConfig.IS_LAUNCHER_BUILD))
+    var homeCategoriesSelectedIndex by mutableIntStateOf(0)
+    var homeCategoriesIsInBottomRow by mutableStateOf(false)
+    var homeCategoriesIsReorderMode by mutableStateOf(false)
+    var homeCategoriesRevision by mutableIntStateOf(0)  // Bump to force UI refresh when toggling enabled
+    // Whether the right panel (category list) has navigation focus vs the left menu
+    var homeCategoriesIsRightPanelActive by mutableStateOf(false)
+
+    fun refreshHomeCategoriesOrder() {
+        homeCategoriesOrder = SharedPreferencesUtil.getHomeCategoryOrder(context, BuildConfig.IS_LAUNCHER_BUILD)
+    }
 
     private fun formatServerType(serverType: String): String {
         return when (serverType.uppercase()) {
@@ -995,6 +1314,11 @@ class SettingsScreenController(
     }
 
     fun handleKeyEvent(event: KeyEvent): Boolean {
+        // Delegate to Home Categories right panel only when it is actively focused
+        if (selectedItem == SettingsMenuItem.HOME_CATEGORIES && homeCategoriesIsRightPanelActive) {
+            val handled = handleHomeCategoriesKeyEvent(event)
+            if (handled) return true
+        }
         return when {
             event.key == Key.DirectionUp && event.type == KeyEventType.KeyDown -> {
                 if (isSubMenuOpen) {
@@ -1006,6 +1330,7 @@ class SettingsScreenController(
                     }
                 } else {
                     selectedIndex = (selectedIndex - 1).coerceAtLeast(0)
+                    homeCategoriesIsRightPanelActive = false
                 }
                 true
             }
@@ -1022,17 +1347,20 @@ class SettingsScreenController(
                         )
                     }
                 } else {
-                    // menuItems is not available in the controller, so use a constant for max index
-                    // When IS_DIRECT_FLAVOR is true: Config(0), AppLanguage(1), Discovery(2), Streaming Region(3), Folder(4), Clock(5), Trailer(6), Check for Update(7), About(8)
-                    // When IS_DIRECT_FLAVOR is false: Config(0), AppLanguage(1), Discovery(2), Streaming Region(3), Folder(4), Clock(5), Trailer(6), About(7)
-                    val maxIndex = if (BuildConfig.IS_DIRECT_FLAVOR) 8 else 7
-                    selectedIndex = (selectedIndex + 1).coerceAtMost(maxIndex)
+                    selectedIndex = (selectedIndex + 1).coerceAtMost(menuItemOrder.size - 1)
+                    homeCategoriesIsRightPanelActive = false
                 }
                 true
             }
 
             event.key == Key.DirectionRight && event.type == KeyEventType.KeyDown -> {
-                handleRightOrEnterKey()
+                if (selectedItem == SettingsMenuItem.HOME_CATEGORIES && !homeCategoriesIsRightPanelActive) {
+                    // Enter the Home Categories right panel
+                    homeCategoriesIsRightPanelActive = true
+                    true
+                } else {
+                    handleRightOrEnterKey()
+                }
             }
 
             KeyUtils.isEnterKey(event.nativeKeyEvent.keyCode) && event.type == KeyEventType.KeyDown -> {
@@ -1070,16 +1398,23 @@ class SettingsScreenController(
                         }
                         true
                     }
-                    !isSubMenuOpen && selectedIndex == 4 -> { // Folder Selection toggle
+                    !isSubMenuOpen && selectedItem == SettingsMenuItem.HOME_CATEGORIES && !homeCategoriesIsRightPanelActive -> {
+                        // Enter the Home Categories right panel via Enter key
+                        homeCategoriesIsRightPanelActive = true
+                        true
+                    }
+                    !isSubMenuOpen && selectedItem == SettingsMenuItem.FOLDER_SELECTION -> {
                         toggleFolderSelection()
                         true
                     }
-                    !isSubMenuOpen && selectedIndex == 5 -> { // Clock Format toggle
+                    !isSubMenuOpen && selectedItem == SettingsMenuItem.CLOCK_FORMAT -> {
                         toggleClockFormat()
                         true
                     }
-                    !isSubMenuOpen && selectedIndex == 6 -> { // Trailer Player toggle
-                        toggleTrailerPlayer()
+                    isSubMenuOpen && currentSubMenu?.title == context.getString(R.string.settingsMenu_trailerPlayer) -> {
+                        setTrailerWebView(subMenuSelectedIndex == 0)
+                        isSubMenuOpen = false
+                        currentSubMenu = null
                         true
                     }
                     else -> handleRightOrEnterKey()
@@ -1103,38 +1438,165 @@ class SettingsScreenController(
         }
     }
 
+    private fun handleHomeCategoriesKeyEvent(event: KeyEvent): Boolean {
+        if (event.type != KeyEventType.KeyDown) return false
+        val order = homeCategoriesOrder
+        val lastIndex = (order.size - 1).coerceAtLeast(0)
+        val isEnterOrSelect = event.key == Key.Enter || event.key == Key.DirectionCenter ||
+            KeyUtils.isEnterKey(event.nativeKeyEvent.keyCode)
+
+        return when {
+            event.key == Key.DirectionUp -> {
+                if (homeCategoriesIsReorderMode) {
+                    if (homeCategoriesSelectedIndex > 0) {
+                        val newOrder = order.toMutableList()
+                        val idx = homeCategoriesSelectedIndex
+                        newOrder[idx] = newOrder[idx - 1].also { newOrder[idx - 1] = newOrder[idx] }
+                        homeCategoriesOrder = newOrder
+                        SharedPreferencesUtil.setHomeCategoryOrder(context, newOrder)
+                        homeCategoriesSelectedIndex = idx - 1
+                    }
+                } else {
+                    if (homeCategoriesIsInBottomRow) {
+                        homeCategoriesIsInBottomRow = false
+                    } else {
+                        homeCategoriesSelectedIndex = (homeCategoriesSelectedIndex - 1).coerceAtLeast(0)
+                    }
+                }
+                true
+            }
+            event.key == Key.DirectionDown -> {
+                if (homeCategoriesIsReorderMode) {
+                    if (homeCategoriesSelectedIndex < lastIndex) {
+                        val newOrder = order.toMutableList()
+                        val idx = homeCategoriesSelectedIndex
+                        newOrder[idx] = newOrder[idx + 1].also { newOrder[idx + 1] = newOrder[idx] }
+                        homeCategoriesOrder = newOrder
+                        SharedPreferencesUtil.setHomeCategoryOrder(context, newOrder)
+                        homeCategoriesSelectedIndex = idx + 1
+                    }
+                    true
+                } else {
+                    if (!homeCategoriesIsInBottomRow) {
+                        if (homeCategoriesSelectedIndex < lastIndex) {
+                            homeCategoriesSelectedIndex++
+                        } else {
+                            homeCategoriesIsInBottomRow = true
+                        }
+                    }
+                    true
+                }
+            }
+            event.key == Key.DirectionLeft -> {
+                if (homeCategoriesIsReorderMode) {
+                    homeCategoriesIsReorderMode = false
+                    true
+                } else if (homeCategoriesIsInBottomRow) {
+                    homeCategoriesIsInBottomRow = false
+                    true
+                } else {
+                    // Return focus to the left menu panel
+                    homeCategoriesIsRightPanelActive = false
+                    true
+                }
+            }
+            event.key == Key.DirectionRight -> {
+                if (homeCategoriesIsReorderMode) {
+                    false
+                } else if (homeCategoriesIsInBottomRow) {
+                    false
+                } else {
+                    val id = order.getOrNull(homeCategoriesSelectedIndex)
+                    if (id != null && id != "apps") {
+                        homeCategoriesIsReorderMode = true
+                        true
+                    } else {
+                        false
+                    }
+                }
+            }
+            isEnterOrSelect -> {
+                if (homeCategoriesIsReorderMode) {
+                    homeCategoriesIsReorderMode = false
+                    true
+                } else if (homeCategoriesIsInBottomRow) {
+                    SharedPreferencesUtil.resetHomeCategoryConfigToDefaults(context, BuildConfig.IS_LAUNCHER_BUILD)
+                    refreshHomeCategoriesOrder()
+                    homeCategoriesSelectedIndex = 0
+                    homeCategoriesIsInBottomRow = false
+                    true
+                } else {
+                    val id = order.getOrNull(homeCategoriesSelectedIndex)
+                    if (id != null && id != "apps") {
+                        val enabled = SharedPreferencesUtil.isHomeCategoryEnabled(context, id, BuildConfig.IS_LAUNCHER_BUILD)
+                        SharedPreferencesUtil.setHomeCategoryEnabled(context, id, !enabled, BuildConfig.IS_LAUNCHER_BUILD)
+                        homeCategoriesRevision++
+                        true
+                    } else {
+                        false
+                    }
+                }
+            }
+            event.key == Key.Back -> {
+                if (homeCategoriesIsReorderMode) {
+                    homeCategoriesIsReorderMode = false
+                    true
+                } else {
+                    false
+                }
+            }
+            else -> false
+        }
+    }
+
     private fun handleRightOrEnterKey(): Boolean {
         if (!isSubMenuOpen) {
             isSubMenuOpen = true
-            currentSubMenu = when (selectedIndex) {
-                0 -> SubMenu(context.getString(R.string.settingsMenu_configMenu), listOf(MenuItem(context.getString(R.string.settingsMenu_edit), "")))
-                1 -> SubMenu(
+            currentSubMenu = when (selectedItem) {
+                SettingsMenuItem.CONFIG_API -> SubMenu(
+                    context.getString(R.string.settingsMenu_configMenu),
+                    listOf(MenuItem(context.getString(R.string.settingsMenu_edit), ""))
+                )
+                SettingsMenuItem.APP_LANGUAGE -> SubMenu(
                     context.getString(R.string.settingsMenu_appLanguage),
                     appLanguageOptions.map { (code, res) -> MenuItem(context.getString(res), code) }
                 )
-                2 -> SubMenu(
+                SettingsMenuItem.DISCOVERY_LANGUAGE -> SubMenu(
                     context.getString(R.string.settingsMenu_discoveryMenu),
                     discoveryLanguageOptions.map { (code, res) -> MenuItem(context.getString(res), code) }
                 )
-                3 -> SubMenu(context.getString(R.string.settingsMenu_defaultStreamingRegion), emptyList())
-                // About menu index depends on whether Check for Update is present
-                if (BuildConfig.IS_DIRECT_FLAVOR) 8 else 7 -> SubMenu(context.getString(R.string.settingsMenu_aboutMenu), emptyList())
-                // Don't handle index corresponding to "Check for Update" in direct flavor
+                SettingsMenuItem.DEFAULT_STREAMING_REGION -> SubMenu(
+                    context.getString(R.string.settingsMenu_defaultStreamingRegion),
+                    emptyList()
+                )
+                SettingsMenuItem.TRAILER_PLAYER -> SubMenu(
+                    context.getString(R.string.settingsMenu_trailerPlayer),
+                    listOf(
+                        MenuItem(context.getString(R.string.settingsMenu_trailerPlayer_inApp), "inApp"),
+                        MenuItem(context.getString(R.string.settingsMenu_trailerPlayer_youtubeApp), "youtubeApp")
+                    )
+                )
+                SettingsMenuItem.ABOUT -> SubMenu(
+                    context.getString(R.string.settingsMenu_aboutMenu),
+                    emptyList()
+                )
+                // HOME_CATEGORIES handled by detail panel; FOLDER_SELECTION, CLOCK_FORMAT are toggles;
+                // CHECK_FOR_UPDATE handled by the outer onKeyEvent in SettingsScreen
                 else -> null
             }
-            subMenuSelectedIndex = when (selectedIndex) {
-                1 -> appLanguageOptions.indexOfFirst { it.first == appLanguage }.coerceAtLeast(0)
-                2 -> discoveryLanguageOptions.indexOfFirst { it.first == discoveryLanguage }.coerceAtLeast(0)
+            subMenuSelectedIndex = when (selectedItem) {
+                SettingsMenuItem.APP_LANGUAGE -> appLanguageOptions.indexOfFirst { it.first == appLanguage }.coerceAtLeast(0)
+                SettingsMenuItem.DISCOVERY_LANGUAGE -> discoveryLanguageOptions.indexOfFirst { it.first == discoveryLanguage }.coerceAtLeast(0)
+                SettingsMenuItem.TRAILER_PLAYER -> if (useTrailerWebView) 0 else 1
                 else -> 0
             }
-            // If currentSubMenu is null (e.g. for toggle items or check update), don't open sub menu state
             if (currentSubMenu == null) {
                 isSubMenuOpen = false
                 return false
             }
-            return true // Consume the event
+            return true
         }
-        return false // Don't consume the event if we didn't handle it
+        return false
     }
 
     fun toggleFolderSelection() {
@@ -1147,9 +1609,9 @@ class SettingsScreenController(
         SharedPreferencesUtil.setUse24HourClock(context, use24HourClock)
     }
 
-    fun toggleTrailerPlayer() {
-        useTrailerWebView = !useTrailerWebView
-        SharedPreferencesUtil.setUseTrailerWebView(context, useTrailerWebView)
+    fun setTrailerWebView(value: Boolean) {
+        useTrailerWebView = value
+        SharedPreferencesUtil.setUseTrailerWebView(context, value)
     }
 
     private fun updateDiscoveryLanguage(newValue: String) {

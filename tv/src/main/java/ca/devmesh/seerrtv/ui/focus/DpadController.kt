@@ -391,7 +391,10 @@ class DpadControllerImpl : DpadController {
             is AppFocusState.TopBar -> DpadSection.TopBar
             is AppFocusState.MainScreen -> {
                 when (focus.focus) {
-                    is MainScreenFocusState.CategoryRow, is MainScreenFocusState.MediaItem -> DpadSection.Grid
+                    is MainScreenFocusState.CategoryRow,
+                    is MainScreenFocusState.MediaItem,
+                    is MainScreenFocusState.CustomSliderRow,
+                    is MainScreenFocusState.CustomSliderItem -> DpadSection.Grid
                     is MainScreenFocusState.AppsRow -> DpadSection.Grid
                 }
             }

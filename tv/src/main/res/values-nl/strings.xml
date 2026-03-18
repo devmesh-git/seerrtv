@@ -11,6 +11,7 @@
     <string name="category_seriesGenres">Seriegenres</string>
     <string name="category_studios">Studio\'s</string>
     <string name="category_trending">Trending</string>
+    <string name="category_watchlist">Je kijklijst</string>
     <string name="category_upcomingMovies">Aankomende Films</string>
     <string name="category_upcomingSeries">Aankomende Series</string>
     <string name="common_apiKey">API Sleutel</string>
@@ -282,8 +283,13 @@
     <string name="settingsMenu_discoverLanguagePT">Portugees</string>
     <string name="settingsMenu_discoverLanguageZH">Chinees</string>
     <string name="settingsMenu_discoveryMenu">Ontdekkings taal</string>
+    <string name="settingsMenu_homeCategories">Startschermcategorieën</string>
+    <string name="settingsMenu_homeCategoriesSelectHint">Druk op Rechts of Enter om te bewerken • Links: Terug naar menu</string>
+    <string name="settingsMenu_homeCategoriesInstructions">Enter: Aan/uit • Rechts: Pakken om te sorteren • Omhoog/Omlaag: Verplaatsen • Enter of Links: Neerzetten</string>
+    <string name="settingsMenu_homeCategoriesReorderHint">Omhoog/Omlaag: Rij verplaatsen • Enter of Links: Neerzetten</string>
     <string name="settingsMenu_defaultStreamingRegion">Standaard streamingregio</string>
     <string name="settingsMenu_edit">BEWERKEN</string>
+    <string name="settingsMenu_reorder">Sorteren</string>
     <string name="settingsMenu_enabled">Ingeschakeld</string>
     <string name="settingsMenu_folderSelection">Mapselectie</string>
     <string name="settingsMenu_hostname">Hostnaam</string>
@@ -311,11 +317,14 @@
     <string name="settingsMenu_checkForUpdateTitle">Zoeken naar update</string>
     <string name="settingsMenu_checkForUpdateDescription">Controleer of er een nieuwe versie van de app beschikbaar is.</string>
     <string name="settingsMenu_checkForUpdateHint">Druk op Enter of Rechts om te controleren.</string>
+    <string name="settingsMenu_resetHomeCategories">Naar standaard terugzetten</string>
     <string name="settingsMenu_rightPanelPlaceholder">Selecteer een item om de instellingen te bekijken of te wijzigen.</string>
-    <string name="settingsMenu_loadingRegions">Regio&apos;s worden geladen...</string>
+    <string name="settingsMenu_loadingRegions">Regio\'s worden geladen...</string>
     <string name="settingsMenu_trailerPlayer">Trailer-speler</string>
     <string name="settingsMenu_trailerPlayer_youtubeApp">YouTube-app</string>
     <string name="settingsMenu_trailerPlayer_inApp">In-app speler</string>
+    <string name="settingsMenu_reorderModeHint">Gebruik Omhoog/Omlaag om te verplaatsen. Druk op Enter om te voltooien.</string>
+    <string name="settingsMenu_done">Klaar</string>
     <string name="settingsMenu_title">Instellingen</string>
     <string name="settingsMenu_username">Account</string>
     <string name="settingsMenu_website">Website</string>

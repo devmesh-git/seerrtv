@@ -6,12 +6,12 @@ import androidx.annotation.StringRes
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import ca.devmesh.seerrtv.BuildConfig
 import ca.devmesh.seerrtv.data.ApiResult
 import ca.devmesh.seerrtv.data.SeerrApiService
 import ca.devmesh.seerrtv.model.*
 import ca.devmesh.seerrtv.R
 import ca.devmesh.seerrtv.ui.position.ScrollPositionManager
+import com.pierfrancescosoffritti.androidyoutubeplayer.BuildConfig
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.concurrent.TimeUnit
@@ -28,6 +28,86 @@ import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+
+/**
+ * Server-side slider type enum matching Seerr's DiscoverSliderType.
+ * Values 1-12 are built-in sliders; 13-21 are user-created custom sliders.
+ */
+enum class DiscoverSliderType(val value: Int) {
+    RECENTLY_ADDED(1),
+    RECENT_REQUESTS(2),
+    PLEX_WATCHLIST(3),
+    TRENDING(4),
+    POPULAR_MOVIES(5),
+    MOVIE_GENRES(6),
+    UPCOMING_MOVIES(7),
+    STUDIOS(8),
+    POPULAR_TV(9),
+    TV_GENRES(10),
+    UPCOMING_TV(11),
+    NETWORKS(12),
+    TMDB_MOVIE_KEYWORD(13),
+    TMDB_MOVIE_GENRE(14),
+    TMDB_TV_KEYWORD(15),
+    TMDB_TV_GENRE(16),
+    TMDB_SEARCH(17),
+    TMDB_STUDIO(18),
+    TMDB_NETWORK(19),
+    TMDB_MOVIE_STREAMING_SERVICES(20),
+    TMDB_TV_STREAMING_SERVICES(21);
+
+    companion object {
+        fun fromValue(v: Int): DiscoverSliderType? = entries.firstOrNull { it.value == v }
+    }
+}
+
+/**
+ * Represents a discover slider as returned by GET /api/v1/settings/discover.
+ * @property id Server-assigned slider ID (stable across sessions)
+ * @property type The type of slider (built-in or custom)
+ * @property order Sort position on the Seerr web UI
+ * @property isBuiltIn true for system sliders, false for user-created ones
+ * @property enabled Whether the slider is enabled on the server
+ * @property title User-defined display name (only set for custom sliders)
+ * @property data TMDB ID string used as the query parameter (e.g. keyword ID, genre ID)
+ */
+data class DiscoverSlider(
+    val id: Int,
+    val type: DiscoverSliderType,
+    val order: Int,
+    val isBuiltIn: Boolean,
+    val enabled: Boolean,
+    val title: String? = null,
+    val data: String? = null
+) {
+    val categoryId: String
+        get() = if (isBuiltIn) builtInCategoryId() else "custom_$id"
+
+    private fun builtInCategoryId(): String = when (type) {
+        DiscoverSliderType.RECENTLY_ADDED -> "recently_added"
+        DiscoverSliderType.RECENT_REQUESTS -> "recent_requests"
+        DiscoverSliderType.PLEX_WATCHLIST -> "watchlist"
+        DiscoverSliderType.TRENDING -> "trending"
+        DiscoverSliderType.POPULAR_MOVIES -> "popular_movies"
+        DiscoverSliderType.MOVIE_GENRES -> "movie_genres"
+        DiscoverSliderType.UPCOMING_MOVIES -> "upcoming_movies"
+        DiscoverSliderType.STUDIOS -> "studios"
+        DiscoverSliderType.POPULAR_TV -> "popular_series"
+        DiscoverSliderType.TV_GENRES -> "series_genres"
+        DiscoverSliderType.UPCOMING_TV -> "upcoming_series"
+        DiscoverSliderType.NETWORKS -> "networks"
+        else -> "custom_$id"
+    }
+}
+
+/**
+ * Represents a single row entry in the ordered home screen list.
+ * Standard rows map to a fixed MediaCategory; Custom rows come from server-defined sliders.
+ */
+sealed class ActiveRow {
+    data class Standard(val category: MediaCategory) : ActiveRow()
+    data class Custom(val sliderId: Int) : ActiveRow()
+}
 
 /**
  * Data model class for Category Cards that represent discovery options like genres, studios, networks
@@ -63,6 +143,7 @@ enum class MediaCategory(@param:StringRes val titleResId: Int) {
     RECENT_REQUESTS(R.string.category_recentRequests),
     TRENDING(R.string.category_trending),
     POPULAR_MOVIES(R.string.category_popularMovies),
+    WATCHLIST(R.string.category_watchlist),
     UPCOMING_MOVIES(R.string.category_upcomingMovies),
     POPULAR_SERIES(R.string.category_popularSeries),
     UPCOMING_SERIES(R.string.category_upcomingSeries),
@@ -322,6 +403,24 @@ class SeerrViewModel @Inject constructor(
             initialValue = null
         )
 
+    // -------------------------------------------------------------------------
+    // Dynamic discover sliders (from GET /api/v1/settings/discover)
+    // -------------------------------------------------------------------------
+
+    private val _discoverSliders = MutableStateFlow<List<DiscoverSlider>>(emptyList())
+    /** All sliders returned by the server (built-in + custom), ordered by server order. */
+    val discoverSliders: StateFlow<List<DiscoverSlider>> = _discoverSliders.asStateFlow()
+
+    /** Media data for custom (non-built-in) slider rows, keyed by server slider ID. */
+    private val _customSliderData =
+        MutableStateFlow<Map<Int, ApiResult<List<Media>>>>(emptyMap())
+    val customSliderData: StateFlow<Map<Int, ApiResult<List<Media>>>> =
+        _customSliderData.asStateFlow()
+
+    private val customSliderMediaLists = mutableMapOf<Int, MutableList<Media>>()
+    private val customSliderLoadingState = mutableStateMapOf<Int, Boolean>()
+    private val customSliderCacheTimestamps = mutableMapOf<Int, Long>()
+
     init {
         // Initialize category states
         val initialStates = MediaCategory.entries.associateWith { category -> CategoryState(category) }
@@ -370,19 +469,23 @@ class SeerrViewModel @Inject constructor(
             if (!initialLoadDone || _needsRefresh.value) {
                 activeJobs["loadAll"] = viewModelScope.launch {
                     try {
+                        // Fetch server sliders first so custom rows are known before rendering
+                        launch { loadDiscoverSliders() }
+
                         // Load categories in the specified order
                         listOf(
-                            MediaCategory.RECENTLY_ADDED,
-                            MediaCategory.RECENT_REQUESTS,
-                            MediaCategory.TRENDING,
-                            MediaCategory.POPULAR_MOVIES,
-                            MediaCategory.MOVIE_GENRES,
-                            MediaCategory.UPCOMING_MOVIES,
-                            MediaCategory.STUDIOS,
-                            MediaCategory.POPULAR_SERIES,
-                            MediaCategory.SERIES_GENRES,
-                            MediaCategory.UPCOMING_SERIES,
-                            MediaCategory.NETWORKS
+                    MediaCategory.RECENTLY_ADDED,
+                    MediaCategory.RECENT_REQUESTS,
+                    MediaCategory.TRENDING,
+                    MediaCategory.POPULAR_MOVIES,
+                    MediaCategory.WATCHLIST,
+                    MediaCategory.MOVIE_GENRES,
+                    MediaCategory.UPCOMING_MOVIES,
+                    MediaCategory.STUDIOS,
+                    MediaCategory.POPULAR_SERIES,
+                    MediaCategory.SERIES_GENRES,
+                    MediaCategory.UPCOMING_SERIES,
+                    MediaCategory.NETWORKS
                         ).forEach { category ->
                             launch {
                                 try {
@@ -392,6 +495,7 @@ class SeerrViewModel @Inject constructor(
                                         MediaCategory.RECENT_REQUESTS,
                                         MediaCategory.TRENDING,
                                         MediaCategory.POPULAR_MOVIES,
+                                        MediaCategory.WATCHLIST,
                                         MediaCategory.UPCOMING_MOVIES,
                                         MediaCategory.POPULAR_SERIES,
                                         MediaCategory.UPCOMING_SERIES -> {
@@ -427,6 +531,109 @@ class SeerrViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Fetches the list of discover sliders from the server, merges them into the
+     * locally-stored home category order, and kicks off content loading for each
+     * enabled custom slider.
+     */
+    private suspend fun loadDiscoverSliders() {
+        try {
+            val isLauncherBuild = ca.devmesh.seerrtv.BuildConfig.IS_LAUNCHER_BUILD
+            when (val result = apiService.getDiscoverSliders()) {
+                is ApiResult.Success -> {
+                    _discoverSliders.value = result.data
+                    ca.devmesh.seerrtv.util.SharedPreferencesUtil.mergeServerSlidersIntoOrder(
+                        context, result.data, isLauncherBuild
+                    )
+                    // Load content for each enabled custom slider
+                    result.data
+                        .filter { !it.isBuiltIn && it.enabled && it.data != null }
+                        .forEach { slider ->
+                            viewModelScope.launch {
+                                loadCustomSlider(slider.id, forceRefresh = true)
+                            }
+                        }
+                    Log.d(TAG, "Loaded ${result.data.size} discover sliders (${result.data.count { !it.isBuiltIn }} custom)")
+                }
+                is ApiResult.Error -> {
+                    Log.w(TAG, "Failed to load discover sliders: ${result.exception.message}")
+                }
+                else -> {}
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error loading discover sliders: ${e.message}")
+        }
+    }
+
+    /**
+     * Loads or refreshes media content for a single custom discover slider row.
+     *
+     * @param sliderId The server-assigned slider ID
+     * @param forceRefresh When true, clears existing data and reloads from page 1
+     * @param loadMore When true, appends the next page of results
+     */
+    fun loadCustomSlider(sliderId: Int, forceRefresh: Boolean = false, loadMore: Boolean = false) {
+        val slider = _discoverSliders.value.firstOrNull { it.id == sliderId } ?: return
+        if (slider.data == null) return
+
+        val cacheKey = "custom_slider_$sliderId"
+        val now = System.currentTimeMillis()
+        val lastUpdate = customSliderCacheTimestamps[sliderId] ?: 0L
+        val cacheExpired = (now - lastUpdate) > java.util.concurrent.TimeUnit.MINUTES.toMillis(5)
+
+        if (!loadMore && !forceRefresh && !cacheExpired && _customSliderData.value[sliderId] is ApiResult.Success) {
+            return
+        }
+
+        if (customSliderLoadingState[sliderId] == true && !forceRefresh) return
+        customSliderLoadingState[sliderId] = true
+
+        viewModelScope.launch {
+            try {
+                if (forceRefresh) {
+                    customSliderMediaLists[sliderId]?.clear()
+                }
+
+                val result = apiService.getCustomSliderMedia(slider, reset = forceRefresh, loadMore = loadMore)
+
+                when (result) {
+                    is ApiResult.Success -> {
+                        val mediaList = customSliderMediaLists.getOrPut(sliderId) { mutableListOf() }
+                        if (!loadMore) {
+                            mediaList.clear()
+                            mediaList.addAll(result.data.results)
+                        } else {
+                            val existingIds = mediaList.map { it.id }.toSet()
+                            mediaList.addAll(result.data.results.filter { it.id !in existingIds })
+                        }
+                        customSliderCacheTimestamps[sliderId] = System.currentTimeMillis()
+                        _customSliderData.value = _customSliderData.value.toMutableMap().apply {
+                            put(sliderId, ApiResult.Success(mediaList.toList(), result.paginationInfo))
+                        }
+                        Log.d(TAG, "Custom slider $sliderId (${slider.title}): loaded ${mediaList.size} items")
+                    }
+                    is ApiResult.Error -> {
+                        if (!loadMore) {
+                            _customSliderData.value = _customSliderData.value.toMutableMap().apply {
+                                put(sliderId, result)
+                            }
+                        }
+                        Log.e(TAG, "Error loading custom slider $sliderId: ${result.exception.message}")
+                    }
+                    else -> {}
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Exception loading custom slider $sliderId: ${e.message}")
+            } finally {
+                customSliderLoadingState[sliderId] = false
+            }
+        }
+    }
+
+    /** Returns true if the given custom slider currently has a load-more in progress. */
+    fun isLoadingMoreCustomSlider(sliderId: Int): Boolean =
+        customSliderLoadingState[sliderId] == true
+
     fun refreshAllCategories() {
         setLastAction {
             viewModelScope.launch {
@@ -441,6 +648,7 @@ class SeerrViewModel @Inject constructor(
                         MediaCategory.RECENT_REQUESTS,
                         MediaCategory.TRENDING,
                         MediaCategory.POPULAR_MOVIES,
+                        MediaCategory.WATCHLIST,
                         MediaCategory.MOVIE_GENRES,
                         MediaCategory.UPCOMING_MOVIES,
                         MediaCategory.STUDIOS,
@@ -457,7 +665,8 @@ class SeerrViewModel @Inject constructor(
                                     MediaCategory.RECENTLY_ADDED,
                                     MediaCategory.RECENT_REQUESTS,
                                     MediaCategory.TRENDING,
-                                    MediaCategory.POPULAR_MOVIES,
+                                        MediaCategory.POPULAR_MOVIES,
+                                        MediaCategory.WATCHLIST,
                                     MediaCategory.UPCOMING_MOVIES,
                                     MediaCategory.POPULAR_SERIES,
                                     MediaCategory.UPCOMING_SERIES -> {
@@ -499,7 +708,8 @@ class SeerrViewModel @Inject constructor(
                         MediaCategory.RECENTLY_ADDED,
                         MediaCategory.RECENT_REQUESTS,
                         MediaCategory.TRENDING,
-                        MediaCategory.POPULAR_MOVIES,
+                                        MediaCategory.POPULAR_MOVIES,
+                                        MediaCategory.WATCHLIST,
                         MediaCategory.UPCOMING_MOVIES,
                         MediaCategory.POPULAR_SERIES,
                         MediaCategory.UPCOMING_SERIES -> {
@@ -613,6 +823,7 @@ class SeerrViewModel @Inject constructor(
                     MediaCategory.RECENTLY_ADDED -> apiService.getRecentlyAdded(reset = true)
                     MediaCategory.RECENT_REQUESTS -> apiService.getRequests(reset = true)
                     MediaCategory.POPULAR_MOVIES -> apiService.discoverMovies(reset = true)
+                    MediaCategory.WATCHLIST -> apiService.getWatchlist(reset = true)
                     MediaCategory.TRENDING -> apiService.getTrending(reset = true)
                     MediaCategory.UPCOMING_MOVIES -> apiService.getUpcomingMovies(reset = true)
                     MediaCategory.POPULAR_SERIES -> apiService.getPopularSeries(reset = true)
@@ -680,6 +891,7 @@ class SeerrViewModel @Inject constructor(
                 MediaCategory.RECENTLY_ADDED -> fetchRecentlyAdded(forceRefresh)
                 MediaCategory.RECENT_REQUESTS -> fetchRecentRequests(forceRefresh)
                 MediaCategory.POPULAR_MOVIES -> apiService.discoverMovies(reset = forceRefresh)
+                MediaCategory.WATCHLIST -> apiService.getWatchlist(reset = forceRefresh)
                 MediaCategory.TRENDING -> apiService.getTrending(reset = forceRefresh)
                 MediaCategory.UPCOMING_MOVIES -> apiService.getUpcomingMovies(reset = forceRefresh)
                 MediaCategory.POPULAR_SERIES -> apiService.getPopularSeries(reset = forceRefresh)
@@ -1115,6 +1327,7 @@ class SeerrViewModel @Inject constructor(
                 MediaCategory.RECENT_REQUESTS,
                 MediaCategory.TRENDING,
                 MediaCategory.POPULAR_MOVIES,
+                MediaCategory.WATCHLIST,
                 MediaCategory.UPCOMING_MOVIES,
                 MediaCategory.POPULAR_SERIES,
                 MediaCategory.UPCOMING_SERIES -> {

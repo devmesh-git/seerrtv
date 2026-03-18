@@ -11,6 +11,7 @@
     <string name="category_seriesGenres">Series Genres</string>
     <string name="category_studios">Studios</string>
     <string name="category_trending">Trending</string>
+    <string name="category_watchlist">Your Watchlist</string>
     <string name="category_upcomingMovies">Upcoming Movies</string>
     <string name="category_upcomingSeries">Upcoming Series</string>
     <string name="common_apiKey">API Key</string>
@@ -282,8 +283,13 @@
     <string name="settingsMenu_discoverLanguagePT">Portuguese</string>
     <string name="settingsMenu_discoverLanguageZH">Chinese</string>
     <string name="settingsMenu_discoveryMenu">Discovery Language</string>
+    <string name="settingsMenu_homeCategories">Home Categories</string>
+    <string name="settingsMenu_homeCategoriesSelectHint">Press Right or Enter to edit • Left: Back to menu</string>
+    <string name="settingsMenu_homeCategoriesInstructions">Enter: Toggle on/off • Right: Pick up to reorder • Left: Back to menu</string>
+    <string name="settingsMenu_homeCategoriesReorderHint">Up/Down: Move row • Enter or Left: Drop in place</string>
     <string name="settingsMenu_defaultStreamingRegion">Default Streaming Region</string>
     <string name="settingsMenu_edit">EDIT</string>
+    <string name="settingsMenu_reorder">Reorder</string>
     <string name="settingsMenu_enabled">Enabled</string>
     <string name="settingsMenu_folderSelection">Folder Selection</string>
     <string name="settingsMenu_hostname">Hostname</string>
@@ -316,6 +322,9 @@
     <string name="settingsMenu_trailerPlayer">Trailer Player</string>
     <string name="settingsMenu_trailerPlayer_youtubeApp">YouTube app</string>
     <string name="settingsMenu_trailerPlayer_inApp">In-app player</string>
+    <string name="settingsMenu_resetHomeCategories">Reset to defaults</string>
+    <string name="settingsMenu_reorderModeHint">Up/Down: Move row • Enter or Left: Drop in place</string>
+    <string name="settingsMenu_done">Done</string>
     <string name="settingsMenu_title">Settings</string>
     <string name="settingsMenu_username">Account</string>
     <string name="settingsMenu_website">Website</string>

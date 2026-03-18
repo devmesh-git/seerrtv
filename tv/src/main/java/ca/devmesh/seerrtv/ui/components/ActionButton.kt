@@ -32,7 +32,8 @@ fun ActionButton(
     backgroundColor: Color,
     enabled: Boolean = true,
     focusable: Boolean = false,
-    fillMaxWidth: Boolean = true
+    fillMaxWidth: Boolean = true,
+    contentColor: Color = Color.White
 ) {
     val buttonShape = RoundedCornerShape(16.dp)
     
@@ -69,8 +70,8 @@ fun ActionButton(
                     )
                 ) {
                     Text(
-                        text = text, 
-                        color = if (enabled) Color.White else Color.White.copy(alpha = 0.5f)
+                        text = text,
+                        color = if (enabled) contentColor else contentColor.copy(alpha = 0.5f)
                     )
                 }
             }

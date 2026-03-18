@@ -71,11 +71,13 @@ import ca.devmesh.seerrtv.util.Permission
 import ca.devmesh.seerrtv.util.TvAppInfo
 import ca.devmesh.seerrtv.util.getInstalledTvAppsWithSavedOrder
 import ca.devmesh.seerrtv.util.saveAppRowOrder
+import ca.devmesh.seerrtv.util.SharedPreferencesUtil
 import ca.devmesh.seerrtv.ui.focus.AppFocusManager
 import ca.devmesh.seerrtv.ui.focus.AppFocusState
 import ca.devmesh.seerrtv.ui.focus.TopBarFocus
 import ca.devmesh.seerrtv.ui.focus.DpadController
 import ca.devmesh.seerrtv.ui.focus.createMainScreenDpadConfig
+import ca.devmesh.seerrtv.viewmodel.ActiveRow
 import ca.devmesh.seerrtv.viewmodel.CategoryCard
 import ca.devmesh.seerrtv.viewmodel.DiscoveryType
 import ca.devmesh.seerrtv.viewmodel.MediaCategory
@@ -92,20 +94,7 @@ import kotlinx.coroutines.launch
 private val MEDIA_DETAILS_AREA_HEIGHT = 150.dp
 private val ROW_SCROLL_ANCHOR = 100.dp
 
-// Ordered list of categories - defined once for the entire file
-private val ORDERED_CATEGORIES = listOf(
-    MediaCategory.RECENTLY_ADDED,
-    MediaCategory.RECENT_REQUESTS,
-    MediaCategory.TRENDING,
-    MediaCategory.POPULAR_MOVIES,
-    MediaCategory.MOVIE_GENRES,
-    MediaCategory.UPCOMING_MOVIES,
-    MediaCategory.STUDIOS,
-    MediaCategory.POPULAR_SERIES,
-    MediaCategory.SERIES_GENRES,
-    MediaCategory.UPCOMING_SERIES,
-    MediaCategory.NETWORKS
-)
+// Ordered list of categories is now derived dynamically from user preferences
 
 // Function to check if a category is a CategoryCard category
 private fun isCategoryCardCategory(category: MediaCategory): Boolean {
@@ -126,11 +115,19 @@ sealed class MainScreenFocusState {
     /** Launcher build only: focus on the "Apps" row with a selected app index. */
     data class AppsRow(val selectedIndex: Int) : MainScreenFocusState()
 
+    /** Focus on a custom server-defined slider row (no specific item selected). */
+    data class CustomSliderRow(val sliderId: Int) : MainScreenFocusState()
+
+    /** Focus on a specific item within a custom slider row. */
+    data class CustomSliderItem(val sliderId: Int, val index: Int) : MainScreenFocusState()
+
     override fun toString(): String {
         return when (this) {
             is CategoryRow -> "CategoryRow(${category.name})"
             is MediaItem -> "MediaItem(${category.name}, $index)"
             is AppsRow -> "AppsRow($selectedIndex)"
+            is CustomSliderRow -> "CustomSliderRow($sliderId)"
+            is CustomSliderItem -> "CustomSliderItem($sliderId, $index)"
         }
     }
 }
@@ -240,6 +237,11 @@ fun MainScreen(
         }
     }
 
+    // Selected state for custom slider rows (null = no custom row focused)
+    // Declared here so the focus sync LaunchedEffect below can reference them
+    val selectedCustomSliderId = remember { mutableStateOf<Int?>(null) }
+    val selectedCustomSliderItemIndex = remember { mutableStateOf(0) }
+
     // CONSOLIDATED: Bidirectional sync between AppFocusManager and local state
     LaunchedEffect(currentAppFocus, selectedCategory.value, selectedMediaIndex.value) {
         when (currentAppFocus) {
@@ -247,6 +249,8 @@ fun MainScreen(
                 when (val mainScreenFocus = currentAppFocus.focus) {
                     // TopBar focus is now handled by TopBarController
                     is MainScreenFocusState.CategoryRow -> {
+                        // Clear any custom slider focus when switching to a standard row
+                        selectedCustomSliderId.value = null
                         // Sync category from focus to local state
                         if (mainScreenFocus.category != selectedCategory.value) {
                             if (BuildConfig.DEBUG) {
@@ -262,6 +266,8 @@ fun MainScreen(
                         }
                     }
                     is MainScreenFocusState.MediaItem -> {
+                        // Clear any custom slider focus when switching to a standard row
+                        selectedCustomSliderId.value = null
                         // Sync category and index from focus to local state
                         var needsUpdate = false
                         if (mainScreenFocus.category != selectedCategory.value) {
@@ -287,6 +293,14 @@ fun MainScreen(
                                 appFocusManager.setFocus(AppFocusState.MainScreen(MainScreenFocusState.MediaItem(selectedCategory.value, selectedMediaIndex.value)))
                             }
                         }
+                    }
+                    is MainScreenFocusState.CustomSliderRow -> {
+                        selectedCustomSliderId.value = mainScreenFocus.sliderId
+                        selectedCustomSliderItemIndex.value = 0
+                    }
+                    is MainScreenFocusState.CustomSliderItem -> {
+                        selectedCustomSliderId.value = mainScreenFocus.sliderId
+                        selectedCustomSliderItemIndex.value = mainScreenFocus.index
                     }
                     is MainScreenFocusState.AppsRow -> {
                         // No local state to sync for Apps row; index lives in focus only
@@ -406,6 +420,10 @@ fun MainScreen(
 
     // Collect the category card data
     val categoryCardData by viewModel.categoryCardData.collectAsState()
+
+    // Custom slider state
+    val discoverSliders by viewModel.discoverSliders.collectAsState()
+    val customSliderData by viewModel.customSliderData.collectAsState()
     
 //    // Debug StateFlow observation (only in debug builds)
 //    if (BuildConfig.DEBUG) {
@@ -478,55 +496,108 @@ fun MainScreen(
         else -> 0
     }
 
-    // Define visibleCategories at the MainScreen level for use throughout the function
-    // Only calculate visible categories after initial load is complete to avoid filtering out categories that are still loading
-    val visibleCategories = if (isInitialLoad) {
-        // During initial load, show all categories to avoid premature filtering
-        ORDERED_CATEGORIES.filter { category ->
-            // Check RECENT_VIEW permission for RECENTLY_ADDED category
-            if (category == MediaCategory.RECENTLY_ADDED &&
-                !CommonUtil.hasPermission(
-                    viewModel.getCurrentUserPermissions() ?: 0,
-                    Permission.RECENT_VIEW
-                )
-            ) {
-                return@filter false
-            }
-            true // Show all categories during initial load
-        }
-    } else {
-        // After initial load, apply proper filtering based on API results
-        ORDERED_CATEGORIES.filter { category ->
-            // Check RECENT_VIEW permission for RECENTLY_ADDED category
-            if (category == MediaCategory.RECENTLY_ADDED &&
-                !CommonUtil.hasPermission(
-                    viewModel.getCurrentUserPermissions() ?: 0,
-                    Permission.RECENT_VIEW
-                )
-            ) {
-                return@filter false
-            }
+    // Derive the ordered list of rows. Re-read when discoverSliders change (custom sliders may have been
+    // merged into the order by the ViewModel after startup fetch).
+    val homeCategoryOrder = remember(discoverSliders) {
+        SharedPreferencesUtil.getHomeCategoryOrder(context, BuildConfig.IS_LAUNCHER_BUILD)
+    }
 
-            // For category cards (genres, studios, networks), check categoryCardData
-            if (isCategoryCardCategory(category)) {
-                when (categoryCardData[category]) {
-                    is ApiResult.Success -> true  // Show category cards if API call succeeded
-                    is ApiResult.Loading -> true  // Show while loading
-                    is ApiResult.Error -> true    // Show error states
-                    else -> false
-                }
-            } else {
-                // For regular media categories, check categoryData
-                when (val result = categoryData[category]) {
-                    is ApiResult.Success -> result.data.isNotEmpty()  // Show media categories if they have items
-                    is ApiResult.Loading -> true  // Show while loading
-                    is ApiResult.Error -> true    // Show error states
-                    else -> false
-                }
+    fun mediaCategoryIdToEnum(id: String): MediaCategory? {
+        return when (id) {
+            "recently_added" -> MediaCategory.RECENTLY_ADDED
+            "recent_requests" -> MediaCategory.RECENT_REQUESTS
+            "trending" -> MediaCategory.TRENDING
+            "popular_movies" -> MediaCategory.POPULAR_MOVIES
+            "watchlist" -> MediaCategory.WATCHLIST
+            "upcoming_movies" -> MediaCategory.UPCOMING_MOVIES
+            "popular_series" -> MediaCategory.POPULAR_SERIES
+            "upcoming_series" -> MediaCategory.UPCOMING_SERIES
+            "movie_genres" -> MediaCategory.MOVIE_GENRES
+            "series_genres" -> MediaCategory.SERIES_GENRES
+            "studios" -> MediaCategory.STUDIOS
+            "networks" -> MediaCategory.NETWORKS
+            else -> null
+        }
+    }
+
+    // Build the combined ordered row list (standard built-in rows + custom slider rows)
+    val allActiveRows: List<ActiveRow> = remember(homeCategoryOrder, discoverSliders, isInitialLoad, categoryData, categoryCardData, customSliderData) {
+        val userPermissions = viewModel.getCurrentUserPermissions() ?: 0
+        homeCategoryOrder
+            .filter { it != "apps" }
+            .mapNotNull { id ->
+                val category = mediaCategoryIdToEnum(id)
+                if (category != null) {
+                    // Built-in category
+                    if (!SharedPreferencesUtil.isHomeCategoryEnabled(context, id, BuildConfig.IS_LAUNCHER_BUILD)) return@mapNotNull null
+                    if (category == MediaCategory.RECENTLY_ADDED &&
+                        !CommonUtil.hasPermission(userPermissions, Permission.RECENT_VIEW)) return@mapNotNull null
+                    if (!isInitialLoad) {
+                        val visible = if (isCategoryCardCategory(category)) {
+                            categoryCardData[category] !is ApiResult.Error || true
+                        } else {
+                            val result = categoryData[category]
+                            result !is ApiResult.Success || result.data.isNotEmpty()
+                        }
+                        if (!visible) return@mapNotNull null
+                    }
+                    ActiveRow.Standard(category)
+                } else if (id.startsWith("custom_")) {
+                    // Custom server-defined slider
+                    val sliderId = id.removePrefix("custom_").toIntOrNull() ?: return@mapNotNull null
+                    if (!SharedPreferencesUtil.isHomeCategoryEnabled(context, id, BuildConfig.IS_LAUNCHER_BUILD)) return@mapNotNull null
+                    val slider = discoverSliders.firstOrNull { it.id == sliderId } ?: return@mapNotNull null
+                    if (!slider.enabled || slider.data == null) return@mapNotNull null
+                    if (!isInitialLoad) {
+                        val result = customSliderData[sliderId]
+                        if (result is ApiResult.Success && result.data.isEmpty()) return@mapNotNull null
+                    }
+                    ActiveRow.Custom(sliderId)
+                } else null
+            }
+    }
+
+    // Backward-compatible list of standard MediaCategory values (used by existing navigation helpers)
+    val visibleCategories: List<MediaCategory> = allActiveRows
+        .filterIsInstance<ActiveRow.Standard>()
+        .map { it.category }
+    
+    // Helper: navigate to a row from allActiveRows by index
+    fun navigateToActiveRow(row: ActiveRow) {
+        when (row) {
+            is ActiveRow.Standard -> {
+                selectedCustomSliderId.value = null
+                val oldCategory = selectedCategory.value
+                previousCategory.value = oldCategory
+                selectedCategory.value = row.category
+                ScrollPositionManager.clearStoredIndex("${row.category.name}_index")
+                ScrollPositionManager.saveScrollPosition("${row.category.name}_scroll", 0)
+                viewModel.forceCarouselReset(row.category, animate = true)
+                updateSelectedIndex(selectedCategory, selectedMediaIndex, 0, force = true)
+                appFocusManager.setFocus(
+                    AppFocusState.MainScreen(MainScreenFocusState.CategoryRow(row.category))
+                )
+            }
+            is ActiveRow.Custom -> {
+                selectedCustomSliderId.value = row.sliderId
+                selectedCustomSliderItemIndex.value = 0
+                appFocusManager.setFocus(
+                    AppFocusState.MainScreen(MainScreenFocusState.CustomSliderRow(row.sliderId))
+                )
             }
         }
     }
-    
+
+    // Returns the index of the currently focused row in allActiveRows
+    fun currentActiveRowIndex(): Int {
+        val customId = selectedCustomSliderId.value
+        return if (customId != null) {
+            allActiveRows.indexOfFirst { it is ActiveRow.Custom && it.sliderId == customId }
+        } else {
+            allActiveRows.indexOfFirst { it is ActiveRow.Standard && it.category == selectedCategory.value }
+        }
+    }
+
     // Navigation handlers for DpadController (defined after visibleCategories to avoid scope issues)
     val handleUp: () -> Unit = {
         when (currentAppFocus) {
@@ -536,10 +607,11 @@ fun MainScreen(
                         // Launcher only: from Apps row, Up goes to TopBar
                         appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Search))
                     }
-                    // TopBar navigation is now handled by TopBarController
-                    is MainScreenFocusState.CategoryRow, is MainScreenFocusState.MediaItem -> {
-                        // Navigate up to previous category, Apps row (launcher), or top bar
-                        val currentIndex = visibleCategories.indexOf(selectedCategory.value)
+                    is MainScreenFocusState.CategoryRow,
+                    is MainScreenFocusState.MediaItem,
+                    is MainScreenFocusState.CustomSliderRow,
+                    is MainScreenFocusState.CustomSliderItem -> {
+                        val currentIndex = currentActiveRowIndex()
                         if (currentIndex == 0) {
                             if (BuildConfig.IS_LAUNCHER_BUILD) {
                                 appFocusManager.setFocus(AppFocusState.MainScreen(MainScreenFocusState.AppsRow(appsRowSelectedIndex)))
@@ -547,35 +619,13 @@ fun MainScreen(
                                 appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Search))
                             }
                         } else if (currentIndex > 0) {
-                            // Save the current category before changing
-                            val oldCategory = selectedCategory.value
-                            previousCategory.value = oldCategory
-                            
-                            // Change to the new category
-                            selectedCategory.value = visibleCategories[currentIndex - 1]
-                            
-                            // Clear indices for both old and new categories
-                            ScrollPositionManager.clearStoredIndex("${oldCategory.name}_index")
-                            ScrollPositionManager.clearStoredIndex("${selectedCategory.value.name}_index")
-                            
-                            // Force the LazyRow to scroll to start position
-                            ScrollPositionManager.saveScrollPosition("${selectedCategory.value.name}_scroll", 0)
-                            viewModel.forceCarouselReset(selectedCategory.value, animate = true)
-                            
-                            // Reset selection index
-                            updateSelectedIndex(selectedCategory, selectedMediaIndex, 0, force = true)
-                            
-                            // Update selection type based on category
-                            setSelection(
-                                if (isCategoryCardCategory(selectedCategory.value)) CategoryType.CATEGORY_CARD else CategoryType.MEDIA
-                            )
+                            val prevRow = allActiveRows[currentIndex - 1]
+                            navigateToActiveRow(prevRow)
                         }
                     }
                 }
             }
-            else -> {
-                // Other focus states don't affect MainScreen navigation
-            }
+            else -> {}
         }
     }
     
@@ -590,63 +640,33 @@ fun MainScreen(
             is AppFocusState.MainScreen -> {
                 when (currentAppFocus.focus) {
                     is MainScreenFocusState.AppsRow -> {
-                        // Launcher only: from Apps row, Down goes to first category
-                        if (visibleCategories.isNotEmpty()) {
-                            selectedCategory.value = visibleCategories[0]
-                            updateSelectedIndex(selectedCategory, selectedMediaIndex, 0, force = true)
-                            ScrollPositionManager.saveScrollPosition("${visibleCategories[0].name}_scroll", 0)
-                            viewModel.forceCarouselReset(visibleCategories[0], animate = true)
-                            setSelection(
-                                if (isCategoryCardCategory(visibleCategories[0])) CategoryType.CATEGORY_CARD else CategoryType.MEDIA
-                            )
-                            appFocusManager.setFocus(AppFocusState.MainScreen(MainScreenFocusState.CategoryRow(visibleCategories[0])))
-                        }
-                    }
-                    // TopBar navigation is now handled by TopBarController
-                    is MainScreenFocusState.CategoryRow, is MainScreenFocusState.MediaItem -> {
-                        val currentIndex = visibleCategories.indexOf(selectedCategory.value)
-                        if (currentIndex < visibleCategories.size - 1) {
-                            // Save the current category before changing
-                            val oldCategory = selectedCategory.value
-                            
-                            // Update the previous category reference
-                            previousCategory.value = oldCategory
-                            
-                            // Change to the new category
-                            selectedCategory.value = visibleCategories[currentIndex + 1]
-                            
-                            // Clear and reset indices for both old and new categories
-                            ScrollPositionManager.clearStoredIndex("${oldCategory.name}_index")
-                            ScrollPositionManager.clearStoredIndex("${selectedCategory.value.name}_index")
-                            
-                            // Force the LazyRow to scroll to start position
-                            ScrollPositionManager.saveScrollPosition("${selectedCategory.value.name}_scroll", 0)
-                            viewModel.forceCarouselReset(selectedCategory.value, animate = true)
-                            
-                            // Mark that we came from DOWN navigation
+                        // Launcher only: from Apps row, Down goes to first row
+                        val firstRow = allActiveRows.firstOrNull()
+                        if (firstRow != null) {
                             uiState.cameFromDownNavigation = true
                             uiState.downNavigationTimestamp = System.currentTimeMillis()
-                            
-                            // Force reset the selection index for the new category to 0
-                            updateSelectedIndex(selectedCategory, selectedMediaIndex, 0, force = true)
-                            
-                            // Temporarily disable post-navigation state to prevent index restoration
+                            navigateToActiveRow(firstRow)
+                        }
+                    }
+                    is MainScreenFocusState.CategoryRow,
+                    is MainScreenFocusState.MediaItem,
+                    is MainScreenFocusState.CustomSliderRow,
+                    is MainScreenFocusState.CustomSliderItem -> {
+                        val currentIndex = currentActiveRowIndex()
+                        if (currentIndex < allActiveRows.size - 1) {
+                            uiState.cameFromDownNavigation = true
+                            uiState.downNavigationTimestamp = System.currentTimeMillis()
                             ScrollPositionManager.setPostNavigationState(false)
-                            
-                            // Mark the new category as navigated to
-                            ScrollPositionManager.markCategoryNavigated("${selectedCategory.value.name}_index")
-                            
-                            // Update selection type based on category
-                            setSelection(
-                                if (isCategoryCardCategory(selectedCategory.value)) CategoryType.CATEGORY_CARD else CategoryType.MEDIA
-                            )
+                            val nextRow = allActiveRows[currentIndex + 1]
+                            navigateToActiveRow(nextRow)
+                            if (nextRow is ActiveRow.Standard) {
+                                ScrollPositionManager.markCategoryNavigated("${nextRow.category.name}_index")
+                            }
                         }
                     }
                 }
             }
-            else -> {
-                // Other focus states don't affect MainScreen navigation
-            }
+            else -> {}
         }
     }
     
@@ -697,6 +717,18 @@ fun MainScreen(
                             
                             // Update the selection
                             setSelection(CategoryType.MEDIA)
+                        }
+                    }
+                    is MainScreenFocusState.CustomSliderRow, is MainScreenFocusState.CustomSliderItem -> {
+                        val sliderId = selectedCustomSliderId.value
+                        if (sliderId != null) {
+                            val newIndex = (selectedCustomSliderItemIndex.value - 1).coerceAtLeast(0)
+                            selectedCustomSliderItemIndex.value = newIndex
+                            appFocusManager.setFocus(
+                                AppFocusState.MainScreen(
+                                    MainScreenFocusState.CustomSliderItem(sliderId, newIndex)
+                                )
+                            )
                         }
                     }
                 }
@@ -816,6 +848,28 @@ fun MainScreen(
                             }
                         }
                     }
+                    is MainScreenFocusState.CustomSliderRow, is MainScreenFocusState.CustomSliderItem -> {
+                        val sliderId = selectedCustomSliderId.value
+                        if (sliderId != null) {
+                            val sliderResult = customSliderData[sliderId]
+                            if (sliderResult is ApiResult.Success) {
+                                val mediaCount = sliderResult.data.size
+                                val isAtLastItem = selectedCustomSliderItemIndex.value >= mediaCount - 1
+                                val hasMorePages = sliderResult.paginationInfo?.hasMorePages != false
+                                val isLoadingMore = viewModel.isLoadingMoreCustomSlider(sliderId)
+                                if (!isAtLastItem || !hasMorePages) {
+                                    val newIndex = (selectedCustomSliderItemIndex.value + 1).coerceAtMost(mediaCount - 1)
+                                    selectedCustomSliderItemIndex.value = newIndex
+                                    appFocusManager.setFocus(
+                                        AppFocusState.MainScreen(MainScreenFocusState.CustomSliderItem(sliderId, newIndex))
+                                    )
+                                }
+                                if (isAtLastItem && hasMorePages && !isLoadingMore) {
+                                    viewModel.loadCustomSlider(sliderId, forceRefresh = false, loadMore = true)
+                                }
+                            }
+                        }
+                    }
                 }
             }
             else -> {
@@ -871,6 +925,20 @@ fun MainScreen(
                                         selectedItem.mediaType
                                     )
                                 }
+                            }
+                        }
+                    }
+                    is MainScreenFocusState.CustomSliderRow, is MainScreenFocusState.CustomSliderItem -> {
+                        val sliderId = selectedCustomSliderId.value
+                        if (sliderId != null) {
+                            val currentIndex = selectedCustomSliderItemIndex.value
+                            val sliderResult = customSliderData[sliderId]
+                            if (sliderResult is ApiResult.Success && currentIndex < sliderResult.data.size) {
+                                val selectedItem = sliderResult.data[currentIndex]
+                                navigationManager.navigateToDetails(
+                                    selectedItem.id.toString(),
+                                    selectedItem.mediaType
+                                )
                             }
                         }
                     }
@@ -1416,6 +1484,20 @@ fun MainScreen(
         }
     }
 
+    // Update selected media / backdrop when a custom slider item is highlighted
+    LaunchedEffect(selectedCustomSliderId.value, selectedCustomSliderItemIndex.value, customSliderData) {
+        val sliderId = selectedCustomSliderId.value ?: return@LaunchedEffect
+        val sliderResult = customSliderData[sliderId]
+        if (sliderResult is ApiResult.Success) {
+            val newMedia = sliderResult.data.getOrNull(selectedCustomSliderItemIndex.value)
+            if (newMedia != null) {
+                mediaState.selectedMedia = newMedia
+                viewModel.updateCurrentMedia(newMedia)
+                mediaState.selectedCategoryCard = null
+            }
+        }
+    }
+
     // OPTIMIZED: Combined media selection effects into a single LaunchedEffect with multiple conditions
     LaunchedEffect(
         selectedCategory.value,
@@ -1545,13 +1627,13 @@ fun MainScreen(
     }
 
     // Set initial focus when data becomes available
-    LaunchedEffect(visibleCategories, isInitialLoad, categoryData, currentBackStackEntry) {
+    LaunchedEffect(allActiveRows, isInitialLoad, categoryData, currentBackStackEntry) {
         if (BuildConfig.DEBUG) {
             Log.d("MainScreen", "🔍 LaunchedEffect(initialFocus): currentBackStackEntry=$currentBackStackEntry, skipDiscovery=${currentBackStackEntry == "discovery_to_main"}, skipSettings=${currentBackStackEntry == "settings_to_main"}")
         }
         // Only set initial focus when we have data loaded and not in initial load state
         // Skip this logic when returning from discovery/settings/details to preserve restored focus state
-        if (!isInitialLoad && visibleCategories.isNotEmpty() && currentBackStackEntry != "discovery_to_main" && currentBackStackEntry != "settings_to_main" && currentBackStackEntry != "details_to_main") {
+        if (!isInitialLoad && allActiveRows.isNotEmpty() && currentBackStackEntry != "discovery_to_main" && currentBackStackEntry != "settings_to_main" && currentBackStackEntry != "details_to_main") {
             // Check if selectedCategory is null or not in visible categories
             val currentCategory = selectedCategory.value
             val shouldSetInitialFocus = currentCategory == MediaCategory.RECENTLY_ADDED || currentCategory !in visibleCategories
@@ -1568,26 +1650,31 @@ fun MainScreen(
                         Log.d("MainScreen", "🚀 LAUNCHER: Initial focus set to Apps row")
                     }
                 } else {
-                    // Non-launcher: after initial load, prioritize RECENTLY_ADDED if available
-                    val targetCategory = if (visibleCategories.contains(MediaCategory.RECENTLY_ADDED)) {
-                        MediaCategory.RECENTLY_ADDED
-                    } else {
-                        visibleCategories[0]
+                    // Non-launcher: focus the first active row (standard or custom)
+                    when (val firstRow = allActiveRows[0]) {
+                        is ActiveRow.Standard -> {
+                            val targetCategory = firstRow.category
+                            if (targetCategory != selectedCategory.value) {
+                                selectedCategory.value = targetCategory
+                                updateSelectedIndex(selectedCategory, selectedMediaIndex, 0, force = true)
+                            }
+                            appFocusManager.setFocus(
+                                AppFocusState.MainScreen(
+                                    MainScreenFocusState.CategoryRow(targetCategory)
+                                )
+                            )
+                        }
+                        is ActiveRow.Custom -> {
+                            selectedCustomSliderId.value = firstRow.sliderId
+                            appFocusManager.setFocus(
+                                AppFocusState.MainScreen(MainScreenFocusState.CustomSliderRow(firstRow.sliderId))
+                            )
+                        }
                     }
-                    if (targetCategory != selectedCategory.value) {
-                        selectedCategory.value = targetCategory
-                        updateSelectedIndex(selectedCategory, selectedMediaIndex, 0, force = true)
-                    }
-                    appFocusManager.setFocus(
-                        AppFocusState.MainScreen(
-                            MainScreenFocusState.CategoryRow(targetCategory)
-                        )
-                    )
                     if (BuildConfig.DEBUG) {
-                        Log.d("MainScreen", "🚀 NAVIGATION ENTRY: Processing null with refreshRequired=false")
-                        Log.d("MainScreen", "🔄 Selection change detected: category=${selectedCategory.value}, media=none, card=none")
-                        Log.d("MainScreen", "🎯 Requested focus to main container")
-                        Log.d("MainScreen", "🔙 Back to main route, focusing category ${selectedCategory.value}")
+                        val target = (allActiveRows.firstOrNull() as? ActiveRow.Standard)?.category ?: selectedCategory.value
+                        Log.d("MainScreen", "🚀 NAVIGATION ENTRY: Initial focus set to first active row")
+                        Log.d("MainScreen", "🔙 Back to main route, focusing $target")
                     }
                 }
             }
@@ -1731,7 +1818,7 @@ fun MainScreen(
                 ScrollableCategoriesSection(
                     categories = visibleCategories.also {
                         if (BuildConfig.DEBUG) {
-                            Log.d("MainScreen", "🎬 Rendering ScrollableCategoriesSection with ${it.size} categories: ${it.map { cat -> cat.name }}")
+                            Log.d("MainScreen", "🎬 Rendering ScrollableCategoriesSection with ${it.size} categories + ${allActiveRows.count { r -> r is ActiveRow.Custom }} custom rows")
                         }
                     },
                     categoryData = categoryData,
@@ -1742,11 +1829,16 @@ fun MainScreen(
                     imageLoader = imageLoader,
                     viewModel = viewModel,
                     isInTopBar = isInTopBarNow,
-                installedApps = if (BuildConfig.IS_LAUNCHER_BUILD) installedApps else null,
-                appsRowSelectedIndex = appsRowSelectedIndex,
-                isOnAppsRow = isOnAppsRow,
-                isReorderMode = isReorderMode.value,
-                holdToReorderProgress = holdToReorderProgress.floatValue
+                    installedApps = if (BuildConfig.IS_LAUNCHER_BUILD) installedApps else null,
+                    appsRowSelectedIndex = appsRowSelectedIndex,
+                    isOnAppsRow = isOnAppsRow,
+                    isReorderMode = isReorderMode.value,
+                    holdToReorderProgress = holdToReorderProgress.floatValue,
+                    allActiveRows = allActiveRows,
+                    customSliderData = customSliderData,
+                    selectedCustomSliderId = selectedCustomSliderId,
+                    selectedCustomSliderItemIndex = selectedCustomSliderItemIndex,
+                    discoverSliders = discoverSliders
                 )
             }
         }
@@ -1875,7 +1967,12 @@ fun ScrollableCategoriesSection(
     appsRowSelectedIndex: Int = 0,
     isOnAppsRow: Boolean = false,
     isReorderMode: Boolean = false,
-    holdToReorderProgress: Float = 0f
+    holdToReorderProgress: Float = 0f,
+    allActiveRows: List<ActiveRow> = emptyList(),
+    customSliderData: Map<Int, ApiResult<List<Media>>> = emptyMap(),
+    selectedCustomSliderId: MutableState<Int?> = mutableStateOf(null),
+    selectedCustomSliderItemIndex: MutableState<Int> = mutableStateOf(0),
+    discoverSliders: List<ca.devmesh.seerrtv.viewmodel.DiscoverSlider> = emptyList()
 ) {
     if (BuildConfig.DEBUG) {
         Log.d("ScrollableCategoriesSection", "🎬 ScrollableCategoriesSection called with ${categories.size} categories: ${categories.map { it.name }}")
@@ -1947,62 +2044,81 @@ fun ScrollableCategoriesSection(
                     }
                 }
             }
-            // Use the derived value directly to avoid recreating the list on recomposition
-            itemsIndexed(categories) { index, category ->
-                if (BuildConfig.DEBUG && index == 0) {
-                    Log.d("ScrollableCategoriesSection", "🎬 LazyColumn rendering ${categories.size} categories")
+            // Render the full ordered list of rows (standard built-in + custom slider rows)
+            val rowList: List<ActiveRow> = if (allActiveRows.isNotEmpty()) allActiveRows
+                else categories.map { ActiveRow.Standard(it) }
+            if (BuildConfig.DEBUG) {
+                Log.d("ScrollableCategoriesSection", "🎬 LazyColumn rendering ${rowList.size} rows (${rowList.count { it is ActiveRow.Custom }} custom)")
+            }
+            itemsIndexed(rowList, key = { _, row ->
+                when (row) {
+                    is ActiveRow.Standard -> "std_${row.category.name}"
+                    is ActiveRow.Custom -> "custom_${row.sliderId}"
                 }
-                // Don't highlight any category row when focus is on the apps row (launcher)
-                val isSelected = category == selectedCategory.value && !isInTopBar && !isOnAppsRow
-                if (BuildConfig.DEBUG && index < 2) {
-                    Log.d(
-                        "ScrollableCategoriesSection",
-                        "Row ${category.name}: isInTopBar=${isInTopBar}, isSelected=${isSelected}, selectedCategory=${selectedCategory.value.name}"
-                    )
-                }
+            }) { index, row ->
+                when (row) {
+                    is ActiveRow.Standard -> {
+                        val category = row.category
+                        val isSelected = category == selectedCategory.value && selectedCustomSliderId.value == null && !isInTopBar && !isOnAppsRow
 
-                // Determine if this is a CategoryCard category or a Media category
-                val isCategoryCardType = category in listOf(
-                    MediaCategory.MOVIE_GENRES,
-                    MediaCategory.SERIES_GENRES,
-                    MediaCategory.STUDIOS,
-                    MediaCategory.NETWORKS
-                )
+                        val isCategoryCardType = isCategoryCardCategory(category)
+                        val apiResult = if (isCategoryCardType) {
+                            categoryCardData[category] ?: ApiResult.Loading()
+                        } else {
+                            categoryData[category] ?: ApiResult.Loading()
+                        }
 
-                // Get the appropriate API result based on category type
-                val apiResult = if (isCategoryCardType) {
-                    categoryCardData[category] ?: ApiResult.Loading()
-                } else {
-                    categoryData[category] ?: ApiResult.Loading()
-                }
+                        val shouldShowPlaceholder =
+                            apiResult is ApiResult.Loading &&
+                                    !categoriesWithData.value.contains(category) &&
+                                    index < 3
 
-                // Only show placeholder for initial loading (when category has never had data)
-                val shouldShowPlaceholder =
-                    apiResult is ApiResult.Loading &&
-                            !categoriesWithData.value.contains(category) &&
-                            index < 3
-
-                if (shouldShowPlaceholder) {
-                    // Show placeholder only for initial loading
-                    CategoryPlaceholder(category = category, context = context)
-                } else {
-                    // For all other cases, including pagination loading, show the CarouselSection
-                    if (BuildConfig.DEBUG && index < 2) {
-                        Log.d(
-                            "ScrollableCategoriesSection",
-                            "➡️ Calling CarouselSection for ${category.name} with isSelected=${isSelected}, isInTopBar=${isInTopBar}"
-                        )
+                        if (shouldShowPlaceholder) {
+                            CategoryPlaceholder(category = category, context = context)
+                        } else {
+                            CarouselSection(
+                                category = category,
+                                isSelected = isSelected,
+                                apiResult = apiResult,
+                                selectedMediaIndex = selectedMediaIndices[category] ?: remember { mutableIntStateOf(0) },
+                                context = context,
+                                viewModel = viewModel,
+                                imageLoader = imageLoader,
+                                isInTopBar = isInTopBar,
+                            )
+                        }
                     }
-                    CarouselSection(
-                        category = category,
-                        isSelected = isSelected,
-                        apiResult = apiResult,
-                        selectedMediaIndex = selectedMediaIndices[category] ?: remember { mutableIntStateOf(0) },
-                        context = context,
-                        viewModel = viewModel,
-                        imageLoader = imageLoader,
-                        isInTopBar = isInTopBar,
-                    )
+                    is ActiveRow.Custom -> {
+                        val sliderId = row.sliderId
+                        val slider = discoverSliders.firstOrNull { it.id == sliderId }
+                        val isSelected = sliderId == selectedCustomSliderId.value && !isInTopBar && !isOnAppsRow
+                        val sliderResult = customSliderData[sliderId] ?: ApiResult.Loading()
+                        val title = slider?.title ?: SharedPreferencesUtil.getCustomSliderTitle(context, "custom_$sliderId") ?: "custom_$sliderId"
+
+                        // Show placeholder on first load
+                        val shouldShowPlaceholder = sliderResult is ApiResult.Loading && index < 3
+                        if (shouldShowPlaceholder) {
+                            Box(modifier = Modifier.height(200.dp)) {
+                                MediaRowPlaceholder()
+                            }
+                        } else {
+                            CustomSliderSection(
+                                title = title,
+                                isSelected = isSelected,
+                                apiResult = sliderResult,
+                                selectedItemIndex = if (isSelected) selectedCustomSliderItemIndex.value else 0,
+                                context = context,
+                                imageLoader = imageLoader,
+                                isInTopBar = isInTopBar,
+                            )
+                        }
+                        // Trigger loading when this slider appears and has no data yet
+                        LaunchedEffect(sliderId) {
+                            if (customSliderData[sliderId] == null) {
+                                viewModel.loadCustomSlider(sliderId, forceRefresh = true)
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -2012,19 +2128,26 @@ fun ScrollableCategoriesSection(
     val hasAppsRow = installedApps != null
     val density = LocalDensity.current
     val fixedScrollOffsetPx = -with(density) { ROW_SCROLL_ANCHOR.roundToPx() }
-    LaunchedEffect(selectedCategory.value, isOnAppsRow, hasAppsRow) {
-        val listIndex = when {
+    val rowList: List<ActiveRow> = if (allActiveRows.isNotEmpty()) allActiveRows
+        else categories.map { ActiveRow.Standard(it) }
+    LaunchedEffect(selectedCategory.value, selectedCustomSliderId.value, isOnAppsRow, hasAppsRow) {
+        val rowIndex = when {
             hasAppsRow && isOnAppsRow -> 0
+            selectedCustomSliderId.value != null -> {
+                val idx = rowList.indexOfFirst { it is ActiveRow.Custom && it.sliderId == selectedCustomSliderId.value }
+                if (idx == -1) return@LaunchedEffect
+                idx + if (hasAppsRow) 1 else 0
+            }
             else -> {
-                val categoryIndex = categories.indexOf(selectedCategory.value)
-                if (categoryIndex == -1) return@LaunchedEffect
-                categoryIndex + if (hasAppsRow) 1 else 0
+                val idx = rowList.indexOfFirst { it is ActiveRow.Standard && it.category == selectedCategory.value }
+                if (idx == -1) return@LaunchedEffect
+                idx + if (hasAppsRow) 1 else 0
             }
         }
-        val totalItems = categories.size + if (hasAppsRow) 1 else 0
-        val isNearEnd = listIndex >= totalItems - 3
+        val totalItems = rowList.size + if (hasAppsRow) 1 else 0
+        val isNearEnd = rowIndex >= totalItems - 3
         val scrollOffset = if (isNearEnd) -100 else fixedScrollOffsetPx
-        listState.animateScrollToItem(index = listIndex, scrollOffset = scrollOffset)
+        listState.animateScrollToItem(index = rowIndex, scrollOffset = scrollOffset)
     }
 }
 
@@ -2192,6 +2315,68 @@ fun MediaDetailsArea(media: Media?, forceUpdate: Int = 0) {
                         maxLines = 3,
                         overflow = TextOverflow.Ellipsis
                     )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * Renders a horizontal media row for a custom server-defined discover slider.
+ * Uses a simple [LazyRow] so it doesn't depend on [MediaCategory] or [SeerrViewModel].
+ */
+@Composable
+fun CustomSliderSection(
+    title: String,
+    isSelected: Boolean,
+    apiResult: ApiResult<List<Media>>,
+    selectedItemIndex: Int,
+    context: Context,
+    imageLoader: ImageLoader,
+    isInTopBar: Boolean = false,
+) {
+    val lazyRowState = androidx.compose.foundation.lazy.rememberLazyListState()
+
+    // Scroll to keep the selected item visible
+    LaunchedEffect(selectedItemIndex) {
+        if (selectedItemIndex >= 0) {
+            lazyRowState.animateScrollToItem(selectedItemIndex)
+        }
+    }
+
+    Column {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.headlineMedium,
+            color = androidx.compose.ui.graphics.Color.White,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        Box(modifier = Modifier.height(210.dp)) {
+            when (apiResult) {
+                is ApiResult.Loading -> MediaRowPlaceholder(showProgressIndicator = true)
+                is ApiResult.Error -> ErrorMediaRow()
+                is ApiResult.Success -> {
+                    val items = apiResult.data
+                    if (items.isEmpty()) {
+                        EmptyMediaRow()
+                    } else {
+                        LazyRow(
+                            state = lazyRowState,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            contentPadding = PaddingValues(end = 16.dp)
+                        ) {
+                            itemsIndexed(items) { idx, item ->
+                                val isItemSelected = isSelected && !isInTopBar && idx == selectedItemIndex
+                                ca.devmesh.seerrtv.ui.components.MediaCard(
+                                    mediaContent = item,
+                                    isSelected = isItemSelected,
+                                    imageLoader = imageLoader,
+                                    context = context,
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }

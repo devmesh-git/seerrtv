@@ -11,6 +11,7 @@
     <string name="category_seriesGenres">シリーズジャンル</string>
     <string name="category_studios">制作会社</string>
     <string name="category_trending">トレンド</string>
+    <string name="category_watchlist">ウォッチリスト</string>
     <string name="category_upcomingMovies">近日公開の映画</string>
     <string name="category_upcomingSeries">今後のテレビシリーズ</string>
     <string name="common_apiKey">APIキー</string>
@@ -282,8 +283,13 @@
     <string name="settingsMenu_discoverLanguagePT">ポルトガル語</string>
     <string name="settingsMenu_discoverLanguageZH">中国語</string>
     <string name="settingsMenu_discoveryMenu">ディスカバリー言語</string>
+    <string name="settingsMenu_homeCategories">ホームカテゴリ</string>
+    <string name="settingsMenu_homeCategoriesSelectHint">右またはEnterを押して編集 • 左：メニューに戻る</string>
+    <string name="settingsMenu_homeCategoriesInstructions">Enter: オン/オフ • 右: 並べ替えで取得 • 上/下: 移動 • Enter または 左: 配置</string>
+    <string name="settingsMenu_homeCategoriesReorderHint">上/下: 行を移動 • Enter または 左: 配置</string>
     <string name="settingsMenu_defaultStreamingRegion">デフォルトストリーミング地域</string>
     <string name="settingsMenu_edit">編集</string>
+    <string name="settingsMenu_reorder">並べ替え</string>
     <string name="settingsMenu_enabled">有効</string>
     <string name="settingsMenu_folderSelection">フォルダ選択</string>
     <string name="settingsMenu_hostname">ホスト名</string>
@@ -311,11 +317,14 @@
     <string name="settingsMenu_checkForUpdateTitle">アップデートを確認</string>
     <string name="settingsMenu_checkForUpdateDescription">アプリの新しいバージョンが利用可能かどうかを確認します。</string>
     <string name="settingsMenu_checkForUpdateHint">エンターまたは右を押して確認します。</string>
+    <string name="settingsMenu_resetHomeCategories">デフォルトに戻す</string>
     <string name="settingsMenu_rightPanelPlaceholder">項目を選択して表示または設定を変更します。</string>
     <string name="settingsMenu_loadingRegions">地域を読み込み中…</string>
     <string name="settingsMenu_trailerPlayer">予告編プレイヤー</string>
     <string name="settingsMenu_trailerPlayer_youtubeApp">YouTubeアプリ</string>
     <string name="settingsMenu_trailerPlayer_inApp">アプリ内プレイヤー</string>
+    <string name="settingsMenu_reorderModeHint">上下で移動。Enterで完了。</string>
+    <string name="settingsMenu_done">完了</string>
     <string name="settingsMenu_title">設定</string>
     <string name="settingsMenu_username">アカウント</string>
     <string name="settingsMenu_website">ウェブサイト</string>

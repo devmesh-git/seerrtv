@@ -2,8 +2,8 @@ import java.io.File
 import java.util.Properties
 
 // Single source for app version; used in defaultConfig and for direct-release APK naming
-val appVersionName = "0.26.17"
-val appVersionCode = 120
+val appVersionName = "0.27.01"
+val appVersionCode = 121
 
 plugins {
     // https://developer.android.com/jetpack/androidx/releases/hilt
@@ -236,6 +236,25 @@ project.afterEvaluate {
     tasks.named("printBuildOutputs") {
         mustRunAfter(tasks.named("renameDirectAppReleaseApk"), tasks.named("renameDirectLauncherReleaseApk"))
     }
+}
+
+// Generate BuildConfig for all debug variants so the IDE can resolve it after a clean,
+// regardless of which variant is active in the Build Variants panel.
+// Runs automatically before preBuild so it's included in every build and IDE sync.
+tasks.register("generateAllDebugBuildConfigs") {
+    group = "build"
+    description = "Generates BuildConfig for all debug variants (keeps IDE references valid after clean)."
+    dependsOn(
+        "generateDirectAppDebugBuildConfig",
+        "generatePlayAppDebugBuildConfig",
+        "generateDirectLauncherDebugBuildConfig",
+        "generatePlayLauncherDebugBuildConfig",
+    )
+}
+
+// Hook into the IDE's Gradle sync model preparation so BuildConfig is always present after a sync.
+tasks.matching { it.name == "prepareKotlinBuildScriptModel" }.configureEach {
+    dependsOn("generateAllDebugBuildConfigs")
 }
 
 // Single entry points for direct: build both app and launcher APKs

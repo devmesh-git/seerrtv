@@ -1079,8 +1079,8 @@ fun SeerrTVApp(
                 .fillMaxSize()
                 .focusable(interactionSource = remember { MutableInteractionSource() })
                 .onKeyEvent { keyEvent ->
-                    // Skip DpadController for screens that use native Compose focus (config, splash)
-                    if (currentRoute in listOf("config", "splash")) {
+                    // Skip DpadController for screens that use native Compose focus (config, splash, settings)
+                    if (currentRoute in listOf("config", "splash", "settings")) {
                         return@onKeyEvent false // Let native Compose focus handle it
                     }
 

@@ -69,6 +69,9 @@ import javax.net.ssl.SSLSocketFactory
 import javax.net.ssl.X509TrustManager
 import kotlin.math.min
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.json.Json
@@ -1071,6 +1074,57 @@ class SeerrApiService @Inject constructor(
         if (reset) resetPaginationState(endpoint)
         val today = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE)
         return fetchSinglePage("$endpoint?firstAirDateGte=$today").mapData { it.results }
+    }
+
+    /**
+     * Returns the "Your Watchlist" media for the current user.
+     *
+     * This uses Overseerr/Seerr's /discover/watchlist endpoint. The watchlist API returns
+     * minimal data (tmdbId, title, mediaType) without posterPath/backdropPath. We enrich
+     * items missing poster data by fetching full details from the movie/tv endpoints.
+     */
+    suspend fun getWatchlist(reset: Boolean = false): ApiResult<List<Media>> {
+        val endpoint = "discover/watchlist"
+        if (reset) resetPaginationState(endpoint)
+        return when (val result = fetchSinglePage(endpoint)) {
+            is ApiResult.Success -> ApiResult.Success(
+                data = enrichWatchlistWithPosters(result.data.results),
+                paginationInfo = result.paginationInfo
+            )
+            is ApiResult.Error -> result
+            is ApiResult.Loading -> result
+        }
+    }
+
+    /**
+     * Fetches poster/backdrop for watchlist items that lack them.
+     * The Seerr discover/watchlist API returns only tmdbId, title, mediaType.
+     */
+    private suspend fun enrichWatchlistWithPosters(results: List<Media>): List<Media> = coroutineScope {
+        results.map { media ->
+            async {
+                if (media.posterPath.isNullOrBlank()) {
+                    val tmdbId = (media.tmdbId ?: media.id).toString()
+                    when (media.mediaType.lowercase()) {
+                        "movie" -> when (val details = getMovieDetails(tmdbId)) {
+                            is ApiResult.Success -> media.copy(
+                                posterPath = details.data.posterPath,
+                                backdropPath = details.data.backdropPath
+                            )
+                            else -> media
+                        }
+                        "tv" -> when (val details = getTVDetails(tmdbId)) {
+                            is ApiResult.Success -> media.copy(
+                                posterPath = details.data.posterPath,
+                                backdropPath = details.data.backdropPath
+                            )
+                            else -> media
+                        }
+                        else -> media
+                    }
+                } else media
+            }
+        }.awaitAll()
     }
 
     private suspend fun fetchSinglePage(
@@ -3120,5 +3174,111 @@ class SeerrApiService @Inject constructor(
         val total_pages: Int,
         val total_results: Int
     )
+
+    /**
+     * Raw JSON model for a single slider entry from GET /api/v1/settings/discover.
+     * Maps 1:1 to the server's DiscoverSlider entity.
+     */
+    @Serializable
+    data class DiscoverSliderDto(
+        val id: Int,
+        val type: Int,
+        val order: Int,
+        val isBuiltIn: Boolean,
+        val enabled: Boolean,
+        val title: String? = null,
+        val data: String? = null
+    )
+
+    /**
+     * Fetches the full list of discover sliders configured on the server,
+     * including both built-in sliders and any custom sliders the user has added
+     * via the Seerr web UI.
+     *
+     * Endpoint: GET /api/v1/settings/discover
+     */
+    suspend fun getDiscoverSliders(): ApiResult<List<ca.devmesh.seerrtv.viewmodel.DiscoverSlider>> {
+        return when (val result = executeApiCall<List<DiscoverSliderDto>>("settings/discover")) {
+            is ApiResult.Success -> ApiResult.Success(
+                result.data.mapNotNull { dto ->
+                    val type = ca.devmesh.seerrtv.viewmodel.DiscoverSliderType.fromValue(dto.type)
+                        ?: return@mapNotNull null
+                    ca.devmesh.seerrtv.viewmodel.DiscoverSlider(
+                        id = dto.id,
+                        type = type,
+                        order = dto.order,
+                        isBuiltIn = dto.isBuiltIn,
+                        enabled = dto.enabled,
+                        title = dto.title,
+                        data = dto.data
+                    )
+                }
+            )
+            is ApiResult.Error -> result
+            is ApiResult.Loading -> result
+        }
+    }
+
+    /**
+     * Fetches media items for a custom discover slider row on the home screen.
+     * Each slider gets its own pagination state keyed by "custom_slider_{id}" so
+     * multiple custom sliders of the same type don't share page counters.
+     *
+     * @param slider The custom slider to fetch content for
+     * @param reset When true, resets pagination to page 1
+     * @param loadMore When true, fetches the next page
+     */
+    suspend fun getCustomSliderMedia(
+        slider: ca.devmesh.seerrtv.viewmodel.DiscoverSlider,
+        reset: Boolean = false,
+        loadMore: Boolean = false
+    ): ApiResult<ca.devmesh.seerrtv.model.Discover> {
+        val paginationKey = "custom_slider_${slider.id}"
+        if (reset || !loadMore) resetPaginationState(paginationKey)
+        val state = getOrCreatePaginationState(paginationKey)
+        val locale = SharedPreferencesUtil.getDiscoveryLanguage(context)
+        val dataId = slider.data ?: return ApiResult.Error(Exception("Custom slider has no data ID"))
+
+        val baseEndpoint = when (slider.type) {
+            ca.devmesh.seerrtv.viewmodel.DiscoverSliderType.TMDB_MOVIE_KEYWORD ->
+                "discover/movies?keywords=$dataId"
+            ca.devmesh.seerrtv.viewmodel.DiscoverSliderType.TMDB_TV_KEYWORD ->
+                "discover/tv?keywords=$dataId"
+            ca.devmesh.seerrtv.viewmodel.DiscoverSliderType.TMDB_MOVIE_GENRE ->
+                "discover/movies?genre=$dataId"
+            ca.devmesh.seerrtv.viewmodel.DiscoverSliderType.TMDB_TV_GENRE ->
+                "discover/tv?genre=$dataId"
+            ca.devmesh.seerrtv.viewmodel.DiscoverSliderType.TMDB_STUDIO ->
+                "discover/movies/studio/$dataId"
+            ca.devmesh.seerrtv.viewmodel.DiscoverSliderType.TMDB_NETWORK ->
+                "discover/tv/network/$dataId"
+            ca.devmesh.seerrtv.viewmodel.DiscoverSliderType.TMDB_MOVIE_STREAMING_SERVICES ->
+                "discover/movies?watchProviders=$dataId"
+            ca.devmesh.seerrtv.viewmodel.DiscoverSliderType.TMDB_TV_STREAMING_SERVICES ->
+                "discover/tv?watchProviders=$dataId"
+            else -> return ApiResult.Error(Exception("Unsupported custom slider type: ${slider.type}"))
+        }
+
+        val pageEndpoint = if (baseEndpoint.contains("?")) {
+            "$baseEndpoint&page=${state.currentPage}"
+        } else {
+            "$baseEndpoint?page=${state.currentPage}"
+        }
+        val localizedEndpoint = if (locale != "en") "$pageEndpoint&language=$locale" else pageEndpoint
+
+        return when (val result = executeApiCall<ca.devmesh.seerrtv.model.Discover>(localizedEndpoint)) {
+            is ApiResult.Success -> {
+                state.totalPages = result.data.totalPages
+                state.totalResults = result.data.totalResults
+                state.hasMorePages = state.currentPage < state.totalPages
+                if (state.hasMorePages && result.data.results.isNotEmpty()) {
+                    state.currentPage++
+                }
+                ApiResult.Success(result.data, state.toImmutable())
+            }
+            is ApiResult.Error -> result
+            is ApiResult.Loading -> result
+        }
+    }
 
 }

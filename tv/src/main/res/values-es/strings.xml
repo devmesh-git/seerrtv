@@ -11,6 +11,7 @@
     <string name="category_seriesGenres">Géneros de Series</string>
     <string name="category_studios">Estudios</string>
     <string name="category_trending">Tendencias</string>
+    <string name="category_watchlist">Tu lista de seguimiento</string>
     <string name="category_upcomingMovies">Próximas Películas</string>
     <string name="category_upcomingSeries">Próximas Series</string>
     <string name="common_apiKey">Clave API</string>
@@ -282,8 +283,13 @@
     <string name="settingsMenu_discoverLanguagePT">Portugués</string>
     <string name="settingsMenu_discoverLanguageZH">Chino</string>
     <string name="settingsMenu_discoveryMenu">Idioma de descubrimiento</string>
+    <string name="settingsMenu_homeCategories">Categorías de inicio</string>
+    <string name="settingsMenu_homeCategoriesSelectHint">Pulsa Derecha o Enter para editar • Izquierda: Volver al menú</string>
+    <string name="settingsMenu_homeCategoriesInstructions">Enter: Activar/desactivar • Derecha: Tomar para reordenar • Arriba/Abajo: Mover • Enter o Izquierda: Soltar</string>
+    <string name="settingsMenu_homeCategoriesReorderHint">Arriba/Abajo: Mover fila • Enter o Izquierda: Soltar</string>
     <string name="settingsMenu_defaultStreamingRegion">Región de transmisión predeterminada</string>
     <string name="settingsMenu_edit">EDITAR</string>
+    <string name="settingsMenu_reorder">Reordenar</string>
     <string name="settingsMenu_enabled">Habilitado</string>
     <string name="settingsMenu_folderSelection">Selección de Carpeta</string>
     <string name="settingsMenu_hostname">Nombre del host</string>
@@ -311,11 +317,14 @@
     <string name="settingsMenu_checkForUpdateTitle">Buscar actualización</string>
     <string name="settingsMenu_checkForUpdateDescription">Compruebe si hay una nueva versión de la aplicación disponible.</string>
     <string name="settingsMenu_checkForUpdateHint">Pulse Intro o Derecha para comprobar.</string>
+    <string name="settingsMenu_resetHomeCategories">Restablecer predeterminados</string>
     <string name="settingsMenu_rightPanelPlaceholder">Seleccione un elemento para ver o cambiar su configuración.</string>
     <string name="settingsMenu_loadingRegions">Cargando regiones...</string>
     <string name="settingsMenu_trailerPlayer">Reproductor de tráilers</string>
     <string name="settingsMenu_trailerPlayer_youtubeApp">Aplicación YouTube</string>
     <string name="settingsMenu_trailerPlayer_inApp">Reproductor en la app</string>
+    <string name="settingsMenu_reorderModeHint">Usa Arriba/Abajo para mover. Pulsa Enter para terminar.</string>
+    <string name="settingsMenu_done">Listo</string>
     <string name="settingsMenu_title">Configuración</string>
     <string name="settingsMenu_username">Cuenta</string>
     <string name="settingsMenu_website">Sitio Web</string>
