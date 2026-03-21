@@ -178,10 +178,12 @@ fun MainTopBar(
                 }
             }
 
+            Spacer(modifier = Modifier.width(16.dp))
+
             // Clock component
             Clock(context)
 
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(4.dp))
 
             // Profile avatar (to enter profile selection) - right of the clock
             Box(

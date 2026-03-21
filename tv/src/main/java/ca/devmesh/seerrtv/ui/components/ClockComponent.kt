@@ -44,6 +44,6 @@ fun Clock(context: Context) {
             color = Color.White,
             fontSize = 24.sp,
             fontWeight = FontWeight.Medium,
-            modifier = Modifier.padding(end = 16.dp)
+            modifier = Modifier.padding(end = 8.dp)
     )
 } 
