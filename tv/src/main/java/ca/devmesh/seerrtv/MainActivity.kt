@@ -58,6 +58,8 @@ import ca.devmesh.seerrtv.ui.MediaDiscoveryScreen
 import ca.devmesh.seerrtv.ui.MediaBrowseScreen
 import ca.devmesh.seerrtv.ui.PersonScreen
 import ca.devmesh.seerrtv.ui.SplashScreen
+import ca.devmesh.seerrtv.ui.UserProfileSelectionScreen
+import ca.devmesh.seerrtv.ui.UserProfilesManagementScreen
 import ca.devmesh.seerrtv.ui.components.AuthenticationErrorHandler
 import ca.devmesh.seerrtv.ui.components.MainTopBar
 import ca.devmesh.seerrtv.ui.focus.rememberAppFocusManager
@@ -141,6 +143,7 @@ data class TopBarFocusState(
     val isMoviesFocused: Boolean,
     val isSeriesFocused: Boolean,
     val isSettingsFocused: Boolean,
+    val isAvatarFocused: Boolean,
     val showRefreshHint: Boolean,
     val isRefreshRowVisible: Boolean
 )
@@ -521,11 +524,26 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
+        // Profile system: migrate legacy config (if needed) and ensure `active_profile_id` is valid.
+        SharedPreferencesUtil.ensureProfilesInitialized(this)
         updateConfigurationState()
         Log.d("MainActivity", "Current Locale: ${Locale.current}")
 
+        // Determine if we need to prompt for profile selection at startup.
+        val startupProfiles = SharedPreferencesUtil.getProfiles(this)
+        val startupActiveProfile = SharedPreferencesUtil.getActiveProfile(this)
+        val shouldSelectProfileAtStartup =
+            startupProfiles.size > 1 ||
+                (startupProfiles.size == 1 && startupActiveProfile?.pinHash?.isNotBlank() == true)
+        SharedPreferencesUtil.setProfileSelectionTargetPostActivationRoute(
+            this,
+            if (shouldSelectProfileAtStartup) "splash" else null
+        )
+        SharedPreferencesUtil.setProfileSelectionCompleted(this, completed = !shouldSelectProfileAtStartup)
+
         // State to trigger navigation after validation
         var shouldNavigateAfterValidation by mutableStateOf<String?>(null)
+        var didHandlePostAuthNavigation by mutableStateOf(false)
         // Add a reference to the onContinue callback
         var splashOnContinue: (() -> Unit)? = null
 
@@ -542,6 +560,24 @@ class MainActivity : AppCompatActivity() {
                 dpadController = dpadController,
                 scope = coroutineScope
             )
+
+            // Used for: (1) pausing splash validation while profile selector is active,
+            // (2) resuming it when we return back to splash.
+            var currentRouteForValidation by remember {
+                mutableStateOf(
+                    navController.currentDestination?.route?.split("/")?.firstOrNull()
+                )
+            }
+            var hasNavigatedToProfileSelect by remember { mutableStateOf(false) }
+            DisposableEffect(navController) {
+                val listener =
+                    NavController.OnDestinationChangedListener { _, destination, _ ->
+                        currentRouteForValidation =
+                            destination.route?.split("/")?.firstOrNull()
+                    }
+                navController.addOnDestinationChangedListener(listener)
+                onDispose { navController.removeOnDestinationChangedListener(listener) }
+            }
 
             // Top bar UI state lifted to MainActivity so MainTopBar can render hints/refresh row
             var topBarShowRefreshHint by remember { mutableStateOf(false) }
@@ -576,11 +612,66 @@ class MainActivity : AppCompatActivity() {
                             }
                         }
 
+                        // After update check completes, if we need a profile, move off splash
+                        // (without running auth/validation yet).
+                        LaunchedEffect(
+                            showSplash,
+                            updateCheckComplete,
+                            currentRouteForValidation
+                        ) {
+                            if (!showSplash) return@LaunchedEffect
+                            if (!shouldSelectProfileAtStartup) return@LaunchedEffect
+                            if (!updateCheckComplete) return@LaunchedEffect
+                            if (hasNavigatedToProfileSelect) return@LaunchedEffect
+
+                            // Direct flavor might be showing update dialog.
+                            if (BuildConfig.IS_DIRECT_FLAVOR && showUpdateDialog) return@LaunchedEffect
+
+                            if (!SharedPreferencesUtil.isProfileSelectionCompleted(this@MainActivity) &&
+                                currentRouteForValidation == "splash"
+                            ) {
+                                hasNavigatedToProfileSelect = true
+                                navController.navigate("profile_select") {
+                                    popUpTo("splash") { inclusive = true }
+                                }
+                            }
+                        }
+
+                        // If a profile switch requests it, reset splash state so it re-authenticates
+                        // using the *new* active profile configuration.
+                        LaunchedEffect(currentRouteForValidation) {
+                            if (currentRouteForValidation != "splash") return@LaunchedEffect
+
+                            if (SharedPreferencesUtil.consumeForceSplashResetOnNext(this@MainActivity)) {
+                                showSplash = true
+                                apiValidationError = null
+                                loadingSteps = emptyList()
+                                isAuthenticationComplete = false
+                                isAuthError = false
+                                showConnectionErrorDialog = false
+                                showUpdateDialog = false
+                                updateInfoForDialog = null
+                                updateCheckComplete = true
+                            }
+                        }
+
                         // Configuration validation - runs when showSplash (and for direct flavor, only after update check completes)
-                        LaunchedEffect(showSplash, updateCheckComplete) {
+                        LaunchedEffect(showSplash, updateCheckComplete, currentRouteForValidation) {
                             val mayRunConfig = showSplash && (!BuildConfig.IS_DIRECT_FLAVOR || updateCheckComplete)
                             if (!mayRunConfig) return@LaunchedEffect
+                            if (currentRouteForValidation != "splash") return@LaunchedEffect
+
+                            // When we require profile selection at startup, don't authenticate/validate
+                            // until the user has actually unlocked/activated a profile.
+                            if (shouldSelectProfileAtStartup &&
+                                !SharedPreferencesUtil.isProfileSelectionCompleted(this@MainActivity)
+                            ) {
+                                return@LaunchedEffect
+                            }
+
                             if (isConfigured && showSplash) {
+                                // New auth cycle starting; allow post-auth navigation again.
+                                didHandlePostAuthNavigation = false
                                 isAuthenticationComplete = false
                                 delay(300) // Show initial loading message
                                 validateConfiguration()
@@ -615,6 +706,8 @@ class MainActivity : AppCompatActivity() {
 
                             else -> Triple(false, false, false)
                         }
+                        val isAvatarFocusedNow = appFocusManager.currentFocus is AppFocusState.TopBar &&
+                            (appFocusManager.currentFocus as AppFocusState.TopBar).focus == TopBarFocus.Avatar
                         val currentRouteLocal =
                             navController.currentDestination?.route?.split("/")?.firstOrNull()
                         val topBarFocusState = TopBarFocusState(
@@ -625,6 +718,7 @@ class MainActivity : AppCompatActivity() {
                             isSeriesFocused = appFocusManager.currentFocus is AppFocusState.TopBar && 
                                              (appFocusManager.currentFocus as AppFocusState.TopBar).focus == TopBarFocus.Series,
                             isSettingsFocused = isSettingsFocusedNow,
+                            isAvatarFocused = isAvatarFocusedNow,
                             showRefreshHint = if (currentRouteLocal == "main") topBarShowRefreshHint else false,
                             isRefreshRowVisible = if (currentRouteLocal == "main") topBarIsRefreshRowVisible else false
                         )
@@ -689,6 +783,32 @@ class MainActivity : AppCompatActivity() {
                                                 showSplash = false
                                             }
                                         }.also { splashOnContinue = it }
+                                    )
+                                }
+                                composable(
+                                    route = "profile_select",
+                                    exitTransition = { fadeOut(animationSpec = tween(300)) },
+                                    popEnterTransition = { fadeIn(animationSpec = tween(300)) }
+                                ) {
+                                    UserProfileSelectionScreen(
+                                        navController = navController,
+                                        context = this@MainActivity,
+                                        apiService = apiService,
+                                        appFocusManager = appFocusManager,
+                                        dpadController = dpadController
+                                    )
+                                }
+                                composable(
+                                    route = "user_profiles",
+                                    exitTransition = { fadeOut(animationSpec = tween(300)) },
+                                    popEnterTransition = { fadeIn(animationSpec = tween(300)) }
+                                ) {
+                                    UserProfilesManagementScreen(
+                                        navController = navController,
+                                        context = this@MainActivity,
+                                        apiService = apiService,
+                                        appFocusManager = appFocusManager,
+                                        dpadController = dpadController
                                     )
                                 }
                                 composable(
@@ -789,7 +909,15 @@ class MainActivity : AppCompatActivity() {
                                 ) {
                                     SettingsScreen(
                                         navController = navController,
-                                        onOpenConfigScreen = { navController.navigate("config") },
+                                        onOpenConfigScreen = {
+                                            SharedPreferencesUtil.setSkipProfileSelectionOnce(
+                                                this@MainActivity,
+                                                true
+                                            )
+                                            navController.navigate("config")
+                                        },
+                                        onOpenUserProfilesScreen = { navController.navigate("user_profiles") },
+                                        apiService = apiService,
                                         appFocusManager = appFocusManager,
                                         dpadController = dpadController,
                                         viewModel = sharedDiscoveryViewModel
@@ -990,11 +1118,15 @@ class MainActivity : AppCompatActivity() {
                             isAuthenticationComplete
                         ) {
                             if (!showSplash) {
+                                // Prevent the post-auth decision from running multiple times
+                                // (which can consume `skipProfileSelectionOnce` twice).
+                                if (didHandlePostAuthNavigation) return@LaunchedEffect
                                 when {
                                     // First run: No configuration exists
                                     !isConfigured -> {
                                         Log.d("MainActivity", "🆕 First run - navigating to config")
                                         shouldNavigateAfterValidation = "config"
+                                        didHandlePostAuthNavigation = true
                                     }
                                     // Configured but authentication failed
                                     apiValidationError != null -> {
@@ -1006,11 +1138,41 @@ class MainActivity : AppCompatActivity() {
                                     }
                                     // Configured and authentication succeeded
                                     isAuthenticationComplete -> {
-                                        Log.d(
-                                            "MainActivity",
-                                            "✅ Authentication succeeded - navigating to main"
-                                        )
-                                        shouldNavigateAfterValidation = "main"
+                                        val profiles = SharedPreferencesUtil.getProfiles(this@MainActivity)
+                                        val activeProfile = SharedPreferencesUtil.getActiveProfile(this@MainActivity)
+                                        val skipSelectionOnce =
+                                            SharedPreferencesUtil.consumeSkipProfileSelectionOnce(this@MainActivity)
+
+                                        // If user just switched profiles successfully, skip the selector.
+                                        if (skipSelectionOnce) {
+                                            Log.d(
+                                                "MainActivity",
+                                                "✅ Authentication succeeded - skip profile selection once, navigating to main"
+                                            )
+                                            shouldNavigateAfterValidation = "main"
+                                            didHandlePostAuthNavigation = true
+                                        } else {
+                                            val activeNeedsPin =
+                                                activeProfile?.pinHash?.isNotBlank() == true
+                                            val shouldShowSelector =
+                                                profiles.size > 1 || (profiles.size == 1 && activeNeedsPin)
+
+                                            if (shouldShowSelector) {
+                                                Log.d(
+                                                    "MainActivity",
+                                                    "✅ Authentication succeeded - navigating to profile selector"
+                                                )
+                                                shouldNavigateAfterValidation = "profile_select"
+                                                didHandlePostAuthNavigation = true
+                                            } else {
+                                                Log.d(
+                                                    "MainActivity",
+                                                    "✅ Authentication succeeded - navigating to main"
+                                                )
+                                                shouldNavigateAfterValidation = "main"
+                                                didHandlePostAuthNavigation = true
+                                            }
+                                        }
                                     }
                                     // Still authenticating
                                     else -> {
@@ -1107,6 +1269,7 @@ fun SeerrTVApp(
         if (shouldShowTopBar) {
             TopBarController(
                 navController = navController,
+                context = context,
                 appFocusManager = appFocusManager,
                 dpadController = dpadController,
                 onOpenSettingsMenu = onOpenSettingsMenu,
@@ -1127,6 +1290,7 @@ fun SeerrTVApp(
                 isMoviesFocused = topBarFocusState.isMoviesFocused,
                 isSeriesFocused = topBarFocusState.isSeriesFocused,
                 isSettingsFocused = topBarFocusState.isSettingsFocused,
+                isAvatarFocused = topBarFocusState.isAvatarFocused,
                 showRefreshHint = topBarFocusState.showRefreshHint,
                 isInTopBar = topBarFocusState.isInTopBar,
                 isRefreshRowVisible = topBarFocusState.isRefreshRowVisible,

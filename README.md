@@ -89,6 +89,8 @@ SeerrTV is an Android TV application that provides a comprehensive media browsin
 - **Cloudflare Protection** - Bypass Cloudflare Access protection with service token authentication
 - **Flexible Configuration** - Supports HTTP/HTTPS with SSL certificate validation
 - **Connection Testing** - Real-time connection validation before proceeding
+- **Multi-user Profiles** - Create multiple local user profiles, each bound to its own API configuration (1:M).
+- **Profile Selector & PIN (optional)** - If multiple profiles exist (or a single profile is PIN protected), choose a profile at startup and enter an optional numeric PIN before activation.
 
 ### TV-Optimized Interface
 - **Material Design 3** - Theming optimized for TV screens with consistent styling
@@ -98,13 +100,13 @@ SeerrTV is an Android TV application that provides a comprehensive media browsin
 - **Auto-Scrolling** - Content automatically scrolls to keep focused items visible
 - **Expandable Content** - Expandable text areas for long descriptions with "Read More/Less"
 - **Smart Layout** - Dynamic layout adjustment based on content availability
-- **Persistent Top Bar** - Always-visible top bar with search, settings, and clock
-- **Settings Menu** - Slide-in settings panel with auto-scrolling and organized submenus
+- **Persistent Top Bar** - Always-visible top bar with search, settings, clock, and active profile avatar
+- **Settings** - TV-friendly full-screen settings screen (includes `User profiles` management)
 
 ### Localization & Internationalization
 - **Independent App Language** - User interface language is independent of Discovery Language
 - **Language Selection** - Choose from supported languages (English, German, Spanish, French, Japanese, Dutch, Portuguese, Chinese)
-- **On-the-Fly Language Change** - Switch UI language from Settings Menu without restarting
+- **On-the-Fly Language Change** - Switch UI language from the Settings screen without restarting
 - **Automatic Migration** - Existing users automatically use system default language (if supported) or English
 - **Regional Settings** - Default streaming region setting for watch providers and content ratings
 
@@ -154,7 +156,7 @@ SeerrTV is an Android TV application that provides a comprehensive media browsin
    - For Plex auth: Visit plex.tv/link and enter the provided PIN
    - For API key: Enter your server's API key
    - For local user: Enter username and password
-5. **Start browsing!** The app will automatically detect your server type (Seerr, Overseerr, or Jellyseerr)
+5. **Start browsing!** The app will automatically detect your server type (Seerr, Overseerr, or Jellyseerr). If multiple user profiles exist, select one first (and enter an optional PIN).
 
 For detailed configuration guides, see:
 - [Cloudflare Access Configuration Guide](docs/CLOUDFLARE_CONFIGURATION.md) - Setting up Cloudflare Zero Trust protection

@@ -2009,17 +2009,27 @@ fun ScrollableCategoriesSection(
     }
 
 
-    // Create a map of selected media indices for each category
+    // Keep per-category selected indices in sync with dynamic category rows.
+    // This avoids highlight desync when row order/content changes during first load.
     val selectedMediaIndices = remember {
-        mutableMapOf<MediaCategory, MutableState<Int>>().apply {
-            categories.forEach { category -> this[category] = mutableIntStateOf(0) }
+        mutableStateMapOf<MediaCategory, MutableState<Int>>()
+    }
+    LaunchedEffect(categories) {
+        val categorySet = categories.toSet()
+        categories.forEach { category ->
+            if (selectedMediaIndices[category] == null) {
+                selectedMediaIndices[category] = mutableIntStateOf(0)
+            }
         }
+        val removed = selectedMediaIndices.keys.filter { it !in categorySet }
+        removed.forEach { selectedMediaIndices.remove(it) }
     }
 
     // Update the selected index for the current category
-    LaunchedEffect(selectedCategory.value, selectedMediaIndex.value) {
+    LaunchedEffect(categories, selectedCategory.value, selectedMediaIndex.value) {
         val category = selectedCategory.value
-        selectedMediaIndices[category]?.value = selectedMediaIndex.value
+        val state = selectedMediaIndices.getOrPut(category) { mutableIntStateOf(0) }
+        state.value = selectedMediaIndex.value
     }
     
     // Clear all media selections when entering top bar
@@ -2090,7 +2100,7 @@ fun ScrollableCategoriesSection(
                                 category = category,
                                 isSelected = isSelected,
                                 apiResult = apiResult,
-                                selectedMediaIndex = selectedMediaIndices[category] ?: remember { mutableIntStateOf(0) },
+                                selectedMediaIndex = selectedMediaIndices.getOrPut(category) { mutableIntStateOf(0) },
                                 context = context,
                                 viewModel = viewModel,
                                 imageLoader = imageLoader,

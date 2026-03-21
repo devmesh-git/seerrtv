@@ -1,5 +1,43 @@
 # Changelog
+## 0.28.01
 
+### Multi-user Profiles
+
+#### Profile-centric configuration
+- Added persistent `UserProfile` support (1:M profiles), each embedding an API configuration.
+- Migrated legacy single-config setups into a default profile and ensured the active profile is always valid.
+
+#### Profile selection & PIN protection
+- Added `UserProfileSelectionScreen` at startup when multiple profiles exist (or when the single profile is PIN protected).
+- Profile avatars use two-letter initials derived from username/email with uniqueness enforced across profiles.
+- Optional numeric PIN protection is supported locally (hash + verify) before activating a profile.
+
+#### Profile management
+- Added `UserProfilesManagementScreen` and a `User profiles` Settings entry to manage profiles (add/configure avatar+PIN/delete) with active-profile-only enforcement.
+- Reused backend user info (e.g., request/quota values) via existing `/auth/me` calls to display profile-specific usage in the management UI.
+
+### Top Bar & DPAD Navigation
+- Updated top bar to show the active profile avatar and to route avatar selection to the profile selector.
+- Extended DPAD/focus handling to include avatar focus and the new profile selection/management routes (TV remote safe navigation).
+
+### Startup & Splash Flow Fixes
+- Refined the startup flow so configuration/auth is gated correctly by profile selection.
+- Ensured switching profiles re-authenticates with the newly active profile’s API config and avoids the previous “splash/selector loop” behavior.
+
+### Files Modified
+- `tv/build.gradle.kts` – Version bump to 0.28.01 (versionCode 122).
+- `tv/src/main/java/ca/devmesh/seerrtv/MainActivity.kt` – Added `profile_select` and `user_profiles` routes; updated startup/auth sequencing for profile activation.
+- `tv/src/main/java/ca/devmesh/seerrtv/data/SeerrApiService.kt` – Added `/auth/me` support and made `SeerrConfig` serializable for profile-embedded config.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/UserProfileSelectionScreen.kt` – Profile selection UI (carousel) + optional PIN gate.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/UserProfilesManagementScreen.kt` – Active profile management UI (avatar/config/PIN/delete + backend quotas).
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/MediaBrowseScreen.kt` – Updated TopBar integration to reflect avatar focus/selection changes.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/components/MainTopBar.kt` and `TopBarController.kt` – Active avatar display and DPAD routing to profile selector.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/SettingsScreen.kt` – Added `User profiles` menu item + summary view.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/focus/AppFocusManager.kt` – Extended focus state to support avatar and profile-selection routes.
+- `tv/src/main/java/ca/devmesh/seerrtv/util/SharedPreferencesUtil.kt` – Profile persistence, migration, active profile tracking, and navigation state helpers.
+- `tv/src/main/res/values/strings.xml` – Added/updated strings for user profile management in Settings.
+
+---
 ## 0.27.01
 
 ### Discover & Home Screen

@@ -114,7 +114,7 @@ sealed class AppFocusState {
  * Top bar focus states
  */
 enum class TopBarFocus {
-    Search, Movies, Series, Settings
+    Search, Movies, Series, Settings, Avatar
 }
 
 /**

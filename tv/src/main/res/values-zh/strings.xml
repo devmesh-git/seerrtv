@@ -1,7 +1,11 @@
 <resources>
+    <!-- App Strings -->
     <string name="app_name">SeerrTV</string>
+    
+    <!-- Carousel Section Strings -->
     <string name="carouselSection_error_loadingFailed">加载媒体时出错</string>
     <string name="carouselSection_error_noMediaFound">此类别没有找到媒体</string>
+    <!-- Category Strings -->
     <string name="category_movieGenres">电影类型</string>
     <string name="category_networks">网络</string>
     <string name="category_popularMovies">热门电影</string>
@@ -14,6 +18,7 @@
     <string name="category_watchlist">你的观看列表</string>
     <string name="category_upcomingMovies">即将上映的电影</string>
     <string name="category_upcomingSeries">即将上映的剧集</string>
+    <!-- Common Strings -->
     <string name="common_apiKey">API密钥</string>
     <string name="common_areYouSure">你确定吗？</string>
     <string name="common_cancel">取消</string>
@@ -37,6 +42,7 @@
     <string name="common_versionPrefix">v</string>
     <string name="common_yes">是</string>
     <string name="common_no">否</string>
+    <!-- Config Screen Strings -->
     <string name="configScreen_apiKeyHelp">请从服务器设置中输入您的API密钥</string>
     <string name="configScreen_authenticationFailed">认证失败</string>
     <string name="configScreen_authFailedMessage">您的凭据无效。这可能是由于密码更改或访问权限被撤销。请使用有效凭据重新配置。</string>
@@ -98,6 +104,7 @@
     <string name="configScreen_unknownError">发生未知错误</string>
     <string name="configScreen_username">用户名</string>
     <string name="configScreen_waitingAuth">正在等待认证…</string>
+    <!-- Issue Strings -->
     <string name="issue_add_comment_button">添加评论</string>
     <string name="issue_add_comment_placeholder">添加您的评论...</string>
     <string name="issue_add_comment_title">为问题添加评论</string>
@@ -149,6 +156,7 @@
     <string name="issue_video_quality">视频质量差</string>
     <string name="issue_video_stuttering">视频卡顿/冻结</string>
     <string name="issue_video_sync">视频不同步</string>
+    <!-- Main Screen Strings -->
     <string name="mainScreen_loading_pleaseWait">请稍候</string>
     <string name="mainScreen_mediaBackdrop">媒体背景</string>
     <string name="mainScreen_pressBackAgainToExit">再次按返回键退出应用程序</string>
@@ -159,6 +167,7 @@
     <string name="mainScreen_appOrderSaved">应用顺序已保存</string>
     <string name="mainScreen_reorderModeHint">重新排序：左/右移动，Enter 或返回保存</string>
     <string name="mainScreen_appsRowReorderTitle">应用（重新排序）</string>
+    <!-- Media Details Strings -->
     <string name="mediaDetails_cast">演员</string>
     <string name="mediaDetails_crew">工作人员</string>
     <string name="mediaDetails_errorSubmittingRequest">提交请求时出错：%1$s</string>
@@ -183,6 +192,7 @@
     <string name="mediaDetails_unknownType">未知媒体类型</string>
     <string name="mediaDetails_watchTrailer">观看预告片</string>
     <string name="mediaDetails_youTubeNotFound">无法打开YouTube视频，未找到应用程序</string>
+    <!-- Media Discovery Strings -->
     <string name="mediaDiscovery_movieKeywordSearch">带关键词的电影</string>
     <string name="mediaDiscovery_noImage">无图像</string>
     <string name="mediaDiscovery_noResults">未找到结果。请调整搜索条件重试。</string>
@@ -190,6 +200,7 @@
     <string name="mediaDiscovery_searchPlaceholder">搜索电影或电视节目</string>
     <string name="mediaDiscovery_searchResults">搜索结果</string>
     <string name="mediaDiscovery_tvKeywordSearch">带关键词的电视节目</string>
+    <!-- Media Info Table Strings -->
     <string name="mediaInfoTable_budget">预算</string>
     <string name="mediaInfoTable_currentlyStreamingOn">当前在以下平台播放</string>
     <string name="mediaInfoTable_firstAirDate">首播日期</string>
@@ -210,12 +221,14 @@
     <string name="mediaInfoTable_status">状态</string>
     <string name="mediaInfoTable_studios">制作公司</string>
     <string name="mediaInfoTable_tmdbRating">TMDB评分</string>
+    <!-- Person Screen Strings -->
     <string name="personScreen_alsoKnownAs">又名</string>
     <string name="personScreen_born">出生</string>
     <string name="personScreen_crew">工作人员</string>
     <string name="personScreen_knownFor">代表作品</string>
     <string name="personScreen_personProfile">人物简介</string>
     <string name="personScreen_yearsOld">岁</string>
+    <!-- Request Action Strings -->
     <string name="requestAction_approve">批准</string>
     <string name="requestAction_by">由</string>
     <string name="requestAction_decline">拒绝</string>
@@ -227,6 +240,7 @@
     <string name="requestAction_requestStatus">请求状态</string>
     <string name="requestAction_unknownMediaType">未知媒体类型</string>
     <string name="requestAction_unknownProfile">未知配置文件</string>
+    <!-- Request Modal Strings -->
     <string name="requestModal_episodes">剧集</string>
     <string name="requestModal_errorLookingUpSeries">查找剧集时出错：%1$s</string>
     <string name="requestModal_errorSubmittingRequest">提交请求时出错</string>
@@ -253,6 +267,7 @@
     <string name="requestModal_tagsMenu">标签</string>
     <string name="requestModal_title">请求媒体</string>
     <string name="requestModal_unableToMatch">我们无法自动匹配此剧集。请在下方选择正确的匹配项。</string>
+    <!-- Request Status Strings -->
     <string name="requestStatus_approved">已批准</string>
     <string name="requestStatus_available">可用</string>
     <string name="requestStatus_blacklisted">已列入黑名单</string>
@@ -263,6 +278,7 @@
     <string name="requestStatus_notRequested">未请求</string>
     <string name="requestStatus_partiallyAvailable">部分可用</string>
     <string name="requestStatus_pending">待处理</string>
+    <!-- Settings Menu Strings -->
     <string name="settingsMenu_12Hour">12小时制</string>
     <string name="settingsMenu_24Hour">24小时制</string>
     <string name="settingsMenu_aboutMenu">关于</string>
@@ -317,6 +333,7 @@
     <string name="settingsMenu_trailerPlayer_inApp">应用内播放器</string>
     <string name="settingsMenu_title">设置</string>
     <string name="settingsMenu_username">账号</string>
+    <!-- Splash Screen Strings -->
     <string name="splashScreen_authenticating">正在认证…</string>
     <string name="splashScreen_checkingConnection">正在检查连接…</string>
     <string name="splashScreen_checkingForUpdates">检查更新中…</string>
@@ -340,6 +357,7 @@
         <item quantity="one">Radarr: %1$d个服务器</item>
         <item quantity="other">Radarr: %1$d个服务器</item>
     </plurals>
+    <!-- Time Strings -->
     <string name="time_dayAgo">1天前</string>
     <string name="time_days">%1$d天</string>
     <string name="time_daysAgo">%1$d天前</string>
@@ -433,4 +451,39 @@
     <string name="filter_applyRange">应用范围</string>
     <string name="filter_clearFilter">清除过滤器</string>
     <string name="filter_clearAllDates">清除所有日期过滤器</string>
+    <!-- User Profiles Strings -->
+    <string name="userProfiles_loadProfileInfoError">无法加载配置文件信息</string>
+    <string name="userProfiles_settingsSummary_title">用户配置文件管理</string>
+    <string name="userProfiles_settingsSummary_noActiveProfile">没有活动配置文件。</string>
+    <string name="userProfiles_settingsSummary_currentProfile">当前配置文件</string>
+    <string name="userProfiles_settingsSummary_manageHint">按选择/回车以查看和管理配置文件。</string>
+    <string name="userProfiles_pinProtected">PIN 保护</string>
+    <string name="userProfiles_loadingProfileInfo">正在加载配置文件信息...</string>
+    <string name="userProfiles_totalRequests">总请求数：%1$d</string>
+    <string name="userProfiles_movieRequests">电影请求：%1$s</string>
+    <string name="userProfiles_seriesRequests">剧集请求：%1$s</string>
+    <string name="userProfiles_quotaUnlimited">无限制</string>
+    <string name="userProfiles_quotaPerDays">每 %2$d 天 %1$d 次</string>
+    <string name="userProfiles_selectProfile">选择配置文件</string>
+    <string name="userProfiles_enterPin">输入 PIN</string>
+    <string name="userProfiles_noProfilesConfigureServer">暂无配置文件。请先配置服务器。</string>
+    <string name="userProfiles_incorrectPin">PIN 错误</string>
+    <string name="userProfiles_keyDelete">删除</string>
+    <string name="userProfiles_keyOk">确定</string>
+    <string name="userProfiles_actionConfigureApi">配置 API</string>
+    <string name="userProfiles_actionAvatarColor">头像颜色</string>
+    <string name="userProfiles_actionClearPin">清除 PIN</string>
+    <string name="userProfiles_actionSetPin">设置 PIN</string>
+    <string name="userProfiles_actionDeleteProfile">删除配置文件</string>
+    <string name="userProfiles_pinMinimumLengthError">PIN 至少需要 4 位数字</string>
+    <string name="userProfiles_titleList">用户配置文件</string>
+    <string name="userProfiles_titleManageProfile">管理配置文件</string>
+    <string name="userProfiles_titleSetProfilePin">设置配置文件 PIN</string>
+    <string name="userProfiles_titleDeleteProfile">删除配置文件？</string>
+    <string name="userProfiles_noProfilesYet">暂无配置文件。</string>
+    <string name="userProfiles_noActiveProfileFound">未找到活动配置文件。</string>
+    <string name="userProfiles_deleteConfirmMessage">删除当前活动配置文件？\n此操作无法撤销。</string>
+    <string name="userProfiles_pinLabel">PIN</string>
+    <string name="userProfiles_active">活动</string>
+    <string name="userProfiles_addProfile">添加配置文件</string>
 </resources>

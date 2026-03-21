@@ -1759,6 +1759,14 @@ class SeerrApiService @Inject constructor(
         return@withContext testAuthentication()
     }
 
+    /**
+     * Fetch the currently authenticated user from `/auth/me`.
+     * This returns quota + request usage fields when the backend provides them.
+     */
+    suspend fun getAuthenticatedUser(): ApiResult<ca.devmesh.seerrtv.model.User> {
+        return executeApiCall("auth/me")
+    }
+
     fun updateConfig(newConfig: SeerrConfig) {
         Log.d("SeerrApiService", "Updating API Service configuration:")
         Log.d("SeerrApiService", "- Protocol: ${newConfig.protocol}")

@@ -3,12 +3,14 @@ package ca.devmesh.seerrtv.ui.components
 import androidx.compose.runtime.*
 import androidx.navigation.NavController
 import ca.devmesh.seerrtv.BuildConfig
+import android.content.Context
 import ca.devmesh.seerrtv.ui.focus.AppFocusManager
 import ca.devmesh.seerrtv.ui.focus.AppFocusState
 import ca.devmesh.seerrtv.ui.focus.DpadController
 import ca.devmesh.seerrtv.ui.focus.TopBarFocus
 import ca.devmesh.seerrtv.ui.focus.createTopBarDpadConfig
 import android.util.Log
+import ca.devmesh.seerrtv.util.SharedPreferencesUtil
 
 /**
  * TopBar controller that handles its own DPAD navigation and business logic.
@@ -17,6 +19,7 @@ import android.util.Log
 @Composable
 fun TopBarController(
     navController: NavController,
+    context: Context,
     appFocusManager: AppFocusManager,
     dpadController: DpadController,
     onOpenSettingsMenu: () -> Unit,
@@ -134,6 +137,7 @@ fun TopBarController(
                 val currentRoute = navController.currentDestination?.route
                 val onMoviesBrowse = currentRoute == "browse/movies"
                 val onSeriesBrowse = currentRoute == "browse/series"
+                val showSearchIcon = currentRoute?.startsWith("search") != true
                 // On browse screens only 3 icons are visible; move left between them with no wrap.
                 // Visual order: Settings | Series/Movies | Search
                 when (focus.focus) {
@@ -162,6 +166,14 @@ fun TopBarController(
                             appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Settings))
                         }
                     }
+                    TopBarFocus.Avatar -> {
+                        // Avatar sits to the right of the clock, so left goes back to Search (or Settings if Search is hidden).
+                        appFocusManager.setFocus(
+                            AppFocusState.TopBar(
+                                if (showSearchIcon) TopBarFocus.Search else TopBarFocus.Settings
+                            )
+                        )
+                    }
                     TopBarFocus.Settings -> {
                         // Left from Settings = end (no wrap on any screen)
                     }
@@ -181,6 +193,7 @@ fun TopBarController(
                 val currentRoute = navController.currentDestination?.route
                 val onMoviesBrowse = currentRoute == "browse/movies"
                 val onSeriesBrowse = currentRoute == "browse/series"
+                val showSearchIcon = currentRoute?.startsWith("search") != true
                 // On browse screens only 3 icons are visible; move right between them with no wrap.
                 when (focus.focus) {
                     TopBarFocus.Settings -> {
@@ -194,20 +207,35 @@ fun TopBarController(
                     }
                     TopBarFocus.Series -> {
                         if (onMoviesBrowse) {
-                            appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Search))
+                            appFocusManager.setFocus(
+                                AppFocusState.TopBar(
+                                    if (showSearchIcon) TopBarFocus.Search else TopBarFocus.Avatar
+                                )
+                            )
                         } else {
                             appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Movies))
                         }
                     }
                     TopBarFocus.Movies -> {
                         if (onSeriesBrowse) {
-                            appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Search))
+                            appFocusManager.setFocus(
+                                AppFocusState.TopBar(
+                                    if (showSearchIcon) TopBarFocus.Search else TopBarFocus.Avatar
+                                )
+                            )
                         } else {
-                            appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Search))
+                            appFocusManager.setFocus(
+                                AppFocusState.TopBar(
+                                    if (showSearchIcon) TopBarFocus.Search else TopBarFocus.Avatar
+                                )
+                            )
                         }
                     }
                     TopBarFocus.Search -> {
-                        // Right from Search = end (no wrap on any screen)
+                        appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Avatar))
+                    }
+                    TopBarFocus.Avatar -> {
+                        // Right from Avatar = end (no wrap on any screen)
                     }
                 }
             }
@@ -261,6 +289,16 @@ fun TopBarController(
                             Log.d("TopBarController", "🔄 handleEnter: Opening settings menu")
                         }
                         onOpenSettingsMenu()
+                    }
+                    TopBarFocus.Avatar -> {
+                        if (BuildConfig.DEBUG) {
+                            Log.d("TopBarController", "🔄 handleEnter: Opening profile selector")
+                        }
+                        SharedPreferencesUtil.setProfileSelectionTargetPostActivationRoute(
+                            context,
+                            "splash"
+                        )
+                        navController.navigate("profile_select")
                     }
                 }
             }

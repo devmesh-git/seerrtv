@@ -1,7 +1,11 @@
 <resources>
+    <!-- App Strings -->
     <string name="app_name">SeerrTV</string>
+    
+    <!-- Carousel Section Strings -->
     <string name="carouselSection_error_loadingFailed">Fout bij laden van media</string>
     <string name="carouselSection_error_noMediaFound">Geen media gevonden voor deze categorie</string>
+    <!-- Category Strings -->
     <string name="category_movieGenres">Filmgenres</string>
     <string name="category_networks">Netwerken</string>
     <string name="category_popularMovies">Populaire Films</string>
@@ -14,6 +18,7 @@
     <string name="category_watchlist">Je kijklijst</string>
     <string name="category_upcomingMovies">Aankomende Films</string>
     <string name="category_upcomingSeries">Aankomende Series</string>
+    <!-- Common Strings -->
     <string name="common_apiKey">API Sleutel</string>
     <string name="common_areYouSure">Weet je het zeker?</string>
     <string name="common_cancel">Annuleren</string>
@@ -37,6 +42,7 @@
     <string name="common_versionPrefix">v</string>
     <string name="common_yes">Ja</string>
     <string name="common_no">Nee</string>
+    <!-- Config Screen Strings -->
     <string name="configScreen_apiKeyHelp">Voer uw API sleutel in van de serverinstellingen</string>
     <string name="configScreen_authenticationFailed">Authenticatie Mislukt</string>
     <string name="configScreen_authFailedMessage">Uw inloggegevens zijn niet geldig. Dit kan komen door een wachtwoordwijziging of ingetrokken toegang. Configureer opnieuw met geldige inloggegevens.</string>
@@ -98,6 +104,7 @@
     <string name="configScreen_unknownError">Er is een onbekende fout opgetreden</string>
     <string name="configScreen_username">Gebruikersnaam</string>
     <string name="configScreen_waitingAuth">Wachten op authenticatie…</string>
+    <!-- Issue Strings -->
     <string name="issue_add_comment_button">Reactie Toevoegen</string>
     <string name="issue_add_comment_placeholder">Voeg je reactie toe...</string>
     <string name="issue_add_comment_title">Reactie Toevoegen aan Probleem</string>
@@ -149,6 +156,7 @@
     <string name="issue_video_quality">Slechte videokwaliteit</string>
     <string name="issue_video_stuttering">Video hapert/vriest</string>
     <string name="issue_video_sync">Video niet synchroon</string>
+    <!-- Main Screen Strings -->
     <string name="mainScreen_loading_pleaseWait">Even geduld</string>
     <string name="mainScreen_mediaBackdrop">Media Achtergrond</string>
     <string name="mainScreen_pressBackAgainToExit">Druk nogmaals op TERUG om de applicatie te verlaten</string>
@@ -159,6 +167,7 @@
     <string name="mainScreen_appOrderSaved">App-volgorde opgeslagen</string>
     <string name="mainScreen_reorderModeHint">Sorteren: links/rechts om te verplaatsen, Enter of Terug om op te slaan</string>
     <string name="mainScreen_appsRowReorderTitle">Apps (sorteren)</string>
+    <!-- Media Details Strings -->
     <string name="mediaDetails_cast">Cast</string>
     <string name="mediaDetails_crew">Crew</string>
     <string name="mediaDetails_errorSubmittingRequest">Fout bij indienen verzoek: %1$s</string>
@@ -183,6 +192,7 @@
     <string name="mediaDetails_unknownType">Onbekend mediatype</string>
     <string name="mediaDetails_watchTrailer">Bekijk trailer</string>
     <string name="mediaDetails_youTubeNotFound">YouTube-app niet gevonden. Installeer YouTube via de Play Store.</string>
+    <!-- Media Discovery Strings -->
     <string name="mediaDiscovery_movieKeywordSearch">Films met trefwoord</string>
     <string name="mediaDiscovery_noImage">Geen afbeelding</string>
     <string name="mediaDiscovery_noResults">Geen resultaten gevonden. Pas je zoekcriteria aan om het opnieuw te proberen.</string>
@@ -190,6 +200,7 @@
     <string name="mediaDiscovery_searchPlaceholder">Zoek naar films of TV-series</string>
     <string name="mediaDiscovery_searchResults">Zoekresultaten</string>
     <string name="mediaDiscovery_tvKeywordSearch">TV-series met trefwoord</string>
+    <!-- Media Info Table Strings -->
     <string name="mediaInfoTable_budget">Budget</string>
     <string name="mediaInfoTable_currentlyStreamingOn">Momenteel te streamen op</string>
     <string name="mediaInfoTable_firstAirDate">Eerste Uitzenddatum</string>
@@ -210,12 +221,14 @@
     <string name="mediaInfoTable_status">Status</string>
     <string name="mediaInfoTable_studios">Studio\'s</string>
     <string name="mediaInfoTable_tmdbRating">TMDB Beoordeling</string>
+    <!-- Person Screen Strings -->
     <string name="personScreen_alsoKnownAs">Ook Bekend Als</string>
     <string name="personScreen_born">Geboren</string>
     <string name="personScreen_crew">Crew</string>
     <string name="personScreen_knownFor">Bekend Van</string>
     <string name="personScreen_personProfile">Persoonsprofiel</string>
     <string name="personScreen_yearsOld">jaar</string>
+    <!-- Request Action Strings -->
     <string name="requestAction_approve">Goedkeuren</string>
     <string name="requestAction_by">door</string>
     <string name="requestAction_decline">Afwijzen</string>
@@ -227,6 +240,7 @@
     <string name="requestAction_requestStatus">Aanvraagstatus</string>
     <string name="requestAction_unknownMediaType">Onbekend Mediatype</string>
     <string name="requestAction_unknownProfile">Onbekend Profiel</string>
+    <!-- Request Modal Strings -->
     <string name="requestModal_episodes">Afleveringen</string>
     <string name="requestModal_errorLookingUpSeries">Fout bij opzoeken van serie: %1$s</string>
     <string name="requestModal_errorSubmittingRequest">Fout bij het indienen van aanvraag</string>
@@ -253,6 +267,7 @@
     <string name="requestModal_tagsMenu">Tags</string>
     <string name="requestModal_title">Media Aanvragen</string>
     <string name="requestModal_unableToMatch">We konden deze serie niet automatisch matchen. Selecteer de juiste match hieronder.</string>
+    <!-- Request Status Strings -->
     <string name="requestStatus_approved">Goedgekeurd</string>
     <string name="requestStatus_available">Beschikbaar</string>
     <string name="requestStatus_blacklisted">Geblokkeerd</string>
@@ -263,6 +278,7 @@
     <string name="requestStatus_notRequested">Niet Aangevraagd</string>
     <string name="requestStatus_partiallyAvailable">Gedeeltelijk Beschikbaar</string>
     <string name="requestStatus_pending">In Behandeling</string>
+    <!-- Settings Menu Strings -->
     <string name="settingsMenu_12Hour">12-uurs</string>
     <string name="settingsMenu_24Hour">24-uurs</string>
     <string name="settingsMenu_aboutMenu">Over</string>
@@ -317,6 +333,7 @@
     <string name="settingsMenu_trailerPlayer_inApp">In-app speler</string>
     <string name="settingsMenu_title">Instellingen</string>
     <string name="settingsMenu_username">Account</string>
+    <!-- Splash Screen Strings -->
     <string name="splashScreen_authenticating">Authenticeren…</string>
     <string name="splashScreen_checkingConnection">Verbinding Controleren…</string>
     <string name="splashScreen_checkingForUpdates">Controleren op updates…</string>
@@ -340,6 +357,7 @@
         <item quantity="one">Radarr: %1$d server</item>
         <item quantity="other">Radarr: %1$d servers</item>
     </plurals>
+    <!-- Time Strings -->
     <string name="time_dayAgo">1 dag geleden</string>
     <string name="time_days">%1$d dagen</string>
     <string name="time_daysAgo">%1$d dagen geleden</string>
@@ -433,4 +451,39 @@
     <string name="filter_applyRange">Bereik toepassen</string>
     <string name="filter_clearFilter">Filter wissen</string>
     <string name="filter_clearAllDates">Alle datumfilters wissen</string>
+    <!-- User Profiles Strings -->
+    <string name="userProfiles_loadProfileInfoError">Kan profielinformatie niet laden</string>
+    <string name="userProfiles_settingsSummary_title">Beheer van gebruikersprofielen</string>
+    <string name="userProfiles_settingsSummary_noActiveProfile">Geen actief profiel.</string>
+    <string name="userProfiles_settingsSummary_currentProfile">Huidig profiel</string>
+    <string name="userProfiles_settingsSummary_manageHint">Druk op Selecteren/Enter om profielen te bekijken en beheren.</string>
+    <string name="userProfiles_pinProtected">PIN-beveiligd</string>
+    <string name="userProfiles_loadingProfileInfo">Profielinformatie laden...</string>
+    <string name="userProfiles_totalRequests">Totaal verzoeken: %1$d</string>
+    <string name="userProfiles_movieRequests">Filmverzoeken: %1$s</string>
+    <string name="userProfiles_seriesRequests">Serieverzoeken: %1$s</string>
+    <string name="userProfiles_quotaUnlimited">Onbeperkt</string>
+    <string name="userProfiles_quotaPerDays">%1$d per %2$d dagen</string>
+    <string name="userProfiles_selectProfile">Profiel selecteren</string>
+    <string name="userProfiles_enterPin">PIN invoeren</string>
+    <string name="userProfiles_noProfilesConfigureServer">Nog geen profielen. Configureer je server.</string>
+    <string name="userProfiles_incorrectPin">Onjuiste PIN</string>
+    <string name="userProfiles_keyDelete">VERW</string>
+    <string name="userProfiles_keyOk">OK</string>
+    <string name="userProfiles_actionConfigureApi">API configureren</string>
+    <string name="userProfiles_actionAvatarColor">Avatarkleur</string>
+    <string name="userProfiles_actionClearPin">PIN wissen</string>
+    <string name="userProfiles_actionSetPin">PIN instellen</string>
+    <string name="userProfiles_actionDeleteProfile">Profiel verwijderen</string>
+    <string name="userProfiles_pinMinimumLengthError">PIN moet minimaal 4 cijfers bevatten</string>
+    <string name="userProfiles_titleList">Gebruikersprofielen</string>
+    <string name="userProfiles_titleManageProfile">Profiel beheren</string>
+    <string name="userProfiles_titleSetProfilePin">Profiel-PIN instellen</string>
+    <string name="userProfiles_titleDeleteProfile">Profiel verwijderen?</string>
+    <string name="userProfiles_noProfilesYet">Nog geen profielen.</string>
+    <string name="userProfiles_noActiveProfileFound">Geen actief profiel gevonden.</string>
+    <string name="userProfiles_deleteConfirmMessage">Je actieve profiel verwijderen?\nDit kan niet ongedaan worden gemaakt.</string>
+    <string name="userProfiles_pinLabel">PIN</string>
+    <string name="userProfiles_active">Actief</string>
+    <string name="userProfiles_addProfile">Profiel toevoegen</string>
 </resources>
