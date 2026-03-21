@@ -394,7 +394,14 @@ class SeerrApiService @Inject constructor(
         }
     }
 
-    private var client = createHttpClient()
+    private val clientLock = Any()
+    private var httpClient: HttpClient? = null
+
+    /** Lazily created on first request to reduce Application/startup class-loading cost. */
+    private val client: HttpClient
+        get() = synchronized(clientLock) {
+            httpClient ?: createHttpClient().also { httpClient = it }
+        }
 
     // Cache for all genres data
     private var cachedMovieGenres: List<GenreResponse>? = null
@@ -466,13 +473,15 @@ class SeerrApiService @Inject constructor(
     }
 
     private fun refreshClient() {
-        try {
-            client.close()
-        } catch (e: Exception) {
-            Log.w("SeerrApiService", "Error closing old client (may already be closed): ${e.message}")
+        synchronized(clientLock) {
+            try {
+                httpClient?.close()
+            } catch (e: Exception) {
+                Log.w("SeerrApiService", "Error closing old client (may already be closed): ${e.message}")
+            }
+            httpClient = createHttpClient()
+            Log.d("SeerrApiService", "HTTP client refreshed")
         }
-        client = createHttpClient()
-        Log.d("SeerrApiService", "HTTP client refreshed")
     }
 
     // Issue endpoints

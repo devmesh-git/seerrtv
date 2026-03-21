@@ -3,7 +3,16 @@ package ca.devmesh.seerrtv.ui.components
 import android.content.Context
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -14,10 +23,12 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ca.devmesh.seerrtv.R
 import ca.devmesh.seerrtv.model.MediaDetails
+import ca.devmesh.seerrtv.util.uiTruncateForDisplay
 import ca.devmesh.seerrtv.model.MediaType
 
 @Composable
@@ -81,56 +92,36 @@ fun OverviewSection(
         android.util.Log.d("MediaDetails", "Year is null: ${year == null}")
         android.util.Log.d("MediaDetails", "Year is empty: ${year?.isEmpty()}")
 
-        // Check if title is too long (more than 30 characters) and put year on new line
-        val isTitleLong = baseTitle.length > 30
-
-        if (isTitleLong && year != null && year.isNotEmpty()) {
-            // Long title: put year on new line
-            Column(
-                modifier = Modifier.alpha(if (isOverviewFocused) 1f else 0.9f)
-            ) {
-                Text(
-                    text = baseTitle,
-                    style = MaterialTheme.typography.headlineMedium.copy(
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
-                    )
+        // Title + year in a Row: weight(1f) + widthIn(min=0) so the title gets the remaining width
+        // and wraps; without this, intrinsic single-line width fights the 0.65f flex column and the
+        // text can collapse to a narrow strip (one character per line) beside the info panel.
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier
+                .fillMaxWidth()
+                .alpha(if (isOverviewFocused) 1f else 0.9f)
+        ) {
+            Text(
+                text = baseTitle,
+                modifier = Modifier
+                    .weight(1f)
+                    .widthIn(min = 0.dp),
+                style = MaterialTheme.typography.headlineMedium.copy(
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold
                 )
+            )
+            if (year != null && year.isNotEmpty()) {
+                android.util.Log.d("MediaDetails", "Displaying year: ($year)")
                 Text(
-                    text = "($year)",
+                    text = " ($year)",
                     style = MaterialTheme.typography.headlineMedium.copy(
                         color = Color.White,
                         fontWeight = FontWeight.Bold,
-                        fontSize = MaterialTheme.typography.headlineMedium.fontSize * 0.7f // Make year 70% of title size
+                        fontSize = MaterialTheme.typography.headlineMedium.fontSize * 0.7f
                     ),
-                    modifier = Modifier.offset(y = 2.dp) // Slight upward offset to align with title baseline
+                    modifier = Modifier.offset(y = 2.dp)
                 )
-            }
-        } else {
-            // Short title: use Row layout
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.alpha(if (isOverviewFocused) 1f else 0.9f)
-            ) {
-                Text(
-                    text = baseTitle,
-                    style = MaterialTheme.typography.headlineMedium.copy(
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
-                    )
-                )
-                if (year != null && year.isNotEmpty()) {
-                    android.util.Log.d("MediaDetails", "Displaying year: ($year)")
-                    Text(
-                        text = " ($year)",
-                        style = MaterialTheme.typography.headlineMedium.copy(
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = MaterialTheme.typography.headlineMedium.fontSize * 0.7f // Make year 70% of title size
-                        ),
-                        modifier = Modifier.offset(y = 2.dp) // Slight upward offset to align with title baseline
-                    )
-                }
             }
         }
 
@@ -163,7 +154,8 @@ fun OverviewSection(
                 media.overview
             }
         } else {
-            media.overview
+            // Cap even in "full" mode — extremely long overviews can ANR during emoji/text layout on TV
+            media.overview.uiTruncateForDisplay(4000)
         }
 
         val hasHiddenText = truncatedOverview != media.overview
@@ -174,7 +166,9 @@ fun OverviewSection(
                 color = Color.White,
                 fontWeight = FontWeight.Medium
             ),
-            modifier = Modifier.alpha(if (isOverviewFocused) 1f else 0.8f)
+            modifier = Modifier.alpha(if (isOverviewFocused) 1f else 0.8f),
+            maxLines = if (isFullOverviewShown) 32 else 14,
+            overflow = TextOverflow.Ellipsis
         )
 
         if (hasHiddenText || isFullOverviewShown) {

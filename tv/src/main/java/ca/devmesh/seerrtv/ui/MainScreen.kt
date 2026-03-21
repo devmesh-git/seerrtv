@@ -87,8 +87,10 @@ import coil3.ImageLoader
 import coil3.request.crossfade
 import coil3.request.ImageRequest
 import kotlin.math.min
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 // Layout constants for main screen (single source of truth for row alignment and heights)
 private val MEDIA_DETAILS_AREA_HEIGHT = 150.dp
@@ -1308,11 +1310,11 @@ fun MainScreen(
                         // Force carousel reset first to clear any cached state
                         viewModel.forceCarouselReset(MediaCategory.RECENT_REQUESTS, animate = true)
 
-                        // Clear image caches
-                        val imageLoader = ImageLoader.Builder(context)
-                            .build()
-                        imageLoader.memoryCache?.clear()
-                        imageLoader.diskCache?.clear()
+                        // Clear image caches off main thread (disk eviction can ANR)
+                        withContext(Dispatchers.IO) {
+                            imageLoader.memoryCache?.clear()
+                            imageLoader.diskCache?.clear()
+                        }
 
                         // Now perform the refresh - this is similar to the full refresh logic but focused on one category
                         viewModel.refreshCategoryWithForce(MediaCategory.RECENT_REQUESTS)

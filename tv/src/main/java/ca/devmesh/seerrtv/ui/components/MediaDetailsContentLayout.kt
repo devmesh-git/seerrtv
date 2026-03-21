@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -43,10 +44,12 @@ fun MediaDetailsContentLayout(
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
-        Row {
-            // Middle column: Overview
+        Row(modifier = Modifier.fillMaxWidth()) {
+            // Middle column: Overview (widthIn(min=0) so flex slot can shrink below title intrinsic width)
             Column(
-                modifier = Modifier.weight(0.65f)
+                modifier = Modifier
+                    .weight(0.65f)
+                    .widthIn(min = 0.dp)
             ) {
                 OverviewSection(
                     media = media,
@@ -92,7 +95,9 @@ fun MediaDetailsContentLayout(
             Spacer(modifier = Modifier.width(16.dp))
             // Right column: Info Table
             Column(
-                modifier = Modifier.weight(0.35f)
+                modifier = Modifier
+                    .weight(0.35f)
+                    .widthIn(min = 0.dp)
             ) {
                 MediaInfoTable(
                     mediaDetails = media,
