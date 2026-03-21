@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.27.02
+
+### Home Screen & Focus
+
+#### Category row selection consistency
+- **Per-category selected indices** – `ScrollableCategoriesSection` now keeps a stable map of selected carousel indices per `MediaCategory`, keyed to the current discover row set.
+- **Dynamic rows** – When server-driven categories load or reorder, indices are created for new categories and pruned for removed ones so selection state stays aligned with visible rows.
+- **Highlight sync** – `CarouselSection` receives the per-category state so the focused item highlight does not desynchronize from the active category during first load or when row content changes.
+- **Top bar** – Entering the top bar still clears per-category selections (`-1`) so focus transitions remain consistent.
+
+### Build & Versioning
+
+- **Version bump** – Bumped to version 0.27.02 (versionCode 122).
+
+### Files Modified
+
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/MainScreen.kt` – `ScrollableCategoriesSection`: per-category `selectedMediaIndices` state map, `LaunchedEffect` sync with `categories` / `selectedCategory` / `selectedMediaIndex`, wiring into `CarouselSection`.
+- `tv/build.gradle.kts` – Version 0.27.02 (versionCode 122).
+
+---
+
 ## 0.27.01
 
 ### Discover & Home Screen
