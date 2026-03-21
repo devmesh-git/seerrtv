@@ -87,10 +87,11 @@ import javax.inject.Inject
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.MainScope
-import kotlinx.coroutines.Dispatchers
 import okhttp3.OkHttpClient
 
 // Define loading step data class
@@ -99,14 +100,26 @@ enum class LoadingStepType { INFO, WARNING, SUCCESS, ERROR }
 
 @HiltAndroidApp
 class SeerrTV : Application() {
+
+    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+
+    private val imageLoaderLock = Any()
+    private var imageLoaderInstance: ImageLoader? = null
+
     companion object {
-        lateinit var imageLoader: ImageLoader
+        @Volatile
+        private var appInstance: SeerrTV? = null
+
+        /** Lazily created on first use to reduce startup ANR risk (dex load + OkHttp init). */
+        val imageLoader: ImageLoader
+            get() = requireNotNull(appInstance) { "SeerrTV not initialized" }.obtainImageLoader()
     }
 
-    override fun onCreate() {
-        super.onCreate()
+    private fun obtainImageLoader(): ImageLoader = synchronized(imageLoaderLock) {
+        imageLoaderInstance ?: createImageLoader().also { imageLoaderInstance = it }
+    }
 
-        // Create OkHttpClient with SSL bypass
+    private fun createImageLoader(): ImageLoader {
         val okHttpClient = OkHttpClient.Builder()
             .sslSocketFactory(
                 TrustAllCerts.createSSLSocketFactory()!!,
@@ -114,23 +127,40 @@ class SeerrTV : Application() {
             )
             .hostnameVerifier { _, _ -> true }
             .build()
-
-        // Create optimized OkHttp client with concurrency controls
         val optimizedOkHttpClient = okHttpClient.newBuilder()
             .dispatcher(
                 okhttp3.Dispatcher().apply {
-                    // Limit concurrent requests - crucial for TV devices
-                    maxRequests = 8          // Max 8 total concurrent requests
-                    maxRequestsPerHost = 4   // Max 4 per host (TMDB)
+                    maxRequests = 8
+                    maxRequestsPerHost = 4
                 }
             )
             .build()
-
-        imageLoader = ImageLoader.Builder(this)
+        return ImageLoader.Builder(this)
             .components {
                 add(OkHttpNetworkFetcherFactory(optimizedOkHttpClient))
             }
             .build()
+    }
+
+    /**
+     * Clears Coil caches off the main thread to avoid ANRs (disk eviction can block).
+     */
+    fun clearImageCachesAsync() {
+        applicationScope.launch(Dispatchers.IO) {
+            try {
+                val loader = obtainImageLoader()
+                loader.memoryCache?.clear()
+                loader.diskCache?.clear()
+                Log.d("SeerrTV", "Cleared image caches on IO dispatcher")
+            } catch (e: Exception) {
+                Log.w("SeerrTV", "Image cache clear failed: ${e.message}")
+            }
+        }
+    }
+
+    override fun onCreate() {
+        super.onCreate()
+        appInstance = this
     }
 }
 

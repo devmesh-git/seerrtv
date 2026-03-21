@@ -2,8 +2,8 @@ import java.io.File
 import java.util.Properties
 
 // Single source for app version; used in defaultConfig and for direct-release APK naming
-val appVersionName = "0.27.02"
-val appVersionCode = 122
+val appVersionName = "0.27.03"
+val appVersionCode = 123
 
 plugins {
     // https://developer.android.com/jetpack/androidx/releases/hilt
@@ -174,8 +174,6 @@ dependencies {
 
     // Networking
     implementation(libs.ktor.client.okhttp)
-    implementation(libs.ktor.client.android)
-    implementation(libs.ktor.client.cio)
     implementation(libs.ktor.client.content.negotiation)
 
     // Image Loading

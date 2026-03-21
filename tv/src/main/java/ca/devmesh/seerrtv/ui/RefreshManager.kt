@@ -5,9 +5,9 @@ import android.util.Log
 import ca.devmesh.seerrtv.R
 import ca.devmesh.seerrtv.data.ApiResult
 import ca.devmesh.seerrtv.model.MediaDetails
+import ca.devmesh.seerrtv.SeerrTV
 import ca.devmesh.seerrtv.viewmodel.MediaCategory
 import ca.devmesh.seerrtv.viewmodel.SeerrViewModel
-import coil3.ImageLoader
 
 class RefreshManager {
     fun handleIssueSuccess(
@@ -44,11 +44,12 @@ class RefreshManager {
         viewModel.refreshCategoryWithForce(MediaCategory.RECENT_REQUESTS)
 
         try {
-            val imageLoader = ImageLoader.Builder(context).build()
-            imageLoader.memoryCache?.clear()
-            imageLoader.diskCache?.clear()
-            Log.d("RefreshManager", "Cleared image caches after request")
-        } catch (_: Exception) {}
+            (context.applicationContext as? SeerrTV)?.clearImageCachesAsync()
+                ?: Log.w("RefreshManager", "Not SeerrTV application; skipping image cache clear")
+            Log.d("RefreshManager", "Scheduled image cache clear after request (IO)")
+        } catch (e: Exception) {
+            Log.w("RefreshManager", "Could not schedule cache clear: ${e.message}")
+        }
     }
 
     fun handleAutoRequestSuccess(

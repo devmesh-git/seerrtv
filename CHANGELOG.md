@@ -1,5 +1,45 @@
 # Changelog
 
+## 0.27.03
+
+### Stability & ANRs
+
+#### Coil image cache (request / home refresh)
+- **No main-thread disk eviction** – Clearing the Coil disk cache after a successful media request or during the home “recent requests” refresh no longer runs on the UI thread. Disk deletes can block for a long time on TV/storage and were implicated in production ANRs (`DiskLruCache` / `File.delete` on `main`).
+- **Shared loader + async clear** – `RefreshManager` schedules cache clear via `SeerrTV.clearImageCachesAsync()` on a background dispatcher. `MainScreen` uses `withContext(Dispatchers.IO)` for the same operation with the composable’s `ImageLoader`.
+- **Lazy `ImageLoader`** – `SeerrTV` builds `ImageLoader` (and its OkHttp stack) on first use instead of in `Application.onCreate()`, reducing work during app bind.
+
+#### Compose text layout (emoji / long server strings)
+- **Bounded dynamic text** – Issue comments, creator display names, person aliases, biography (expanded), and media overviews (including “full” mode) are capped and use `maxLines` + `TextOverflow.Ellipsis` where appropriate to avoid long main-thread passes through `EmojiProcessor` / paragraph layout.
+- **`uiTruncateForDisplay()`** – New helper in `tv/src/main/java/ca/devmesh/seerrtv/util/UiText.kt` for consistent display truncation of API/user-provided strings.
+
+#### Media details (title wrapping)
+- **Long titles next to the info panel** – The overview title uses `Row` + `Modifier.weight(1f)` and `widthIn(min = 0)` so the headline measures against the real width of the middle column. Previously, intrinsic single-line width (especially for titles exactly at the “short” length threshold) fought the weighted `Row`/`Column` layout and could collapse to a one-character-wide strip beside the ratings table.
+- **Flex columns** – `MediaDetailsContentLayout` gives the overview and info-table columns `widthIn(min = 0)` and `fillMaxWidth()` on the content row so weighted children can shrink and wrap correctly.
+
+#### Startup / class loading
+- **Lazy Ktor `HttpClient`** – `SeerrApiService` creates its `HttpClient` on first use (thread-safe) instead of at construction time; `refreshClient()` still replaces the client under the same lock.
+- **Smaller dependency surface** – Removed unused `ktor-client-android` and `ktor-client-cio` artifacts (OkHttp engine only), reducing dex/class-load pressure during cold start.
+
+### Build & Versioning
+
+- **Version bump** – Bumped to version 0.27.03 (versionCode 123).
+
+### Files Modified
+
+- `tv/src/main/java/ca/devmesh/seerrtv/MainActivity.kt` – `SeerrTV`: lazy `ImageLoader`, `clearImageCachesAsync()`, `applicationScope`.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/RefreshManager.kt` – Async cache clear via application context.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/MainScreen.kt` – IO dispatcher for cache clear during recent-requests refresh.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/IssueDetailsModal.kt` – Truncation, `remember`, `maxLines` / ellipsis for creator and comments.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/PersonScreen.kt` – Name / aliases / biography bounds.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/components/MediaInfo.kt` – Overview cap in full mode; `maxLines` / ellipsis; title row `weight` / `widthIn(min = 0)` for proper wrapping.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/components/MediaDetailsContentLayout.kt` – `fillMaxWidth()` on content row; `widthIn(min = 0)` on weighted overview/info columns.
+- `tv/src/main/java/ca/devmesh/seerrtv/util/UiText.kt` – New `uiTruncateForDisplay()` helper.
+- `tv/src/main/java/ca/devmesh/seerrtv/data/SeerrApiService.kt` – Lazy, synchronized `HttpClient` lifecycle.
+- `tv/build.gradle.kts` – Version 0.27.03 (versionCode 123); removed extra Ktor client engines.
+
+---
+
 ## 0.27.02
 
 ### Home Screen & Focus

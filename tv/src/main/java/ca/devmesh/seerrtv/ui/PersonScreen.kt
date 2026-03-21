@@ -37,6 +37,7 @@ import ca.devmesh.seerrtv.R
 import ca.devmesh.seerrtv.model.Media
 import ca.devmesh.seerrtv.ui.components.AuthenticationErrorHandler
 import ca.devmesh.seerrtv.ui.components.MediaCard
+import ca.devmesh.seerrtv.util.uiTruncateForDisplay
 import ca.devmesh.seerrtv.viewmodel.PersonViewModel
 import coil3.compose.AsyncImage
 import coil3.ImageLoader
@@ -702,7 +703,9 @@ fun PersonDetailsSection(
                     text = person.name,
                     style = MaterialTheme.typography.headlineMedium,
                     color = Color.White,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
                 )
                 val age = calculateAge(person.birthday)
                 Text(
@@ -717,10 +720,15 @@ fun PersonDetailsSection(
                     style = MaterialTheme.typography.bodyMedium
                 )
                 if (details.alsoKnownAs.isNotEmpty()) {
+                    val akaDisplay = remember(person.alsoKnownAs) {
+                        person.alsoKnownAs.joinToString(", ").uiTruncateForDisplay(400)
+                    }
                     Text(
-                        text = stringResource(R.string.personScreen_alsoKnownAs) + ": ${person.alsoKnownAs.joinToString(", ")}",
+                        text = stringResource(R.string.personScreen_alsoKnownAs) + ": $akaDisplay",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color.LightGray
+                        color = Color.LightGray,
+                        maxLines = 4,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
@@ -753,7 +761,7 @@ fun BiographySection(
             biography
         }
     } else {
-        biography
+        biography.uiTruncateForDisplay(4000)
     }
     val hasHiddenText = biography.length > truncatedBiography.length
 
@@ -761,6 +769,8 @@ fun BiographySection(
         Text(
             text = truncatedBiography,
             color = textColor,
+            maxLines = if (isFullBiographyShown) 40 else 18,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.clickable(enabled = hasHiddenText) { 
                 onToggleFullBiography(!isFullBiographyShown) 
             }

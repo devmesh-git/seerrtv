@@ -48,11 +48,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.res.stringResource
 import ca.devmesh.seerrtv.R
+import ca.devmesh.seerrtv.util.uiTruncateForDisplay
 import ca.devmesh.seerrtv.model.Issue
 
 @Composable
@@ -403,6 +405,11 @@ private fun IssueRow(
         else -> stringResource(R.string.common_unknown)
     }
 
+    val unknownLabel = stringResource(R.string.common_unknown)
+    val creatorRaw =
+        issue.createdBy?.displayName ?: issue.createdBy?.username ?: issue.createdBy?.email ?: unknownLabel
+    val creatorDisplay = remember(issue.id, creatorRaw) { creatorRaw.uiTruncateForDisplay(120) }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -511,10 +518,12 @@ private fun IssueRow(
                 fontWeight = FontWeight.Normal
             )
             Text(
-                text = issue.createdBy?.displayName ?: issue.createdBy?.username ?: issue.createdBy?.email ?: stringResource(R.string.common_unknown),
+                text = creatorDisplay,
                 color = Color.White,
                 fontSize = 14.sp,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
         }
         if (issue.comments.isNotEmpty()) {
@@ -522,6 +531,8 @@ private fun IssueRow(
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 // Show last 3 comments (newest first)
                 issue.comments.takeLast(3).reversed().forEach { comment ->
+                    val commentDisplay =
+                        remember(comment.id, comment.message) { comment.message.uiTruncateForDisplay(500) }
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -557,11 +568,13 @@ private fun IssueRow(
                             verticalArrangement = Arrangement.Center
                         ) {
                             Text(
-                                text = comment.message,
+                                text = commentDisplay,
                                 color = Color.White,
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.Normal,
-                                lineHeight = 18.sp
+                                lineHeight = 18.sp,
+                                maxLines = 8,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
