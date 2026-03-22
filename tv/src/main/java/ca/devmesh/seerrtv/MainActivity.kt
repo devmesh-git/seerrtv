@@ -600,10 +600,17 @@ class MainActivity : AppCompatActivity() {
             }
             var hasNavigatedToProfileSelect by remember { mutableStateOf(false) }
             DisposableEffect(navController) {
+                var previousBaseRoute: String? = null
                 val listener =
                     NavController.OnDestinationChangedListener { _, destination, _ ->
-                        currentRouteForValidation =
-                            destination.route?.split("/")?.firstOrNull()
+                        val base = destination.route?.split("/")?.firstOrNull()
+                        currentRouteForValidation = base
+                        if (previousBaseRoute == "config" && base != "config" &&
+                            SharedPreferencesUtil.isPendingNewProfileCreation(this@MainActivity)
+                        ) {
+                            SharedPreferencesUtil.clearPendingNewProfileCreation(this@MainActivity)
+                        }
+                        previousBaseRoute = base
                     }
                 navController.addOnDestinationChangedListener(listener)
                 onDispose { navController.removeOnDestinationChangedListener(listener) }
@@ -780,6 +787,7 @@ class MainActivity : AppCompatActivity() {
                                     showConnectionErrorDialog = false
                                     isAuthError = false
                                     // Clear config and navigate to config screen
+                                    SharedPreferencesUtil.clearPendingNewProfileCreation(this@MainActivity)
                                     SharedPreferencesUtil.clearConfig(this@MainActivity)
                                     updateConfigurationState()
                                     navController.navigate("config") {
@@ -940,6 +948,7 @@ class MainActivity : AppCompatActivity() {
                                     SettingsScreen(
                                         navController = navController,
                                         onOpenConfigScreen = {
+                                            SharedPreferencesUtil.clearPendingNewProfileCreation(this@MainActivity)
                                             SharedPreferencesUtil.setSkipProfileSelectionOnce(
                                                 this@MainActivity,
                                                 true
@@ -1133,6 +1142,9 @@ class MainActivity : AppCompatActivity() {
                         // Handle navigation after validation
                         LaunchedEffect(shouldNavigateAfterValidation) {
                             shouldNavigateAfterValidation?.let { dest ->
+                                if (dest == "config") {
+                                    SharedPreferencesUtil.clearPendingNewProfileCreation(this@MainActivity)
+                                }
                                 navController.navigate(dest) {
                                     popUpTo("splash") { inclusive = true }
                                 }

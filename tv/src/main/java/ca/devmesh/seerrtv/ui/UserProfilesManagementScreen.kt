@@ -142,39 +142,8 @@ fun UserProfilesManagementScreen(
     }
 
     fun activateNewProfileAndConfigure() {
-        // Domain rule: new profiles start unprotected unless user configures PIN later.
-        val existingInitials = profiles.map { it.avatarInitials }.toSet()
-        val seed = "Profile${profiles.size + 1}"
-        val initials = ca.devmesh.seerrtv.util.AvatarUtils.resolveUniqueInitials(
-            desiredInitials = seed.take(2).uppercase().padEnd(2, 'Z'),
-            existingInitials = existingInitials,
-            seed = seed
-        )
-        val newProfile = UserProfile(
-            name = seed,
-            email = null,
-            avatarInitials = initials,
-            avatarColor = AvatarColor.PURPLE.key,
-            pinHash = "",
-            config = SharedPreferencesUtil.getConfig(context)
-                ?: ca.devmesh.seerrtv.data.SeerrApiService.SeerrConfig(
-                    protocol = "",
-                    hostname = "",
-                    authType = ca.devmesh.seerrtv.model.AuthType.ApiKey.type,
-                    apiKey = "",
-                    username = "",
-                    password = "",
-                    cloudflareEnabled = false,
-                    cfClientId = "",
-                    cfClientSecret = "",
-                    isSubmitted = false,
-                    createdAt = System.currentTimeMillis().toString()
-                )
-        )
-
-        val all = SharedPreferencesUtil.getProfiles(context) + newProfile
-        SharedPreferencesUtil.saveProfiles(context, all)
-        SharedPreferencesUtil.setActiveProfileId(context, newProfile.id)
+        // Do not create a profile until config is saved and the API validates successfully.
+        SharedPreferencesUtil.setPendingNewProfileCreation(context, true)
         SharedPreferencesUtil.setSkipProfileSelectionOnce(context, true)
 
         navController.navigate("config") {
@@ -260,6 +229,7 @@ fun UserProfilesManagementScreen(
                 val action = actions[selectedActionIndex]
                 when (action.type) {
                     ProfileActionType.CONFIGURE_API -> {
+                        SharedPreferencesUtil.clearPendingNewProfileCreation(context)
                         SharedPreferencesUtil.setSkipProfileSelectionOnce(context, true)
                         navController.navigate("config") {
                             popUpTo(route) { inclusive = false }

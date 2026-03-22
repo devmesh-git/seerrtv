@@ -2714,6 +2714,7 @@ fun MediaDetails(
                             if (!stateManager.isNavigating) {
                                 stateManager.isNavigating = true
                                 // Clear config and navigate
+                                SharedPreferencesUtil.clearPendingNewProfileCreation(context)
                                 SharedPreferencesUtil.clearConfig(context)
                                 navController.navigate("config") {
                                     popUpTo(navController.graph.startDestinationId) {

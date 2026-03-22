@@ -137,6 +137,7 @@ object SharedPreferencesUtil {
         "profile_selection_target_post_activation_route"
     private const val KEY_PROFILE_SELECTION_COMPLETED = "profile_selection_completed"
     private const val KEY_FORCE_SPLASH_RESET_ON_NEXT = "force_splash_reset_on_next"
+    private const val KEY_PENDING_NEW_PROFILE_CREATION = "pending_new_profile_creation"
     // Supported app languages
     val SUPPORTED_APP_LANGUAGES = listOf("en", "de", "es", "fr", "ja", "nl", "pt", "zh")
 
@@ -171,25 +172,96 @@ object SharedPreferencesUtil {
         }
     }
 
-    fun hasApiConfig(context: Context): Boolean {
+    fun setPendingNewProfileCreation(context: Context, pending: Boolean) {
         val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        // If we already have profiles, treat configuration as present when an active profile exists
-        val profilesJson = sharedPrefs.getString(KEY_PROFILES_JSON, null)
-        if (!profilesJson.isNullOrBlank()) {
-            val profiles = runCatching { json.decodeFromString<List<UserProfile>>(profilesJson) }
-                .getOrElse { emptyList() }
-            val activeId = sharedPrefs.getString(KEY_ACTIVE_PROFILE_ID, null)
-            return profiles.isNotEmpty() && activeId != null && profiles.any { it.id == activeId }
+        with(sharedPrefs.edit()) {
+            if (pending) putBoolean(KEY_PENDING_NEW_PROFILE_CREATION, true)
+            else remove(KEY_PENDING_NEW_PROFILE_CREATION)
+            commit()
         }
-        return sharedPrefs.getBoolean(KEY_CONFIG_VALID, false)
     }
 
-    fun saveConfig(context: Context, config: SeerrConfig, isValid: Boolean) {
+    fun isPendingNewProfileCreation(context: Context): Boolean {
         val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        // Normalize hostname before saving (don't strip port for main Seerr hostname)
+        return sharedPrefs.getBoolean(KEY_PENDING_NEW_PROFILE_CREATION, false)
+    }
+
+    fun clearPendingNewProfileCreation(context: Context) {
+        setPendingNewProfileCreation(context, false)
+    }
+
+    /**
+     * After API validation succeeds, append a new profile with [config] and make it active.
+     * Updates legacy global prefs to match (same as [saveConfig]).
+     * Clears the pending-new-profile flag when done.
+     */
+    fun appendNewProfileWithValidatedConfig(context: Context, config: SeerrConfig) {
+        val profiles = getProfiles(context)
+        if (profiles.isEmpty()) {
+            clearPendingNewProfileCreation(context)
+            saveConfig(context, config, true)
+            setSkipProfileSelectionOnce(context, true)
+            return
+        }
+
         val normalizedHostname = normalizeHostname(config.hostname, stripPort = false)
-        // Normalize Jellyfin hostname (strip port since it's in a separate field)
         val normalizedJellyfinHostname = normalizeHostname(config.jellyfinHostname, stripPort = true)
+        persistGlobalApiConfigSnapshot(
+            context,
+            config,
+            normalizedHostname,
+            normalizedJellyfinHostname,
+            isValid = true
+        )
+
+        val embeddedConfig = config.copy(
+            hostname = normalizedHostname,
+            jellyfinHostname = normalizedJellyfinHostname,
+            isSubmitted = true,
+            createdAt = config.createdAt.takeIf { it.isNotBlank() } ?: System.currentTimeMillis().toString()
+        )
+
+        val usernameCandidate = config.username.takeIf { it.isNotBlank() }
+        val emailCandidate =
+            config.jellyfinEmail.takeIf { it.isNotBlank() } ?: usernameCandidate?.takeIf { it.contains('@') }
+        val nameCandidate = when {
+            usernameCandidate.isNullOrBlank().not() && usernameCandidate.contains('@') ->
+                usernameCandidate.substringBefore('@')
+            usernameCandidate.isNullOrBlank().not() ->
+                usernameCandidate
+            !emailCandidate.isNullOrBlank() -> emailCandidate.substringBefore('@')
+            else -> "Profile${profiles.size + 1}"
+        }
+
+        val existingInitials = profiles.map { it.avatarInitials }.toSet()
+        val resolvedInitials = resolveUniqueInitials(
+            desiredInitials = generateInitialsFromNameOrEmail(nameCandidate, emailCandidate),
+            existingInitials = existingInitials,
+            seed = nameCandidate
+        )
+
+        val newProfile = UserProfile(
+            name = nameCandidate,
+            email = emailCandidate,
+            avatarInitials = resolvedInitials,
+            avatarColor = AvatarColor.PURPLE.key,
+            pinHash = "",
+            config = embeddedConfig
+        )
+        saveProfiles(context, profiles + newProfile)
+        setActiveProfileId(context, newProfile.id)
+        setSkipProfileSelectionOnce(context, true)
+        clearPendingNewProfileCreation(context)
+    }
+
+    private fun persistGlobalApiConfigSnapshot(
+        context: Context,
+        config: SeerrConfig,
+        normalizedHostname: String,
+        normalizedJellyfinHostname: String,
+        isValid: Boolean
+    ) {
+        val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         with(sharedPrefs.edit()) {
             putString(KEY_PROTOCOL, config.protocol)
             putString(KEY_HOSTNAME, normalizedHostname)
@@ -212,6 +284,34 @@ object SharedPreferencesUtil {
             putBoolean(KEY_FOLDER_SELECTION_ENABLED, false)
             commit()
         }
+    }
+
+    fun hasApiConfig(context: Context): Boolean {
+        val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        // If we already have profiles, treat configuration as present when an active profile exists
+        val profilesJson = sharedPrefs.getString(KEY_PROFILES_JSON, null)
+        if (!profilesJson.isNullOrBlank()) {
+            val profiles = runCatching { json.decodeFromString<List<UserProfile>>(profilesJson) }
+                .getOrElse { emptyList() }
+            val activeId = sharedPrefs.getString(KEY_ACTIVE_PROFILE_ID, null)
+            return profiles.isNotEmpty() && activeId != null && profiles.any { it.id == activeId }
+        }
+        return sharedPrefs.getBoolean(KEY_CONFIG_VALID, false)
+    }
+
+    fun saveConfig(context: Context, config: SeerrConfig, isValid: Boolean) {
+        val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        // Normalize hostname before saving (don't strip port for main Seerr hostname)
+        val normalizedHostname = normalizeHostname(config.hostname, stripPort = false)
+        // Normalize Jellyfin hostname (strip port since it's in a separate field)
+        val normalizedJellyfinHostname = normalizeHostname(config.jellyfinHostname, stripPort = true)
+        persistGlobalApiConfigSnapshot(
+            context,
+            config,
+            normalizedHostname,
+            normalizedJellyfinHostname,
+            isValid
+        )
 
         // Profile-aware config persistence:
         // - If profiles already exist, update the active profile's embedded config.
