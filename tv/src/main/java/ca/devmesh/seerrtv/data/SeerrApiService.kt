@@ -381,6 +381,13 @@ class SeerrApiService @Inject constructor(
         val clientIdentifier: String
     )
 
+    @Serializable
+    private data class WatchlistRequestBody(
+        val tmdbId: Int,
+        val mediaType: String,
+        val title: String? = null
+    )
+
     private val json = Json {
         ignoreUnknownKeys = true
         isLenient = true
@@ -403,9 +410,11 @@ class SeerrApiService @Inject constructor(
             httpClient ?: createHttpClient().also { httpClient = it }
         }
 
-    // Cache for all genres data
+    // Cache for all genres data (scoped by discovery language)
     private var cachedMovieGenres: List<GenreResponse>? = null
     private var cachedTVGenres: List<GenreResponse>? = null
+    private var cachedMovieGenresLanguage: String? = null
+    private var cachedTVGenresLanguage: String? = null
     
     // Predefined lists of studio and network IDs from requirements
     private val studioIds = listOf(2, 127928, 34, 174, 33, 4, 3, 521, 420, 9993, 41077)
@@ -1112,26 +1121,29 @@ class SeerrApiService @Inject constructor(
     private suspend fun enrichWatchlistWithPosters(results: List<Media>): List<Media> = coroutineScope {
         results.map { media ->
             async {
-                if (media.posterPath.isNullOrBlank()) {
-                    val tmdbId = (media.tmdbId ?: media.id).toString()
-                    when (media.mediaType.lowercase()) {
-                        "movie" -> when (val details = getMovieDetails(tmdbId)) {
-                            is ApiResult.Success -> media.copy(
+                val base = media.tmdbId?.let { tid ->
+                    if (media.id != tid) media.copy(id = tid) else media
+                } ?: media
+                if (base.posterPath.isNullOrBlank()) {
+                    val tmdbKey = (base.tmdbId ?: base.id).toString()
+                    when (base.mediaType.lowercase()) {
+                        "movie" -> when (val details = getMovieDetails(tmdbKey)) {
+                            is ApiResult.Success -> base.copy(
                                 posterPath = details.data.posterPath,
                                 backdropPath = details.data.backdropPath
                             )
-                            else -> media
+                            else -> base
                         }
-                        "tv" -> when (val details = getTVDetails(tmdbId)) {
-                            is ApiResult.Success -> media.copy(
+                        "tv" -> when (val details = getTVDetails(tmdbKey)) {
+                            is ApiResult.Success -> base.copy(
                                 posterPath = details.data.posterPath,
                                 backdropPath = details.data.backdropPath
                             )
-                            else -> media
+                            else -> base
                         }
-                        else -> media
+                        else -> base
                     }
-                } else media
+                } else base
             }
         }.awaitAll()
     }
@@ -1501,6 +1513,10 @@ class SeerrApiService @Inject constructor(
 
     private suspend fun fetchMediaListPage(endpoint: String, page: Int): ApiResult<Discover> {
         val pageEndpoint = "$endpoint${if ('?' in endpoint) '&' else '?'}page=$page"
+        // Watchlist endpoint rejects the "language" query parameter.
+        if (endpoint.startsWith("discover/watchlist")) {
+            return executeApiCall(pageEndpoint)
+        }
         // append locale if not english
         val locale = SharedPreferencesUtil.getDiscoveryLanguage(context)
         val localizedEndpoint = if (locale != "en") "$pageEndpoint&language=$locale" else pageEndpoint
@@ -1945,6 +1961,59 @@ class SeerrApiService @Inject constructor(
         }
     }
 
+    suspend fun addToWatchlist(
+        tmdbId: Int,
+        mediaType: String,
+        title: String? = null
+    ): ApiResult<Boolean> {
+        val body = json.encodeToString(
+            WatchlistRequestBody(
+                tmdbId = tmdbId,
+                mediaType = mediaType.lowercase(),
+                title = title
+            )
+        )
+        return executeApiCall("watchlist", HttpMethod.Post, body)
+    }
+
+    suspend fun removeFromWatchlist(tmdbId: Int, mediaType: String): ApiResult<Unit> {
+        val withQuery = "watchlist/$tmdbId?mediaType=${mediaType.lowercase()}"
+        return when (val result = executeApiCall<Unit>(withQuery, HttpMethod.Delete)) {
+            is ApiResult.Error -> {
+                val msg = result.exception.message.orEmpty()
+                val openApiRejectedQuery =
+                    result.statusCode == 400 &&
+                        msg.contains("Unknown query parameter", ignoreCase = true)
+                if (openApiRejectedQuery) {
+                    executeApiCall("watchlist/$tmdbId", HttpMethod.Delete)
+                } else {
+                    result
+                }
+            }
+            else -> result
+        }
+    }
+
+    suspend fun getWatchlistMembershipItems(): ApiResult<List<Media>> {
+        val membershipItems = mutableListOf<Media>()
+        var page = 1
+        var totalPages = 1
+
+        while (page <= totalPages) {
+            when (val result = executeApiCall<Discover>("discover/watchlist?page=$page")) {
+                is ApiResult.Success -> {
+                    membershipItems.addAll(result.data.results)
+                    totalPages = result.data.totalPages.coerceAtLeast(1)
+                    page++
+                }
+                is ApiResult.Error -> return result
+                is ApiResult.Loading -> return result
+            }
+        }
+
+        return ApiResult.Success(membershipItems)
+    }
+
     suspend fun deleteRequest(requestId: Int): ApiResult<Unit> {
         return executeApiCall("request/$requestId", HttpMethod.Delete)
     }
@@ -2126,11 +2195,13 @@ class SeerrApiService @Inject constructor(
      */
     suspend fun getMovieGenres(context: Context, loadMore: Boolean = false, reset: Boolean = false): ApiResult<List<GenreResponse>> {
         val endpoint = "discover/genreslider/movie"
+        val locale = SharedPreferencesUtil.getDiscoveryLanguage(context)
         
         if (reset) {
             resetPaginationState(endpoint)
             // Clear cache if resetting
             cachedMovieGenres = null
+            cachedMovieGenresLanguage = null
         }
         
         if (!loadMore) {
@@ -2152,9 +2223,8 @@ class SeerrApiService @Inject constructor(
             Log.d("SeerrApiService", "Fetching movie genres, page ${pageState.currentPage}")
         }
         
-        // If cache is empty, fetch all genres
-        if (cachedMovieGenres == null) {
-            val locale = SharedPreferencesUtil.getDiscoveryLanguage(context)
+        // If cache is empty or language changed, fetch all genres again
+        if (cachedMovieGenres == null || cachedMovieGenresLanguage != locale) {
             val apiEndpoint = "discover/genreslider/movie"
             val localizedEndpoint = if (locale != "en") "$apiEndpoint?language=$locale" else apiEndpoint
             
@@ -2167,6 +2237,7 @@ class SeerrApiService @Inject constructor(
                             // Parse the raw JSON array response
                             val genresList = json.decodeFromString<List<GenreResponse>>(responseBody)
                             cachedMovieGenres = genresList
+                            cachedMovieGenresLanguage = locale
                             Log.d("SeerrApiService", "Cached ${cachedMovieGenres?.size} movie genres")
                         } catch (e: kotlinx.serialization.SerializationException) {
                             Log.e("SeerrApiService", "Error parsing genre array: ${e.message}")
@@ -2241,11 +2312,13 @@ class SeerrApiService @Inject constructor(
      */
     suspend fun getTVGenres(context: Context, loadMore: Boolean = false, reset: Boolean = false): ApiResult<List<GenreResponse>> {
         val endpoint = "discover/genreslider/tv"
+        val locale = SharedPreferencesUtil.getDiscoveryLanguage(context)
         
         if (reset) {
             resetPaginationState(endpoint)
             // Clear cache if resetting
             cachedTVGenres = null
+            cachedTVGenresLanguage = null
         }
         
         if (!loadMore) {
@@ -2267,9 +2340,8 @@ class SeerrApiService @Inject constructor(
             Log.d("SeerrApiService", "Fetching TV genres, page ${pageState.currentPage}")
         }
         
-        // If cache is empty, fetch all genres
-        if (cachedTVGenres == null) {
-            val locale = SharedPreferencesUtil.getDiscoveryLanguage(context)
+        // If cache is empty or language changed, fetch all genres again
+        if (cachedTVGenres == null || cachedTVGenresLanguage != locale) {
             val apiEndpoint = "discover/genreslider/tv"
             val localizedEndpoint = if (locale != "en") "$apiEndpoint?language=$locale" else apiEndpoint
             
@@ -2282,6 +2354,7 @@ class SeerrApiService @Inject constructor(
                             // Parse the raw JSON array response
                             val genresList = json.decodeFromString<List<GenreResponse>>(responseBody)
                             cachedTVGenres = genresList
+                            cachedTVGenresLanguage = locale
                             Log.d("SeerrApiService", "Cached ${cachedTVGenres?.size} TV genres")
                         } catch (e: kotlinx.serialization.SerializationException) {
                             Log.e("SeerrApiService", "Error parsing genre array: ${e.message}")

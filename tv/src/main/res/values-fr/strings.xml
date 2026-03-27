@@ -16,6 +16,11 @@
     <string name="category_studios">Studios</string>
     <string name="category_trending">Tendances</string>
     <string name="category_watchlist">Votre liste de suivi</string>
+    <string name="action_add_to_watchlist">Ajouter a la liste de suivi</string>
+    <string name="action_remove_from_watchlist">Retirer de la liste de suivi</string>
+    <string name="watchlist_added_success">Ajoute a la liste de suivi</string>
+    <string name="watchlist_removed_success">Retire de la liste de suivi</string>
+    <string name="watchlist_update_failed">Echec de la mise a jour de la liste de suivi</string>
     <string name="category_upcomingMovies">Films à Venir</string>
     <string name="category_upcomingSeries">Séries à Venir</string>
     <!-- Common Strings -->
@@ -286,6 +291,7 @@
     <string name="settingsMenu_authType">Type d\'Authentification</string>
     <string name="settingsMenu_clockFormat">Format de l\'heure</string>
     <string name="settingsMenu_configMenu">Configuration API</string>
+    <string name="settingsMenu_userProfiles">Profils utilisateur</string>
     <string name="settingsMenu_debugMode">Mode Debug</string>
     <string name="settingsMenu_disabled">Désactivé</string>
     <string name="settingsMenu_discoverLanguageDE">Allemand</string>
@@ -346,6 +352,10 @@
     <string name="splashScreen_noRadarrServersInfo">Radarr: Non configuré</string>
     <string name="splashScreen_noServersInfo">Aucun serveur backend configuré - Mode Overseerr/Jellyseerr/Seerr uniquement</string>
     <string name="splashScreen_noSonarrServersInfo">Sonarr: Non configuré</string>
+    <string name="splashScreen_mediaServerDetected_plex">Serveur multimédia Plex détecté</string>
+    <string name="splashScreen_mediaServerDetected_jellyfin">Serveur multimédia Jellyfin détecté</string>
+    <string name="splashScreen_mediaServerDetected_emby">Serveur multimédia Emby détecté</string>
+    <string name="splashScreen_mediaServerNotConfigured">Aucun serveur multimédia configuré</string>
     <string name="splashScreen_radarrConfigComplete">Radarr: %1$d serveurs - HD (%2$d) 4K (%3$d)</string>
     <string name="splashScreen_ready">Prêt !</string>
     <string name="splashScreen_sonarrConfigComplete">Sonarr: %1$d serveurs - HD (%2$d) 4K (%3$d)</string>

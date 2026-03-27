@@ -6,6 +6,16 @@ import kotlinx.serialization.Serializable
 import java.util.UUID
 
 @Serializable
+data class ProfileSettings(
+    @SerialName("app_language") val appLanguage: String = "en",
+    @SerialName("discovery_language") val discoveryLanguage: String = "en",
+    @SerialName("default_streaming_region") val defaultStreamingRegion: String = "US",
+    @SerialName("folder_selection_enabled") val folderSelectionEnabled: Boolean = false,
+    @SerialName("use_24_hour_clock") val use24HourClock: Boolean = true,
+    @SerialName("use_trailer_webview") val useTrailerWebView: Boolean = false
+)
+
+@Serializable
 data class UserProfile(
     @SerialName("id") val id: String = UUID.randomUUID().toString(),
     @SerialName("name") val name: String,
@@ -22,6 +32,7 @@ data class UserProfile(
      * so each profile has its own full API configuration snapshot.
      */
     @SerialName("config") val config: SeerrConfig,
+    @SerialName("settings") val settings: ProfileSettings = ProfileSettings(),
     @SerialName("created_at") val createdAt: Long = System.currentTimeMillis(),
     @SerialName("updated_at") val updatedAt: Long = System.currentTimeMillis()
 )

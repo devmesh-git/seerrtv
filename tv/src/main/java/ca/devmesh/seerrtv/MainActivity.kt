@@ -429,16 +429,16 @@ class MainActivity : AppCompatActivity() {
                                 val mediaServerType = apiService.detectMediaServerType()
                                 val mediaServerMessage = when (mediaServerType) {
                                     ca.devmesh.seerrtv.model.MediaServerType.PLEX ->
-                                        "Plex media server detected"
+                                        getString(R.string.splashScreen_mediaServerDetected_plex)
 
                                     ca.devmesh.seerrtv.model.MediaServerType.JELLYFIN ->
-                                        "Jellyfin media server detected"
+                                        getString(R.string.splashScreen_mediaServerDetected_jellyfin)
 
                                     ca.devmesh.seerrtv.model.MediaServerType.EMBY ->
-                                        "Emby media server detected"
+                                        getString(R.string.splashScreen_mediaServerDetected_emby)
 
                                     ca.devmesh.seerrtv.model.MediaServerType.NOT_CONFIGURED ->
-                                        "No media server configured"
+                                        getString(R.string.splashScreen_mediaServerNotConfigured)
                                 }
                                 val mediaServerMessageType = when (mediaServerType) {
                                     ca.devmesh.seerrtv.model.MediaServerType.PLEX,
@@ -569,7 +569,11 @@ class MainActivity : AppCompatActivity() {
             this,
             if (shouldSelectProfileAtStartup) "splash" else null
         )
-        SharedPreferencesUtil.setProfileSelectionCompleted(this, completed = !shouldSelectProfileAtStartup)
+        val shouldSkipSelectionOnce = SharedPreferencesUtil.shouldSkipProfileSelectionOnce(this)
+        SharedPreferencesUtil.setProfileSelectionCompleted(
+            this,
+            completed = !shouldSelectProfileAtStartup || shouldSkipSelectionOnce
+        )
 
         // State to trigger navigation after validation
         var shouldNavigateAfterValidation by mutableStateOf<String?>(null)

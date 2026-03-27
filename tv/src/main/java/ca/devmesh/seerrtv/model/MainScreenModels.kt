@@ -60,6 +60,12 @@ data class Media(
     val logoPath: String? = null
 )
 
+/**
+ * Use for `details/{id}/{type}` navigation. Discover/watchlist rows from Jellyseerr often set [id] to the
+ * watchlist row primary key; TMDB routing requires [tmdbId] when available.
+ */
+fun Media.idForDetailsRoute(): String = (tmdbId ?: id).toString()
+
 @Serializable
 data class DownloadStatus(
     val estimatedCompletionTime: String? = null,

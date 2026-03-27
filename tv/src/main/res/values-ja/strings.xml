@@ -16,6 +16,11 @@
     <string name="category_studios">制作会社</string>
     <string name="category_trending">トレンド</string>
     <string name="category_watchlist">ウォッチリスト</string>
+    <string name="action_add_to_watchlist">ウォッチリストに追加</string>
+    <string name="action_remove_from_watchlist">ウォッチリストから削除</string>
+    <string name="watchlist_added_success">ウォッチリストに追加しました</string>
+    <string name="watchlist_removed_success">ウォッチリストから削除しました</string>
+    <string name="watchlist_update_failed">ウォッチリストの更新に失敗しました</string>
     <string name="category_upcomingMovies">近日公開の映画</string>
     <string name="category_upcomingSeries">今後のテレビシリーズ</string>
     <!-- Common Strings -->
@@ -286,6 +291,7 @@
     <string name="settingsMenu_authType">認証タイプ</string>
     <string name="settingsMenu_clockFormat">時刻表示形式</string>
     <string name="settingsMenu_configMenu">API設定</string>
+    <string name="settingsMenu_userProfiles">ユーザープロファイル</string>
     <string name="settingsMenu_debugMode">デバッグモード</string>
     <string name="settingsMenu_disabled">無効</string>
     <string name="settingsMenu_discoverLanguageDE">ドイツ語</string>
@@ -346,6 +352,10 @@
     <string name="splashScreen_noRadarrServersInfo">Radarr: 設定されていません</string>
     <string name="splashScreen_noServersInfo">バックエンドサーバーが設定されていません - Overseerr/Jellyseerr/Seerrのみモードを使用</string>
     <string name="splashScreen_noSonarrServersInfo">Sonarr: 設定されていません</string>
+    <string name="splashScreen_mediaServerDetected_plex">Plex メディアサーバーを検出しました</string>
+    <string name="splashScreen_mediaServerDetected_jellyfin">Jellyfin メディアサーバーを検出しました</string>
+    <string name="splashScreen_mediaServerDetected_emby">Emby メディアサーバーを検出しました</string>
+    <string name="splashScreen_mediaServerNotConfigured">メディアサーバーが設定されていません</string>
     <string name="splashScreen_radarrConfigComplete">Radarr: %1$dサーバー - HD (%2$d) 4K (%3$d)</string>
     <string name="splashScreen_ready">準備完了！</string>
     <string name="splashScreen_sonarrConfigComplete">Sonarr: %1$dサーバー - HD (%2$d) 4K (%3$d)</string>

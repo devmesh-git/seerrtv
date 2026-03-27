@@ -282,6 +282,7 @@ fun MediaDetails(
             FocusArea.MANAGE_HD -> DetailsFocusState.ManageHD
             FocusArea.MANAGE_4K -> DetailsFocusState.Manage4K
             FocusArea.MANAGE_SINGLE -> DetailsFocusState.ManageSingle
+            FocusArea.WATCHLIST_ACTION -> DetailsFocusState.WatchlistAction
             FocusArea.TRAILER -> DetailsFocusState.Trailer
             FocusArea.ISSUE -> DetailsFocusState.Issue
 
@@ -871,6 +872,7 @@ fun MediaDetails(
                 DetailsFocusState.ManageHD -> FocusArea.MANAGE_HD
                 DetailsFocusState.Manage4K -> FocusArea.MANAGE_4K
                 DetailsFocusState.ManageSingle -> FocusArea.MANAGE_SINGLE
+                DetailsFocusState.WatchlistAction -> FocusArea.WATCHLIST_ACTION
                 DetailsFocusState.Trailer -> FocusArea.TRAILER
                 DetailsFocusState.Issue -> FocusArea.ISSUE
                 else -> FocusArea.OVERVIEW
@@ -978,6 +980,7 @@ fun MediaDetails(
                         DetailsFocusState.ManageHD -> FocusArea.MANAGE_HD
                         DetailsFocusState.Manage4K -> FocusArea.MANAGE_4K
                         DetailsFocusState.ManageSingle -> FocusArea.MANAGE_SINGLE
+                        DetailsFocusState.WatchlistAction -> FocusArea.WATCHLIST_ACTION
                         DetailsFocusState.Trailer -> FocusArea.TRAILER
                         DetailsFocusState.Issue -> FocusArea.ISSUE
                         else -> FocusArea.OVERVIEW
@@ -1031,6 +1034,7 @@ fun MediaDetails(
         when (val details = mediaDetailsState) {
             is ApiResult.Success<MediaDetails> -> {
                 val media = details.data
+                val watchlistMembership by viewModel.watchlistMembership.collectAsState()
                 val canRequestMedia =
                     remember(media.mediaType, viewModel.getCurrentUserPermissions()) {
                         CommonUtil.canRequest(
@@ -1039,6 +1043,19 @@ fun MediaDetails(
                             is4k = false
                         )
                     }
+                val detailsMediaType = remember(media.mediaType, media.type) {
+                    when (media.mediaType) {
+                        MediaType.MOVIE -> "movie"
+                        MediaType.TV -> "tv"
+                        null -> if (media.type.equals("series", ignoreCase = true)) "tv" else "movie"
+                    }
+                }
+                val mediaServerType = SharedPreferencesUtil.getMediaServerType(context)
+                val showWatchlistButton = mediaServerType == MediaServerType.JELLYFIN ||
+                        mediaServerType == MediaServerType.EMBY
+                val isInWatchlist = remember(watchlistMembership, media.id, detailsMediaType) {
+                    viewModel.isInWatchlist(media.id, detailsMediaType)
+                }
 
                 // Dynamic focus order for new action buttons
                 val actionButtonStates = getActionButtonStates(
@@ -1061,6 +1078,9 @@ fun MediaDetails(
                         } else {
                             add(FocusArea.REQUEST_SINGLE)
                         }
+                    }
+                    if (showWatchlistButton) {
+                        add(FocusArea.WATCHLIST_ACTION)
                     }
                     if (actionButtonStates["manage"]?.isVisible == true) {
                         if (actionButtonStates["manage"]?.isSplit == true) {
@@ -1250,6 +1270,7 @@ fun MediaDetails(
                             FocusArea.PLAY,
                             FocusArea.REQUEST_HD, FocusArea.REQUEST_4K, FocusArea.REQUEST_SINGLE,
                             FocusArea.MANAGE_HD, FocusArea.MANAGE_4K, FocusArea.MANAGE_SINGLE,
+                            FocusArea.WATCHLIST_ACTION,
                             FocusArea.TRAILER -> {
                                 // Up should move to the first half (left) of the previous action group
                                 val target = prevActionGroupFirst(stateManager.currentFocusArea)
@@ -1390,6 +1411,7 @@ fun MediaDetails(
                             FocusArea.PLAY,
                             FocusArea.REQUEST_HD, FocusArea.REQUEST_4K, FocusArea.REQUEST_SINGLE,
                             FocusArea.MANAGE_HD, FocusArea.MANAGE_4K, FocusArea.MANAGE_SINGLE,
+                            FocusArea.WATCHLIST_ACTION,
                             FocusArea.TRAILER -> {
                                 // Down should move to the first half (left) of the next action group
                                 val target = nextActionGroupFirst(stateManager.currentFocusArea)
@@ -1565,6 +1587,20 @@ fun MediaDetails(
 
                             FocusArea.MANAGE_SINGLE -> {
                                 // Navigate to tags
+                                if (stateManager.hasTags) {
+                                    stateManager.currentFocusArea = FocusArea.TAGS
+                                    stateManager.selectedTagIndex =
+                                        stateManager.leftmostTags.first()
+                                } else if (stateManager.hasCast) {
+                                    stateManager.currentFocusArea = FocusArea.CAST
+                                    stateManager.selectedCastIndex = 0
+                                } else if (stateManager.hasCrew) {
+                                    stateManager.currentFocusArea = FocusArea.CREW
+                                    stateManager.selectedCrewIndex = 0
+                                }
+                            }
+
+                            FocusArea.WATCHLIST_ACTION -> {
                                 if (stateManager.hasTags) {
                                     stateManager.currentFocusArea = FocusArea.TAGS
                                     stateManager.selectedTagIndex =
@@ -1794,6 +1830,33 @@ fun MediaDetails(
                                     stateManager.is4kRequest,
                                     null
                                 )
+                            }
+
+                            FocusArea.WATCHLIST_ACTION -> {
+                                coroutineScope.launch {
+                                    val watchlistResult = if (isInWatchlist) {
+                                        viewModel.removeFromWatchlist(media.id, detailsMediaType)
+                                    } else {
+                                        viewModel.addToWatchlist(
+                                            tmdbId = media.id,
+                                            mediaType = detailsMediaType,
+                                            title = media.title ?: media.name
+                                        )
+                                    }
+                                    when (watchlistResult) {
+                                        is ApiResult.Success -> {
+                                            showMessage = if (isInWatchlist) {
+                                                context.getString(R.string.watchlist_removed_success)
+                                            } else {
+                                                context.getString(R.string.watchlist_added_success)
+                                            }
+                                        }
+                                        is ApiResult.Error -> {
+                                            showMessage = context.getString(R.string.watchlist_update_failed)
+                                        }
+                                        is ApiResult.Loading -> {}
+                                    }
+                                }
                             }
 
                             FocusArea.TRAILER -> {
@@ -2204,6 +2267,8 @@ fun MediaDetails(
                                         actionButtonStates = actionButtonStates,
                                         canRequestMedia = canRequestMedia,
                                         has4kCapability = has4kCapability,
+                                        showWatchlistButton = showWatchlistButton,
+                                        isInWatchlist = isInWatchlist,
                                         onFocusChange = { newFocus ->
                                             stateManager.currentFocusArea = newFocus
                                         },
@@ -2287,6 +2352,7 @@ fun MediaDetails(
                         FocusArea.MANAGE_HD,
                         FocusArea.MANAGE_4K,
                         FocusArea.MANAGE_SINGLE,
+                        FocusArea.WATCHLIST_ACTION,
                         FocusArea.TRAILER,
                             -> {
                             // Do not auto-scroll when focusing the 4K half of the split Request button
@@ -2303,6 +2369,7 @@ fun MediaDetails(
                                         add(FocusArea.REQUEST_SINGLE)
                                     }
                                 }
+                                if (showWatchlistButton) add(FocusArea.WATCHLIST_ACTION)
                                 if (actionButtonStates["manage"]?.isVisible == true) {
                                     if (actionButtonStates["manage"]?.isSplit == true) {
                                         add(FocusArea.MANAGE_HD)

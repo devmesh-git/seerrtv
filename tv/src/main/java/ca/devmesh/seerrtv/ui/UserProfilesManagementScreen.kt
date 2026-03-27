@@ -1,5 +1,6 @@
 package ca.devmesh.seerrtv.ui
 
+import android.app.Activity
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -30,6 +31,7 @@ import ca.devmesh.seerrtv.util.SharedPreferencesUtil
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import ca.devmesh.seerrtv.data.ApiResult
 import ca.devmesh.seerrtv.data.SeerrApiService
 import ca.devmesh.seerrtv.model.User
@@ -65,6 +67,7 @@ fun UserProfilesManagementScreen(
     dpadController: DpadController,
     route: String = "user_profiles"
 ) {
+    val scope = rememberCoroutineScope()
     val actionConfigureApi = stringResource(R.string.userProfiles_actionConfigureApi)
     val actionAvatarColor = stringResource(R.string.userProfiles_actionAvatarColor)
     val actionClearPin = stringResource(R.string.userProfiles_actionClearPin)
@@ -144,6 +147,7 @@ fun UserProfilesManagementScreen(
     fun activateNewProfileAndConfigure() {
         // Do not create a profile until config is saved and the API validates successfully.
         SharedPreferencesUtil.setPendingNewProfileCreation(context, true)
+        SharedPreferencesUtil.setPendingNewProfileAppLanguage(context, null)
         SharedPreferencesUtil.setSkipProfileSelectionOnce(context, true)
 
         navController.navigate("config") {
@@ -260,13 +264,13 @@ fun UserProfilesManagementScreen(
                     0, 1, 2 -> (pinKeypadIndex + 1).toString()
                     3, 4, 5 -> (pinKeypadIndex + 1).toString()
                     6, 7, 8 -> (pinKeypadIndex + 1).toString()
-                    9 -> "0"
-                    10 -> ""
+                    10 -> "0"
+                    9 -> ""
                     11 -> ""
                     else -> ""
                 }
                 when (pinKeypadIndex) {
-                    10 -> pinBuffer = pinBuffer.dropLast(1)
+                    9 -> pinBuffer = pinBuffer.dropLast(1)
                     11 -> {
                         if (pinBuffer.length < 4) {
                             pinError = context.getString(R.string.userProfiles_pinMinimumLengthError)
@@ -291,10 +295,48 @@ fun UserProfilesManagementScreen(
                 if (confirmDeleteIndex == 1) {
                     val deleted = SharedPreferencesUtil.deleteActiveProfile(context)
                     if (deleted) {
-                        // If we deleted the last profile, app will go to config on next splash.
-                        SharedPreferencesUtil.setSkipProfileSelectionOnce(context, false)
-                        navController.navigate("splash") {
-                            popUpTo(route) { inclusive = true }
+                        val remainingProfiles = SharedPreferencesUtil.getProfiles(context)
+                        val remainingActiveProfile = SharedPreferencesUtil.getActiveProfile(context)
+
+                        when {
+                            // Last profile deleted: route through splash so app can go to config.
+                            remainingProfiles.isEmpty() -> {
+                                SharedPreferencesUtil.setSkipProfileSelectionOnce(context, false)
+                                SharedPreferencesUtil.setProfileSelectionCompleted(context, completed = true)
+                                navController.navigate("splash") {
+                                    popUpTo(route) { inclusive = true }
+                                }
+                            }
+
+                            // Exactly one profile left and no PIN: auto-activate and continue to main.
+                            remainingProfiles.size == 1 &&
+                                remainingActiveProfile?.pinHash?.isBlank() == true -> {
+                                apiService.updateConfig(remainingActiveProfile.config)
+                                SharedPreferencesUtil.setProfileSelectionCompleted(context, completed = true)
+                                SharedPreferencesUtil.setSkipProfileSelectionOnce(context, true)
+                                navController.navigate("main") {
+                                    popUpTo(route) { inclusive = true }
+                                }
+                                val activity = context as? Activity
+                                if (activity != null) {
+                                    scope.launch {
+                                        delay(100)
+                                        activity.recreate()
+                                    }
+                                }
+                            }
+
+                            // Multiple profiles left or a PIN-protected sole profile: require profile selection.
+                            else -> {
+                                SharedPreferencesUtil.setProfileSelectionCompleted(context, completed = false)
+                                SharedPreferencesUtil.setProfileSelectionTargetPostActivationRoute(
+                                    context,
+                                    "main"
+                                )
+                                navController.navigate("profile_select") {
+                                    popUpTo(route) { inclusive = true }
+                                }
+                            }
                         }
                     }
                 } else {
@@ -667,8 +709,9 @@ private fun ConfirmRow(
 @Composable
 private fun PinEditorKeypad(keypadSelectedIndex: Int) {
     val labels = listOf(
-        "1", "2", "3", "4", "5", "6", "7", "8", "9", "0",
+        "1", "2", "3", "4", "5", "6", "7", "8", "9",
         stringResource(R.string.userProfiles_keyDelete),
+        "0",
         stringResource(R.string.userProfiles_keyOk)
     )
     Column(modifier = Modifier.fillMaxWidth()) {

@@ -1,5 +1,6 @@
 package ca.devmesh.seerrtv.ui
 
+import android.app.Activity
 import android.content.Context
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -24,6 +25,7 @@ import ca.devmesh.seerrtv.ui.focus.DpadTransitions
 import ca.devmesh.seerrtv.ui.focus.ScreenDpadConfig
 import ca.devmesh.seerrtv.ui.focus.AppFocusState
 import ca.devmesh.seerrtv.ui.components.AppLogo
+import ca.devmesh.seerrtv.ui.components.VersionNumber
 import ca.devmesh.seerrtv.util.PinUtils
 import ca.devmesh.seerrtv.util.SharedPreferencesUtil
 import androidx.compose.foundation.lazy.LazyColumn
@@ -36,7 +38,11 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.res.stringResource
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.shadow
 import ca.devmesh.seerrtv.R
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 enum class ProfileGateMode {
     SELECT_LIST,
@@ -52,6 +58,7 @@ fun UserProfileSelectionScreen(
     dpadController: DpadController,
     route: String = "profile_select"
 ) {
+    val scope = rememberCoroutineScope()
     var profiles by remember { mutableStateOf(SharedPreferencesUtil.getProfiles(context)) }
     val activeProfileId = SharedPreferencesUtil.getActiveProfileId(context)
     val targetProfileId = remember { SharedPreferencesUtil.consumeProfileSelectionTargetProfileId(context) }
@@ -71,6 +78,8 @@ fun UserProfileSelectionScreen(
     var pinBuffer by remember { mutableStateOf("") }
     var pinError by remember { mutableStateOf<String?>(null) }
     var keypadSelectedIndex by remember { mutableStateOf(0) }
+    // Some remotes dispatch Back twice (down/up); swallow one after closing PIN modal.
+    var consumeNextBackOnSelectList by remember { mutableStateOf(false) }
 
     // Ensure d-pad works with a registered focus state.
     LaunchedEffect(Unit) {
@@ -93,11 +102,13 @@ fun UserProfileSelectionScreen(
             SharedPreferencesUtil.consumeProfileSelectionTargetPostActivationRoute(context)
                 ?: "main"
 
+        // A successful profile switch should not bounce back to selector during startup validation.
+        SharedPreferencesUtil.setSkipProfileSelectionOnce(context, true)
+
         // We may be navigating to `splash` only to allow `MainActivity` to run its startup validation,
         // but we already handled profile PIN entry here. Prevent `MainActivity` from pushing us
         // back to `profile_select` after auth succeeds.
         if (postActivationRoute == "splash") {
-            SharedPreferencesUtil.setSkipProfileSelectionOnce(context, true)
             // Ensure MainActivity re-runs splash validation with the newly selected profile.
             SharedPreferencesUtil.setForceSplashResetOnNext(context, true)
         }
@@ -106,6 +117,16 @@ fun UserProfileSelectionScreen(
 
         navController.navigate(postActivationRoute) {
             popUpTo(route) { inclusive = true }
+        }
+
+        // Recreate activity after profile switch so all per-profile settings
+        // (app language, time format, etc.) are immediately reloaded.
+        val activity = context as? Activity
+        if (activity != null) {
+            scope.launch {
+                delay(100)
+                activity.recreate()
+            }
         }
     }
 
@@ -179,14 +200,14 @@ fun UserProfileSelectionScreen(
                     0, 1, 2 -> (keypadSelectedIndex + 1).toString() // 1,2,3
                     3, 4, 5 -> (keypadSelectedIndex + 1).toString() // 4,5,6
                     6, 7, 8 -> (keypadSelectedIndex + 1).toString() // 7,8,9
-                    9 -> "0"
-                    10 -> ""
+                    10 -> "0"
+                    9 -> ""
                     11 -> ""
                     else -> ""
                 }
 
                 when (keypadSelectedIndex) {
-                    10 -> {
+                    9 -> {
                         pinBuffer = pinBuffer.dropLast(1)
                     }
                     11 -> {
@@ -216,6 +237,10 @@ fun UserProfileSelectionScreen(
     fun onBack() {
         when (mode) {
             ProfileGateMode.SELECT_LIST -> {
+                if (consumeNextBackOnSelectList) {
+                    consumeNextBackOnSelectList = false
+                    return
+                }
                 // If this screen was opened from the top bar, return to the prior screen.
                 // If there's no previous entry (app startup), fall back to splash.
                 val popped = navController.popBackStack()
@@ -230,6 +255,7 @@ fun UserProfileSelectionScreen(
                 pinBuffer = ""
                 pinError = null
                 keypadSelectedIndex = 0
+                consumeNextBackOnSelectList = true
             }
         }
     }
@@ -270,6 +296,12 @@ fun UserProfileSelectionScreen(
             modifier = Modifier
                 .align(Alignment.Center)
                 .padding(bottom = 82.dp)
+        )
+
+        VersionNumber(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(horizontal = 16.dp, vertical = 8.dp)
         )
 
         // Bottom anchored content so the carousel/keypad always sits at the bottom.
@@ -315,12 +347,52 @@ fun UserProfileSelectionScreen(
                             }
                         }
                     }
-                } else {
-                    Column(modifier = Modifier.fillMaxWidth()) {
+                }
+            }
+        }
+
+        if (mode == ProfileGateMode.PIN_ENTRY) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.6f)),
+                contentAlignment = Alignment.Center
+            ) {
+                val selectedProfile = profiles.getOrNull(selectedProfileIndex)
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.62f)
+                        .shadow(16.dp, RoundedCornerShape(18.dp))
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(Color(0xFF111827))
+                        .border(
+                            width = 1.dp,
+                            color = Color.White.copy(alpha = 0.15f),
+                            shape = RoundedCornerShape(18.dp)
+                        )
+                        .padding(24.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = selectedProfile?.name ?: "",
+                            color = Color.White.copy(alpha = 0.75f),
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.padding(bottom = 4.dp)
+                        )
+                        Text(
+                            text = stringResource(R.string.userProfiles_enterPin),
+                            style = MaterialTheme.typography.headlineSmall,
+                            color = Color.White,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(bottom = 16.dp),
+                                .padding(bottom = 14.dp),
                             horizontalArrangement = Arrangement.Center
                         ) {
                             val maxLen = 6
@@ -343,16 +415,19 @@ fun UserProfileSelectionScreen(
                             Text(
                                 text = pinError ?: "",
                                 color = Color(0xFFFF6B6B),
-                                modifier = Modifier.padding(bottom = 16.dp),
+                                modifier = Modifier.padding(bottom = 12.dp),
                                 textAlign = TextAlign.Center
                             )
                         }
 
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        PinKeypad(
-                            keypadSelectedIndex = keypadSelectedIndex
+                        Text(
+                            text = "${stringResource(R.string.common_cancel)}: Back",
+                            color = Color.White.copy(alpha = 0.72f),
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(bottom = 14.dp)
                         )
+
+                        PinKeypad(keypadSelectedIndex = keypadSelectedIndex)
                     }
                 }
             }
@@ -423,7 +498,9 @@ private fun PinKeypad(
         "1", "2", "3",
         "4", "5", "6",
         "7", "8", "9",
-        "0", stringResource(R.string.userProfiles_keyDelete), stringResource(R.string.userProfiles_keyOk)
+        stringResource(R.string.userProfiles_keyDelete),
+        "0",
+        stringResource(R.string.userProfiles_keyOk)
     )
 
     Column(

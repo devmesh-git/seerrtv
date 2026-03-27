@@ -17,6 +17,11 @@
     <string name="category_studios">Studios</string>
     <string name="category_trending">Trending</string>
     <string name="category_watchlist">Your Watchlist</string>
+    <string name="action_add_to_watchlist">Add to Watchlist</string>
+    <string name="action_remove_from_watchlist">Remove from Watchlist</string>
+    <string name="watchlist_added_success">Added to watchlist</string>
+    <string name="watchlist_removed_success">Removed from watchlist</string>
+    <string name="watchlist_update_failed">Failed to update watchlist</string>
     <string name="category_upcomingMovies">Upcoming Movies</string>
     <string name="category_upcomingSeries">Upcoming Series</string>
     
@@ -397,6 +402,10 @@
     <string name="splashScreen_noRadarrServersInfo">Radarr: Not configured</string>
     <string name="splashScreen_noServersInfo">No backend servers configured - Using Overseerr/Jellyseerr/Seerr only mode</string>
     <string name="splashScreen_noSonarrServersInfo">Sonarr: Not configured</string>
+    <string name="splashScreen_mediaServerDetected_plex">Plex media server detected</string>
+    <string name="splashScreen_mediaServerDetected_jellyfin">Jellyfin media server detected</string>
+    <string name="splashScreen_mediaServerDetected_emby">Emby media server detected</string>
+    <string name="splashScreen_mediaServerNotConfigured">No media server configured</string>
     <string name="splashScreen_radarrConfigComplete">Radarr: %1$d servers - HD (%2$d) 4K (%3$d)</string>
     <string name="splashScreen_ready">Ready!</string>
     <string name="splashScreen_sonarrConfigComplete">Sonarr: %1$d servers - HD (%2$d) 4K (%3$d)</string>

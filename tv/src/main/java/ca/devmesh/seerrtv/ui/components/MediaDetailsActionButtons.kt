@@ -23,6 +23,8 @@ fun MediaDetailsActionButtons(
     actionButtonStates: Map<String, ActionButtonState>,
     canRequestMedia: Boolean,
     has4kCapability: Boolean,
+    showWatchlistButton: Boolean,
+    isInWatchlist: Boolean,
     onFocusChange: (Int) -> Unit,
     context: Context
 ) {
@@ -54,6 +56,15 @@ fun MediaDetailsActionButtons(
                 leftTier = actionButtonStates["request"]?.leftTier,
                 rightTier = actionButtonStates["request"]?.rightTier,
                 singleTier = actionButtonStates["request"]?.singleTier
+            )
+        }
+
+        if (showWatchlistButton) {
+            Spacer(modifier = Modifier.height(8.dp))
+            ActionWatchlistButton(
+                isFocused = (currentFocusArea == FocusArea.WATCHLIST_ACTION),
+                isInWatchlist = isInWatchlist,
+                context = context
             )
         }
 
