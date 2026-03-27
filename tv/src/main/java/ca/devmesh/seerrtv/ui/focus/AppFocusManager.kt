@@ -114,7 +114,7 @@ sealed class AppFocusState {
  * Top bar focus states
  */
 enum class TopBarFocus {
-    Search, Movies, Series, Settings
+    Search, Movies, Series, Settings, Avatar
 }
 
 /**
@@ -151,6 +151,7 @@ sealed class DetailsFocusState {
     object ManageHD : DetailsFocusState()
     object Manage4K : DetailsFocusState()
     object ManageSingle : DetailsFocusState()
+    object WatchlistAction : DetailsFocusState()
     object Trailer : DetailsFocusState()
     
     // Issue button focus areas
@@ -174,6 +175,7 @@ sealed class DetailsFocusState {
         is ManageHD -> "ManageHD"
         is Manage4K -> "Manage4K"
         is ManageSingle -> "ManageSingle"
+        is WatchlistAction -> "WatchlistAction"
         is Trailer -> "Trailer"
         is Issue -> "Issue"
         is PlayIssueSplitLeft -> "PlayIssueSplitLeft"

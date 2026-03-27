@@ -1,4 +1,135 @@
 # Changelog
+## 0.28.01
+
+### Multi-user Profiles
+
+#### Profile-centric configuration
+- Added persistent `UserProfile` support (1:M profiles), each embedding an API configuration.
+- Migrated legacy single-config setups into a default profile and ensured the active profile is always valid.
+- Added `ProfileSettings` to `UserProfile` so app language, discovery language, streaming region, folder selection, clock format, and trailer-webview preference are stored per profile.
+- Updated `SharedPreferencesUtil` getters/setters to read/write active profile settings first, with fallback for legacy global keys.
+- Added migration logic to move legacy global setting keys into profile storage and clean up old keys after migration.
+- Added pending-language persistence for new profile creation flow so language selection can be staged before profile save.
+
+#### Profile selection, management & PIN protection
+- Added `UserProfileSelectionScreen` at startup when multiple profiles exist (or when the single profile is PIN protected).
+- Profile avatars use two-letter initials derived from username/email with uniqueness enforced across profiles.
+- Optional numeric PIN protection is supported locally (hash + verify) before activating a profile.
+- Added `UserProfilesManagementScreen` and a `User profiles` Settings entry to manage profiles (add/configure avatar+PIN/delete) with active-profile-only enforcement.
+- Reused backend user info (e.g., request/quota values) via existing `/auth/me` calls to display profile-specific usage in the management UI.
+- Synced active profile display name/initials from `/auth/me` data after login.
+
+### Top Bar, DPAD & Startup Flow
+- Updated top bar to show the active profile avatar and to route avatar selection to the profile selector.
+- Extended DPAD/focus handling to include avatar focus, profile selection/management routes, and a dedicated details `WATCHLIST_ACTION` focus target.
+- Refined startup/profile-selection handling so config/auth is correctly gated by profile activation.
+- Ensured profile switching re-authenticates with the active profile config, applies one-time selection-skip behavior, and recreates activity where needed so per-profile settings are applied immediately.
+
+### Watchlist Actions in Details
+- Added a dedicated Watchlist action button in media details for Jellyfin/Emby profiles (`Add to Watchlist` / `Remove from Watchlist`).
+- Added optimistic watchlist membership tracking in `SeerrViewModel` with rollback on API error and refresh from watchlist discovery pages.
+- Added explicit watchlist APIs in `SeerrApiService` (`addToWatchlist`, `removeFromWatchlist`, `getWatchlistMembershipItems`) including compatibility fallback when DELETE query parameters are rejected by some OpenAPI setups.
+- Updated discover/watchlist requests to avoid unsupported `language` query usage for that endpoint.
+- Improved watchlist/discovery media normalization by preferring TMDB id for stable routing and carousel state updates.
+
+### Data & Localization
+- Scoped genre caches by discovery language so movie/TV genre metadata refreshes correctly when language changes.
+- Updated splash messages to show media server detection type (`Plex`, `Jellyfin`, `Emby`) or explicit "not configured" status.
+- Added localized strings for watchlist actions/messages, profile settings menu label, and splash media-server detection state.
+- Added/updated translations across `values`, `values-de`, `values-es`, `values-fr`, `values-ja`, `values-nl`, `values-pt`, and `values-zh`.
+
+### Files Modified
+- `tv/build.gradle.kts` – Version bump to 0.28.01 (versionCode 122).
+- `tv/src/main/java/ca/devmesh/seerrtv/MainActivity.kt`
+- `tv/src/main/java/ca/devmesh/seerrtv/data/SeerrApiService.kt`
+- `tv/src/main/java/ca/devmesh/seerrtv/model/MainScreenModels.kt`
+- `tv/src/main/java/ca/devmesh/seerrtv/model/UserProfile.kt`
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/ConfigScreen.kt`
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/MainScreen.kt`
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/MediaDetails.kt`
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/MediaBrowseScreen.kt`
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/UserProfileSelectionScreen.kt`
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/UserProfilesManagementScreen.kt`
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/components/MainTopBar.kt`
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/components/ActionButtons.kt`
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/components/EnhancedMediaCarousel.kt`
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/components/MediaDetailsActionButtons.kt`
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/components/TopBarController.kt`
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/SettingsScreen.kt`
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/focus/AppFocusManager.kt`
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/state/FocusArea.kt`
+- `tv/src/main/java/ca/devmesh/seerrtv/util/SharedPreferencesUtil.kt`
+- `tv/src/main/java/ca/devmesh/seerrtv/viewmodel/SeerrViewModel.kt`
+- `tv/src/main/res/values/strings.xml`
+- `tv/src/main/res/values-de/strings.xml`
+- `tv/src/main/res/values-es/strings.xml`
+- `tv/src/main/res/values-fr/strings.xml`
+- `tv/src/main/res/values-ja/strings.xml`
+- `tv/src/main/res/values-nl/strings.xml`
+- `tv/src/main/res/values-pt/strings.xml`
+- `tv/src/main/res/values-zh/strings.xml`
+
+---
+## 0.27.03
+
+### Stability & ANRs
+
+#### Coil image cache (request / home refresh)
+- **No main-thread disk eviction** – Clearing the Coil disk cache after a successful media request or during the home “recent requests” refresh no longer runs on the UI thread. Disk deletes can block for a long time on TV/storage and were implicated in production ANRs (`DiskLruCache` / `File.delete` on `main`).
+- **Shared loader + async clear** – `RefreshManager` schedules cache clear via `SeerrTV.clearImageCachesAsync()` on a background dispatcher. `MainScreen` uses `withContext(Dispatchers.IO)` for the same operation with the composable’s `ImageLoader`.
+- **Lazy `ImageLoader`** – `SeerrTV` builds `ImageLoader` (and its OkHttp stack) on first use instead of in `Application.onCreate()`, reducing work during app bind.
+
+#### Compose text layout (emoji / long server strings)
+- **Bounded dynamic text** – Issue comments, creator display names, person aliases, biography (expanded), and media overviews (including “full” mode) are capped and use `maxLines` + `TextOverflow.Ellipsis` where appropriate to avoid long main-thread passes through `EmojiProcessor` / paragraph layout.
+- **`uiTruncateForDisplay()`** – New helper in `tv/src/main/java/ca/devmesh/seerrtv/util/UiText.kt` for consistent display truncation of API/user-provided strings.
+
+#### Media details (title wrapping)
+- **Long titles next to the info panel** – The overview title uses `Row` + `Modifier.weight(1f)` and `widthIn(min = 0)` so the headline measures against the real width of the middle column. Previously, intrinsic single-line width (especially for titles exactly at the “short” length threshold) fought the weighted `Row`/`Column` layout and could collapse to a one-character-wide strip beside the ratings table.
+- **Flex columns** – `MediaDetailsContentLayout` gives the overview and info-table columns `widthIn(min = 0)` and `fillMaxWidth()` on the content row so weighted children can shrink and wrap correctly.
+
+#### Startup / class loading
+- **Lazy Ktor `HttpClient`** – `SeerrApiService` creates its `HttpClient` on first use (thread-safe) instead of at construction time; `refreshClient()` still replaces the client under the same lock.
+- **Smaller dependency surface** – Removed unused `ktor-client-android` and `ktor-client-cio` artifacts (OkHttp engine only), reducing dex/class-load pressure during cold start.
+
+### Build & Versioning
+
+- **Version bump** – Bumped to version 0.27.03 (versionCode 123).
+
+### Files Modified
+
+- `tv/src/main/java/ca/devmesh/seerrtv/MainActivity.kt` – `SeerrTV`: lazy `ImageLoader`, `clearImageCachesAsync()`, `applicationScope`.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/RefreshManager.kt` – Async cache clear via application context.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/MainScreen.kt` – IO dispatcher for cache clear during recent-requests refresh.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/IssueDetailsModal.kt` – Truncation, `remember`, `maxLines` / ellipsis for creator and comments.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/PersonScreen.kt` – Name / aliases / biography bounds.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/components/MediaInfo.kt` – Overview cap in full mode; `maxLines` / ellipsis; title row `weight` / `widthIn(min = 0)` for proper wrapping.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/components/MediaDetailsContentLayout.kt` – `fillMaxWidth()` on content row; `widthIn(min = 0)` on weighted overview/info columns.
+- `tv/src/main/java/ca/devmesh/seerrtv/util/UiText.kt` – New `uiTruncateForDisplay()` helper.
+- `tv/src/main/java/ca/devmesh/seerrtv/data/SeerrApiService.kt` – Lazy, synchronized `HttpClient` lifecycle.
+- `tv/build.gradle.kts` – Version 0.27.03 (versionCode 123); removed extra Ktor client engines.
+
+---
+
+## 0.27.02
+
+### Home Screen & Focus
+
+#### Category row selection consistency
+- **Per-category selected indices** – `ScrollableCategoriesSection` now keeps a stable map of selected carousel indices per `MediaCategory`, keyed to the current discover row set.
+- **Dynamic rows** – When server-driven categories load or reorder, indices are created for new categories and pruned for removed ones so selection state stays aligned with visible rows.
+- **Highlight sync** – `CarouselSection` receives the per-category state so the focused item highlight does not desynchronize from the active category during first load or when row content changes.
+- **Top bar** – Entering the top bar still clears per-category selections (`-1`) so focus transitions remain consistent.
+
+### Build & Versioning
+
+- **Version bump** – Bumped to version 0.27.02 (versionCode 122).
+
+### Files Modified
+
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/MainScreen.kt` – `ScrollableCategoriesSection`: per-category `selectedMediaIndices` state map, `LaunchedEffect` sync with `categories` / `selectedCategory` / `selectedMediaIndex`, wiring into `CarouselSection`.
+- `tv/build.gradle.kts` – Version 0.27.02 (versionCode 122).
+
+---
 
 ## 0.27.03
 

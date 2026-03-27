@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.navigation.NavController
+import ca.devmesh.seerrtv.util.SharedPreferencesUtil
 import ca.devmesh.seerrtv.viewmodel.DiscoveryType
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
@@ -103,6 +104,7 @@ class NavigationManager(
             scope.launch {
                 _isNavigating.value = true
                 _lastNavigationTime.value = System.currentTimeMillis()
+                SharedPreferencesUtil.clearPendingNewProfileCreation(navController.context)
                 navController.navigate("config")
                 delay(navigationDebounceTime)
                 _isNavigating.value = false

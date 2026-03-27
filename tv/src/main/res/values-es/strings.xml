@@ -1,7 +1,11 @@
 <resources>
+    <!-- App Strings -->
     <string name="app_name">SeerrTV</string>
+    
+    <!-- Carousel Section Strings -->
     <string name="carouselSection_error_loadingFailed">Error al cargar los medios</string>
     <string name="carouselSection_error_noMediaFound">No se encontraron medios para esta categoría</string>
+    <!-- Category Strings -->
     <string name="category_movieGenres">Géneros de Películas</string>
     <string name="category_networks">Redes</string>
     <string name="category_popularMovies">Películas Populares</string>
@@ -12,8 +16,14 @@
     <string name="category_studios">Estudios</string>
     <string name="category_trending">Tendencias</string>
     <string name="category_watchlist">Tu lista de seguimiento</string>
+    <string name="action_add_to_watchlist">Agregar a la lista de seguimiento</string>
+    <string name="action_remove_from_watchlist">Quitar de la lista de seguimiento</string>
+    <string name="watchlist_added_success">Agregado a la lista de seguimiento</string>
+    <string name="watchlist_removed_success">Quitado de la lista de seguimiento</string>
+    <string name="watchlist_update_failed">No se pudo actualizar la lista de seguimiento</string>
     <string name="category_upcomingMovies">Próximas Películas</string>
     <string name="category_upcomingSeries">Próximas Series</string>
+    <!-- Common Strings -->
     <string name="common_apiKey">Clave API</string>
     <string name="common_areYouSure">¿Estás seguro?</string>
     <string name="common_cancel">Cancelar</string>
@@ -37,6 +47,7 @@
     <string name="common_versionPrefix">v</string>
     <string name="common_yes">Sí</string>
     <string name="common_no">No</string>
+    <!-- Config Screen Strings -->
     <string name="configScreen_apiKeyHelp">Ingrese su clave API desde la configuración del servidor</string>
     <string name="configScreen_authenticationFailed">Autenticación Fallida</string>
     <string name="configScreen_authFailedMessage">Sus credenciales no son válidas. Esto podría deberse a un cambio de contraseña o acceso revocado. Por favor, reconfigure con credenciales válidas.</string>
@@ -98,6 +109,7 @@
     <string name="configScreen_unknownError">Ha ocurrido un error desconocido</string>
     <string name="configScreen_username">Nombre de usuario</string>
     <string name="configScreen_waitingAuth">Esperando autenticación…</string>
+    <!-- Issue Strings -->
     <string name="issue_add_comment_button">Agregar Comentario</string>
     <string name="issue_add_comment_placeholder">Agrega tu comentario...</string>
     <string name="issue_add_comment_title">Agregar Comentario al Problema</string>
@@ -149,6 +161,7 @@
     <string name="issue_video_quality">Calidad de video deficiente</string>
     <string name="issue_video_stuttering">Video entrecortado/congelado</string>
     <string name="issue_video_sync">Video desincronizado</string>
+    <!-- Main Screen Strings -->
     <string name="mainScreen_loading_pleaseWait">Por favor espere</string>
     <string name="mainScreen_mediaBackdrop">Fondo de pantalla de medios</string>
     <string name="mainScreen_pressBackAgainToExit">Presione ATRÁS de nuevo para salir de la aplicación</string>
@@ -159,6 +172,7 @@
     <string name="mainScreen_appOrderSaved">Orden de aplicaciones guardado</string>
     <string name="mainScreen_reorderModeHint">Reordenar: Izq./Der. para mover, Entrar o Atrás para guardar</string>
     <string name="mainScreen_appsRowReorderTitle">Aplicaciones (reordenar)</string>
+    <!-- Media Details Strings -->
     <string name="mediaDetails_cast">Reparto</string>
     <string name="mediaDetails_crew">Equipo</string>
     <string name="mediaDetails_errorSubmittingRequest">Error al enviar solicitud: %1$s</string>
@@ -183,6 +197,7 @@
     <string name="mediaDetails_unknownType">Tipo de medio desconocido</string>
     <string name="mediaDetails_watchTrailer">Ver trailer</string>
     <string name="mediaDetails_youTubeNotFound">Aplicación YouTube no encontrada. Por favor, instala YouTube desde Play Store.</string>
+    <!-- Media Discovery Strings -->
     <string name="mediaDiscovery_movieKeywordSearch">Películas con palabra clave</string>
     <string name="mediaDiscovery_noImage">Sin imagen</string>
     <string name="mediaDiscovery_noResults">No se encontraron resultados. Intente ajustar sus criterios de búsqueda para intentarlo de nuevo.</string>
@@ -190,6 +205,7 @@
     <string name="mediaDiscovery_searchPlaceholder">Buscar películas o series de TV</string>
     <string name="mediaDiscovery_searchResults">Resultados de búsqueda</string>
     <string name="mediaDiscovery_tvKeywordSearch">Series de TV con palabra clave</string>
+    <!-- Media Info Table Strings -->
     <string name="mediaInfoTable_budget">Presupuesto</string>
     <string name="mediaInfoTable_currentlyStreamingOn">Actualmente en streaming en</string>
     <string name="mediaInfoTable_firstAirDate">Fecha de primera emisión</string>
@@ -210,12 +226,14 @@
     <string name="mediaInfoTable_status">Estado</string>
     <string name="mediaInfoTable_studios">Estudios</string>
     <string name="mediaInfoTable_tmdbRating">Calificación TMDB</string>
+    <!-- Person Screen Strings -->
     <string name="personScreen_alsoKnownAs">También conocido como</string>
     <string name="personScreen_born">Nacimiento</string>
     <string name="personScreen_crew">Equipo</string>
     <string name="personScreen_knownFor">Conocido por</string>
     <string name="personScreen_personProfile">Perfil de persona</string>
     <string name="personScreen_yearsOld">años</string>
+    <!-- Request Action Strings -->
     <string name="requestAction_approve">Aprobar</string>
     <string name="requestAction_by">por</string>
     <string name="requestAction_decline">Rechazar</string>
@@ -227,6 +245,7 @@
     <string name="requestAction_requestStatus">Estado de la Solicitud</string>
     <string name="requestAction_unknownMediaType">Tipo de Medio Desconocido</string>
     <string name="requestAction_unknownProfile">Perfil Desconocido</string>
+    <!-- Request Modal Strings -->
     <string name="requestModal_episodes">Episodios</string>
     <string name="requestModal_errorLookingUpSeries">Error al buscar serie: %1$s</string>
     <string name="requestModal_errorSubmittingRequest">Error al enviar la solicitud</string>
@@ -253,6 +272,7 @@
     <string name="requestModal_tagsMenu">Etiquetas</string>
     <string name="requestModal_title">Solicitar Medio</string>
     <string name="requestModal_unableToMatch">No pudimos hacer coincidir automáticamente esta serie. Por favor, seleccione la coincidencia correcta a continuación.</string>
+    <!-- Request Status Strings -->
     <string name="requestStatus_approved">Aprobado</string>
     <string name="requestStatus_available">Disponible</string>
     <string name="requestStatus_blacklisted">En Lista Negra</string>
@@ -263,6 +283,7 @@
     <string name="requestStatus_notRequested">No Solicitado</string>
     <string name="requestStatus_partiallyAvailable">Parcialmente Disponible</string>
     <string name="requestStatus_pending">Pendiente</string>
+    <!-- Settings Menu Strings -->
     <string name="settingsMenu_12Hour">12 horas</string>
     <string name="settingsMenu_24Hour">24 horas</string>
     <string name="settingsMenu_aboutMenu">Acerca de</string>
@@ -270,6 +291,7 @@
     <string name="settingsMenu_authType">Tipo de Autenticación</string>
     <string name="settingsMenu_clockFormat">Formato de hora</string>
     <string name="settingsMenu_configMenu">Configurar API</string>
+    <string name="settingsMenu_userProfiles">Perfiles de usuario</string>
     <string name="settingsMenu_debugMode">Modo Debug</string>
     <string name="settingsMenu_disabled">Deshabilitado</string>
     <string name="settingsMenu_discoverLanguageDE">Alemán</string>
@@ -317,6 +339,7 @@
     <string name="settingsMenu_trailerPlayer_inApp">Reproductor en la app</string>
     <string name="settingsMenu_title">Configuración</string>
     <string name="settingsMenu_username">Cuenta</string>
+    <!-- Splash Screen Strings -->
     <string name="splashScreen_authenticating">Autenticando…</string>
     <string name="splashScreen_checkingConnection">Verificando Conexión…</string>
     <string name="splashScreen_checkingForUpdates">Verificando actualizaciones…</string>
@@ -329,6 +352,10 @@
     <string name="splashScreen_noRadarrServersInfo">Radarr: No configurado</string>
     <string name="splashScreen_noServersInfo">Sin servidores backend configurados - Modo solo Overseerr/Jellyseerr/Seerr</string>
     <string name="splashScreen_noSonarrServersInfo">Sonarr: No configurado</string>
+    <string name="splashScreen_mediaServerDetected_plex">Servidor multimedia Plex detectado</string>
+    <string name="splashScreen_mediaServerDetected_jellyfin">Servidor multimedia Jellyfin detectado</string>
+    <string name="splashScreen_mediaServerDetected_emby">Servidor multimedia Emby detectado</string>
+    <string name="splashScreen_mediaServerNotConfigured">No hay servidor multimedia configurado</string>
     <string name="splashScreen_radarrConfigComplete">Radarr: %1$d servidores - HD (%2$d) 4K (%3$d)</string>
     <string name="splashScreen_ready">¡Listo!</string>
     <string name="splashScreen_sonarrConfigComplete">Sonarr: %1$d servidores - HD (%2$d) 4K (%3$d)</string>
@@ -340,6 +367,7 @@
         <item quantity="one">Radarr: %1$d servidor</item>
         <item quantity="other">Radarr: %1$d servidores</item>
     </plurals>
+    <!-- Time Strings -->
     <string name="time_dayAgo">hace 1 día</string>
     <string name="time_days">%1$d días</string>
     <string name="time_daysAgo">hace %1$d días</string>
@@ -433,4 +461,39 @@
     <string name="filter_applyRange">Aplicar rango</string>
     <string name="filter_clearFilter">Limpiar filtro</string>
     <string name="filter_clearAllDates">Limpiar todos los filtros de fecha</string>
+    <!-- User Profiles Strings -->
+    <string name="userProfiles_loadProfileInfoError">No se pudo cargar la información del perfil</string>
+    <string name="userProfiles_settingsSummary_title">Gestión de perfiles de usuario</string>
+    <string name="userProfiles_settingsSummary_noActiveProfile">No hay un perfil activo.</string>
+    <string name="userProfiles_settingsSummary_currentProfile">Perfil actual</string>
+    <string name="userProfiles_settingsSummary_manageHint">Pulsa Seleccionar/Enter para ver y administrar perfiles.</string>
+    <string name="userProfiles_pinProtected">Protegido con PIN</string>
+    <string name="userProfiles_loadingProfileInfo">Cargando información del perfil...</string>
+    <string name="userProfiles_totalRequests">Solicitudes totales: %1$d</string>
+    <string name="userProfiles_movieRequests">Solicitudes de películas: %1$s</string>
+    <string name="userProfiles_seriesRequests">Solicitudes de series: %1$s</string>
+    <string name="userProfiles_quotaUnlimited">Ilimitado</string>
+    <string name="userProfiles_quotaPerDays">%1$d cada %2$d días</string>
+    <string name="userProfiles_selectProfile">Seleccionar perfil</string>
+    <string name="userProfiles_enterPin">Introducir PIN</string>
+    <string name="userProfiles_noProfilesConfigureServer">Aún no hay perfiles. Configura tu servidor.</string>
+    <string name="userProfiles_incorrectPin">PIN incorrecto</string>
+    <string name="userProfiles_keyDelete">BORRAR</string>
+    <string name="userProfiles_keyOk">OK</string>
+    <string name="userProfiles_actionConfigureApi">Configurar API</string>
+    <string name="userProfiles_actionAvatarColor">Color del avatar</string>
+    <string name="userProfiles_actionClearPin">Quitar PIN</string>
+    <string name="userProfiles_actionSetPin">Establecer PIN</string>
+    <string name="userProfiles_actionDeleteProfile">Eliminar perfil</string>
+    <string name="userProfiles_pinMinimumLengthError">El PIN debe tener al menos 4 dígitos</string>
+    <string name="userProfiles_titleList">Perfiles de usuario</string>
+    <string name="userProfiles_titleManageProfile">Administrar perfil</string>
+    <string name="userProfiles_titleSetProfilePin">Establecer PIN del perfil</string>
+    <string name="userProfiles_titleDeleteProfile">¿Eliminar perfil?</string>
+    <string name="userProfiles_noProfilesYet">Aún no hay perfiles.</string>
+    <string name="userProfiles_noActiveProfileFound">No se encontró un perfil activo.</string>
+    <string name="userProfiles_deleteConfirmMessage">¿Eliminar tu perfil activo?\nNo se puede deshacer.</string>
+    <string name="userProfiles_pinLabel">PIN</string>
+    <string name="userProfiles_active">Activo</string>
+    <string name="userProfiles_addProfile">Añadir perfil</string>
 </resources>

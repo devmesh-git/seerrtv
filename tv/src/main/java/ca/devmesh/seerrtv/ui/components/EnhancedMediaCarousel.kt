@@ -1005,15 +1005,18 @@ fun <T> EnhancedMediaCarousel(
     // Use consistent spacing for cards
     val itemSpacing = if (itemType == "CategoryCard") 20.dp else 12.dp
 
-    // CRITICAL FIX: Create a stable snapshot of rowItems to prevent race conditions
-    // where the list becomes empty between the check and composition
-    // This ensures that itemsIndexed always has a consistent list, even if rowItems changes
-    // during recomposition. We use the list size and first item as keys to detect real changes.
-    val stableRowItems = remember(
-        rowItems.size,
-        rowItems.firstOrNull()
-    ) { 
-        if (rowItems.isEmpty()) emptyList<T>() else rowItems.toList() 
+    // Snapshot row content (not just size + first item) so later items can update when the
+    // first row is unchanged — e.g. watchlist refresh or TMDB id normalization.
+    val rowItemsContentKey = rowItems.mapIndexed { index, item ->
+        when (item) {
+            is Media -> "${item.id}:${item.tmdbId}:${item.mediaType}@$index"
+            is CategoryCard -> "${item.id}:${item.name}@$index"
+            is CarouselPlaceholderItem -> "ph@$index"
+            else -> "${item.hashCode()}@$index"
+        }
+    }.joinToString("|")
+    val stableRowItems = remember(rowItems.size, rowItemsContentKey) {
+        if (rowItems.isEmpty()) emptyList<T>() else rowItems.toList()
     }
 
     Box(

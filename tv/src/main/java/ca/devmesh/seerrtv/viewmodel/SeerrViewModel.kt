@@ -417,6 +417,9 @@ class SeerrViewModel @Inject constructor(
     val customSliderData: StateFlow<Map<Int, ApiResult<List<Media>>>> =
         _customSliderData.asStateFlow()
 
+    private val _watchlistMembership = MutableStateFlow<Set<String>>(emptySet())
+    val watchlistMembership: StateFlow<Set<String>> = _watchlistMembership.asStateFlow()
+
     private val customSliderMediaLists = mutableMapOf<Int, MutableList<Media>>()
     private val customSliderLoadingState = mutableStateMapOf<Int, Boolean>()
     private val customSliderCacheTimestamps = mutableMapOf<Int, Long>()
@@ -471,6 +474,7 @@ class SeerrViewModel @Inject constructor(
                     try {
                         // Fetch server sliders first so custom rows are known before rendering
                         launch { loadDiscoverSliders() }
+                        launch { refreshWatchlistMembership() }
 
                         // Load categories in the specified order
                         listOf(
@@ -650,6 +654,7 @@ class SeerrViewModel @Inject constructor(
                     // First, refresh the list of discover sliders from the server so any
                     // new/removed/reordered sliders are reflected before we reload data.
                     loadDiscoverSliders()
+                    launch { refreshWatchlistMembership() }
 
                     // Clear all loading states
                     categoryLoadingState.clear()
@@ -999,6 +1004,9 @@ class SeerrViewModel @Inject constructor(
 
                     _categoryData.value = _categoryData.value.toMutableMap().apply {
                         put(category, ApiResult.Success(mediaList.toList(), result.paginationInfo))
+                    }
+                    if (category == MediaCategory.WATCHLIST) {
+                        syncWatchlistMembershipFromMediaList(mediaList)
                     }
                     if (BuildConfig.DEBUG) {
                         Log.d(
@@ -2522,6 +2530,80 @@ class SeerrViewModel @Inject constructor(
 
     fun getServerType(): SeerrApiService.ServerType {
         return apiService.getServerType()
+    }
+
+    private fun toWatchlistKey(mediaType: String?, tmdbId: Int?): String? {
+        if (tmdbId == null) return null
+        val normalizedType = when (mediaType?.lowercase()) {
+            "movie" -> "movie"
+            "tv", "series", "show" -> "tv"
+            else -> return null
+        }
+        return "$normalizedType:$tmdbId"
+    }
+
+    private fun syncWatchlistMembershipFromMediaList(items: List<Media>) {
+        val membership = items.mapNotNull { item ->
+            val tmdbId = item.tmdbId ?: item.id
+            toWatchlistKey(item.mediaType, tmdbId)
+        }.toSet()
+        _watchlistMembership.value = membership
+    }
+
+    fun isInWatchlist(tmdbId: Int?, mediaType: String?): Boolean {
+        val key = toWatchlistKey(mediaType, tmdbId) ?: return false
+        return _watchlistMembership.value.contains(key)
+    }
+
+    suspend fun refreshWatchlistMembership(): ApiResult<Unit> {
+        return when (val result = apiService.getWatchlistMembershipItems()) {
+            is ApiResult.Success -> {
+                syncWatchlistMembershipFromMediaList(result.data)
+                ApiResult.Success(Unit)
+            }
+            is ApiResult.Error -> result
+            is ApiResult.Loading -> result
+        }
+    }
+
+    suspend fun addToWatchlist(tmdbId: Int, mediaType: String, title: String? = null): ApiResult<Unit> {
+        val key = toWatchlistKey(mediaType, tmdbId)
+        val previousMembership = _watchlistMembership.value
+        if (key != null) {
+            _watchlistMembership.value = previousMembership + key
+        }
+
+        return when (val result = apiService.addToWatchlist(tmdbId, mediaType, title)) {
+            is ApiResult.Success -> {
+                refreshCategory(MediaCategory.WATCHLIST)
+                ApiResult.Success(Unit)
+            }
+            is ApiResult.Error -> {
+                _watchlistMembership.value = previousMembership
+                result
+            }
+            is ApiResult.Loading -> result
+        }
+    }
+
+    suspend fun removeFromWatchlist(tmdbId: Int, mediaType: String): ApiResult<Unit> {
+        val key = toWatchlistKey(mediaType, tmdbId)
+        val previousMembership = _watchlistMembership.value
+        if (key != null) {
+            _watchlistMembership.value = previousMembership - key
+        }
+
+        return when (val result = apiService.removeFromWatchlist(tmdbId, mediaType)) {
+            is ApiResult.Success -> {
+                refreshCategory(MediaCategory.WATCHLIST)
+                ApiResult.Success(Unit)
+            }
+            is ApiResult.Error -> {
+                _watchlistMembership.value = previousMembership
+                result
+            }
+            is ApiResult.Loading -> result
+        }
     }
 
     fun getRequestForMedia(mediaId: Int, is4k: Boolean? = null): Request? {

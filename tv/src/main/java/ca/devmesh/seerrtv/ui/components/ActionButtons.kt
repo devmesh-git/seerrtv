@@ -10,7 +10,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -507,6 +509,55 @@ fun ActionTrailerButton(
             )
             Text(
                 text = context.getString(R.string.mediaDetails_watchTrailer),
+                color = Color.White,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+    }
+}
+
+@Composable
+fun ActionWatchlistButton(
+    isFocused: Boolean,
+    isInWatchlist: Boolean,
+    context: Context
+) {
+    val buttonText = if (isInWatchlist) {
+        context.getString(R.string.action_remove_from_watchlist)
+    } else {
+        context.getString(R.string.action_add_to_watchlist)
+    }
+    val buttonIcon = if (isInWatchlist) Icons.Default.Remove else Icons.Default.Bookmark
+    val buttonColor = if (isInWatchlist) Color(0xFF9D29BC) else Color(0xFF5B21B6)
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(40.dp)
+            .background(
+                buttonColor.copy(alpha = if (isFocused) 0.8f else 1f),
+                RoundedCornerShape(16.dp)
+            )
+            .border(
+                width = if (isFocused) 2.dp else 0.dp,
+                color = if (isFocused) Color.White else Color.Transparent,
+                shape = RoundedCornerShape(16.dp)
+            )
+            .padding(horizontal = 12.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                buttonIcon,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(18.dp)
+            )
+            Text(
+                text = buttonText,
                 color = Color.White,
                 style = MaterialTheme.typography.bodySmall
             )

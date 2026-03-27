@@ -4,10 +4,23 @@ import android.content.Context
 import android.util.Log
 import ca.devmesh.seerrtv.data.SeerrApiService.SeerrConfig
 import ca.devmesh.seerrtv.model.AuthType
+import ca.devmesh.seerrtv.model.AvatarColor
 import ca.devmesh.seerrtv.model.MediaServerType
+import ca.devmesh.seerrtv.model.ProfileSettings
+import ca.devmesh.seerrtv.model.UserProfile
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import ca.devmesh.seerrtv.util.AvatarUtils.generateInitialsFromNameOrEmail
+import ca.devmesh.seerrtv.util.AvatarUtils.resolveUniqueInitials
 
 object SharedPreferencesUtil {
     private const val PREFS_NAME = "SeerrTVPrefs"
+
+    private val json = Json {
+        ignoreUnknownKeys = true
+        encodeDefaults = true
+    }
     
     /**
      * Normalizes a hostname by removing:
@@ -115,18 +128,61 @@ object SharedPreferencesUtil {
     private const val KEY_APP_LANGUAGE = "app_language"
     private const val KEY_DEFAULT_STREAMING_REGION = "default_streaming_region"
     private const val KEY_USE_TRAILER_WEBVIEW = "use_trailer_webview"
+    private const val KEY_PENDING_NEW_PROFILE_APP_LANGUAGE = "pending_new_profile_app_language"
+    private const val KEY_PROFILES_JSON = "profiles_json"
+    private const val KEY_ACTIVE_PROFILE_ID = "active_profile_id"
+    private const val KEY_SKIP_PROFILE_SELECTION_ON_NEXT_MAIN =
+        "skip_profile_selection_once"
+    private const val KEY_PROFILE_SELECTION_TARGET_PROFILE_ID =
+        "profile_selection_target_profile_id"
+    private const val KEY_PROFILE_SELECTION_TARGET_POST_ACTIVATION_ROUTE =
+        "profile_selection_target_post_activation_route"
+    private const val KEY_PROFILE_SELECTION_COMPLETED = "profile_selection_completed"
+    private const val KEY_FORCE_SPLASH_RESET_ON_NEXT = "force_splash_reset_on_next"
+    private const val KEY_PENDING_NEW_PROFILE_CREATION = "pending_new_profile_creation"
     // Supported app languages
     val SUPPORTED_APP_LANGUAGES = listOf("en", "de", "es", "fr", "ja", "nl", "pt", "zh")
 
     fun getAppLanguage(context: Context): String? {
+        val activeProfile = getActiveProfile(context)
+        if (activeProfile != null) return activeProfile.settings.appLanguage
         val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         return sharedPrefs.getString(KEY_APP_LANGUAGE, null)
     }
 
-    fun setAppLanguage(context: Context, language: String) {
+    fun getPendingNewProfileAppLanguage(context: Context): String? {
+        val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return sharedPrefs.getString(KEY_PENDING_NEW_PROFILE_APP_LANGUAGE, null)
+    }
+
+    fun setPendingNewProfileAppLanguage(context: Context, language: String?) {
         val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         with(sharedPrefs.edit()) {
-            putString(KEY_APP_LANGUAGE, language)
+            if (language.isNullOrBlank()) remove(KEY_PENDING_NEW_PROFILE_APP_LANGUAGE)
+            else putString(KEY_PENDING_NEW_PROFILE_APP_LANGUAGE, language.lowercase())
+            commit()
+        }
+    }
+
+    fun setAppLanguage(context: Context, language: String) {
+        val normalized = language.lowercase()
+        val profiles = getProfiles(context)
+        val activeId = getActiveProfileId(context)
+        if (!activeId.isNullOrBlank() && profiles.any { it.id == activeId }) {
+            val updated = profiles.map { profile ->
+                if (profile.id == activeId) {
+                    profile.copy(
+                        settings = profile.settings.copy(appLanguage = normalized),
+                        updatedAt = System.currentTimeMillis()
+                    )
+                } else profile
+            }
+            saveProfiles(context, updated)
+            return
+        }
+        val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        with(sharedPrefs.edit()) {
+            putString(KEY_APP_LANGUAGE, normalized)
             commit()
         }
     }
@@ -149,17 +205,126 @@ object SharedPreferencesUtil {
         }
     }
 
-    fun hasApiConfig(context: Context): Boolean {
+    fun setPendingNewProfileCreation(context: Context, pending: Boolean) {
         val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        return sharedPrefs.getBoolean(KEY_CONFIG_VALID, false)
+        with(sharedPrefs.edit()) {
+            if (pending) putBoolean(KEY_PENDING_NEW_PROFILE_CREATION, true)
+            else remove(KEY_PENDING_NEW_PROFILE_CREATION)
+            commit()
+        }
     }
 
-    fun saveConfig(context: Context, config: SeerrConfig, isValid: Boolean) {
+    fun isPendingNewProfileCreation(context: Context): Boolean {
         val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        // Normalize hostname before saving (don't strip port for main Seerr hostname)
+        return sharedPrefs.getBoolean(KEY_PENDING_NEW_PROFILE_CREATION, false)
+    }
+
+    fun clearPendingNewProfileCreation(context: Context) {
+        setPendingNewProfileCreation(context, false)
+        setPendingNewProfileAppLanguage(context, null)
+    }
+
+    /**
+     * Profile label + avatar initials: prefer Jellyseerr/Overseerr [auth/me] display name when known,
+     * then username / email local-part / [fallbackName] (e.g. hostname or "Profile N").
+     */
+    private fun resolveProfileDisplayName(context: Context, config: SeerrConfig, fallbackName: String): String {
+        val apiDisplay = getUserDisplayName(context)?.trim().orEmpty()
+        if (apiDisplay.isNotEmpty()) return apiDisplay
+        val usernameCandidate = config.username.takeIf { it.isNotBlank() }
+        val emailCandidate =
+            config.jellyfinEmail.takeIf { it.isNotBlank() } ?: usernameCandidate?.takeIf { it.contains('@') }
+        return when {
+            usernameCandidate.isNullOrBlank().not() && usernameCandidate.contains('@') ->
+                usernameCandidate.substringBefore('@')
+            usernameCandidate.isNullOrBlank().not() ->
+                usernameCandidate
+            !emailCandidate.isNullOrBlank() -> emailCandidate.substringBefore('@')
+            else -> fallbackName
+        }
+    }
+
+    /**
+     * After API validation succeeds, append a new profile with [config] and make it active.
+     * Updates legacy global prefs to match (same as [saveConfig]).
+     * Clears the pending-new-profile flag when done.
+     */
+    fun appendNewProfileWithValidatedConfig(context: Context, config: SeerrConfig) {
+        val profiles = getProfiles(context)
+        if (profiles.isEmpty()) {
+            clearPendingNewProfileCreation(context)
+            saveConfig(context, config, true)
+            setSkipProfileSelectionOnce(context, true)
+            return
+        }
+
         val normalizedHostname = normalizeHostname(config.hostname, stripPort = false)
-        // Normalize Jellyfin hostname (strip port since it's in a separate field)
         val normalizedJellyfinHostname = normalizeHostname(config.jellyfinHostname, stripPort = true)
+        persistGlobalApiConfigSnapshot(
+            context,
+            config,
+            normalizedHostname,
+            normalizedJellyfinHostname,
+            isValid = true
+        )
+
+        val embeddedConfig = config.copy(
+            hostname = normalizedHostname,
+            jellyfinHostname = normalizedJellyfinHostname,
+            isSubmitted = true,
+            createdAt = config.createdAt.takeIf { it.isNotBlank() } ?: System.currentTimeMillis().toString()
+        )
+
+        val usernameCandidate = config.username.takeIf { it.isNotBlank() }
+        val emailCandidate =
+            config.jellyfinEmail.takeIf { it.isNotBlank() } ?: usernameCandidate?.takeIf { it.contains('@') }
+        val nameCandidate = resolveProfileDisplayName(
+            context,
+            config,
+            fallbackName = "Profile${profiles.size + 1}"
+        )
+
+        val existingInitials = profiles.map { it.avatarInitials }.toSet()
+        val resolvedInitials = resolveUniqueInitials(
+            desiredInitials = generateInitialsFromNameOrEmail(nameCandidate, emailCandidate),
+            existingInitials = existingInitials,
+            seed = nameCandidate
+        )
+
+        val profileSettings = ProfileSettings(
+            appLanguage = getPendingNewProfileAppLanguage(context)
+                ?: getAppLanguage(context)
+                ?: "en",
+            discoveryLanguage = getDiscoveryLanguage(context),
+            defaultStreamingRegion = getDefaultStreamingRegion(context),
+            folderSelectionEnabled = isFolderSelectionEnabled(context),
+            use24HourClock = use24HourClock(context),
+            useTrailerWebView = useTrailerWebView(context)
+        )
+
+        val newProfile = UserProfile(
+            name = nameCandidate,
+            email = emailCandidate,
+            avatarInitials = resolvedInitials,
+            avatarColor = AvatarColor.PURPLE.key,
+            pinHash = "",
+            config = embeddedConfig,
+            settings = profileSettings
+        )
+        saveProfiles(context, profiles + newProfile)
+        setActiveProfileId(context, newProfile.id)
+        setSkipProfileSelectionOnce(context, true)
+        clearPendingNewProfileCreation(context)
+    }
+
+    private fun persistGlobalApiConfigSnapshot(
+        context: Context,
+        config: SeerrConfig,
+        normalizedHostname: String,
+        normalizedJellyfinHostname: String,
+        isValid: Boolean
+    ) {
+        val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         with(sharedPrefs.edit()) {
             putString(KEY_PROTOCOL, config.protocol)
             putString(KEY_HOSTNAME, normalizedHostname)
@@ -184,8 +349,134 @@ object SharedPreferencesUtil {
         }
     }
 
+    fun hasApiConfig(context: Context): Boolean {
+        val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        // If we already have profiles, treat configuration as present when an active profile exists
+        val profilesJson = sharedPrefs.getString(KEY_PROFILES_JSON, null)
+        if (!profilesJson.isNullOrBlank()) {
+            val profiles = runCatching { json.decodeFromString<List<UserProfile>>(profilesJson) }
+                .getOrElse { emptyList() }
+            val activeId = sharedPrefs.getString(KEY_ACTIVE_PROFILE_ID, null)
+            return profiles.isNotEmpty() && activeId != null && profiles.any { it.id == activeId }
+        }
+        return sharedPrefs.getBoolean(KEY_CONFIG_VALID, false)
+    }
+
+    fun saveConfig(context: Context, config: SeerrConfig, isValid: Boolean) {
+        val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        // Normalize hostname before saving (don't strip port for main Seerr hostname)
+        val normalizedHostname = normalizeHostname(config.hostname, stripPort = false)
+        // Normalize Jellyfin hostname (strip port since it's in a separate field)
+        val normalizedJellyfinHostname = normalizeHostname(config.jellyfinHostname, stripPort = true)
+        persistGlobalApiConfigSnapshot(
+            context,
+            config,
+            normalizedHostname,
+            normalizedJellyfinHostname,
+            isValid
+        )
+
+        // Profile-aware config persistence:
+        // - If profiles already exist, update the active profile's embedded config.
+        // - If this is the first time saving config, create a default local profile snapshot.
+        val profilesJson = sharedPrefs.getString(KEY_PROFILES_JSON, null)
+        val embeddedConfig = config.copy(
+            hostname = normalizedHostname,
+            jellyfinHostname = normalizedJellyfinHostname,
+            isSubmitted = isValid,
+            createdAt = config.createdAt.takeIf { it.isNotBlank() } ?: System.currentTimeMillis().toString()
+        )
+
+        if (!profilesJson.isNullOrBlank()) {
+            val profiles = json.decodeFromString<List<UserProfile>>(profilesJson)
+            val activeId = sharedPrefs.getString(KEY_ACTIVE_PROFILE_ID, null)
+            val actualActiveId = activeId ?: profiles.firstOrNull()?.id
+            if (actualActiveId != null) {
+                val activeProfile = profiles.firstOrNull { it.id == actualActiveId }
+                val usernameCandidate = config.username.takeIf { it.isNotBlank() }
+                val emailCandidate =
+                    config.jellyfinEmail.takeIf { it.isNotBlank() } ?: usernameCandidate?.takeIf { it.contains('@') }
+                val nameCandidate = resolveProfileDisplayName(
+                    context,
+                    config,
+                    fallbackName = activeProfile?.name ?: normalizedHostname
+                )
+
+                val otherInitials = profiles
+                    .filter { it.id != actualActiveId }
+                    .map { it.avatarInitials }
+                    .toSet()
+
+                val desiredInitials = generateInitialsFromNameOrEmail(nameCandidate, emailCandidate)
+                val resolvedInitials = resolveUniqueInitials(
+                    desiredInitials = desiredInitials,
+                    existingInitials = otherInitials,
+                    seed = nameCandidate
+                )
+
+                val updated = profiles.map { profile ->
+                    if (profile.id == actualActiveId) {
+                        profile.copy(
+                            name = nameCandidate,
+                            email = emailCandidate,
+                            avatarInitials = resolvedInitials,
+                            config = embeddedConfig,
+                            updatedAt = System.currentTimeMillis()
+                        )
+                    } else profile
+                }
+                saveProfiles(context, updated)
+                setActiveProfileId(context, actualActiveId)
+            }
+        } else {
+            val displayName = resolveProfileDisplayName(context, config, fallbackName = normalizedHostname)
+
+            val emailCandidate =
+                config.jellyfinEmail.takeIf { it.isNotBlank() }
+                    ?: config.username.takeIf { it.isNotBlank() && it.contains('@') }
+
+            val initials = resolveUniqueInitials(
+                desiredInitials = generateInitialsFromNameOrEmail(displayName, emailCandidate),
+                existingInitials = emptySet(),
+                seed = displayName
+            )
+
+            val profile = UserProfile(
+                name = displayName,
+                email = emailCandidate,
+                avatarInitials = initials,
+                avatarColor = AvatarColor.PURPLE.key,
+                pinHash = "",
+                config = embeddedConfig,
+                settings = ProfileSettings(
+                    appLanguage = getAppLanguage(context) ?: "en",
+                    discoveryLanguage = getDiscoveryLanguage(context),
+                    defaultStreamingRegion = getDefaultStreamingRegion(context),
+                    folderSelectionEnabled = isFolderSelectionEnabled(context),
+                    use24HourClock = use24HourClock(context),
+                    useTrailerWebView = useTrailerWebView(context)
+                )
+            )
+            saveProfiles(context, listOf(profile))
+            setActiveProfileId(context, profile.id)
+        }
+    }
+
     fun getConfig(context: Context): SeerrConfig? {
         val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+
+        // If profiles exist and an active profile is set, prefer its embedded config
+        val profilesJson = sharedPrefs.getString(KEY_PROFILES_JSON, null)
+        val activeProfileId = sharedPrefs.getString(KEY_ACTIVE_PROFILE_ID, null)
+        if (!profilesJson.isNullOrBlank() && !activeProfileId.isNullOrBlank()) {
+            val profiles = runCatching { json.decodeFromString<List<UserProfile>>(profilesJson) }
+                .getOrElse { emptyList() }
+            val activeProfile = profiles.firstOrNull { it.id == activeProfileId }
+            if (activeProfile != null) {
+                return activeProfile.config
+            }
+        }
+
         val protocol = sharedPrefs.getString(KEY_PROTOCOL, null) ?: return null
         var hostname = sharedPrefs.getString(KEY_HOSTNAME, null) ?: return null
         var authType = sharedPrefs.getString(KEY_AUTH_TYPE, null) ?: return null
@@ -256,17 +547,399 @@ object SharedPreferencesUtil {
         }
     }
 
+    // -------------------------------------------------------------------------
+    // Profile storage
+    // -------------------------------------------------------------------------
+
+    fun getProfiles(context: Context): List<UserProfile> {
+        val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val json = sharedPrefs.getString(KEY_PROFILES_JSON, null) ?: return emptyList()
+        return runCatching { this.json.decodeFromString<List<UserProfile>>(json) }
+            .getOrElse { error ->
+                Log.e("SharedPreferencesUtil", "Failed to decode profiles JSON", error)
+                emptyList()
+            }
+    }
+
+    fun saveProfiles(context: Context, profiles: List<UserProfile>) {
+        val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val json = this.json.encodeToString(profiles)
+        with(sharedPrefs.edit()) {
+            putString(KEY_PROFILES_JSON, json)
+            commit()
+        }
+    }
+
+    fun getActiveProfileId(context: Context): String? {
+        val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return sharedPrefs.getString(KEY_ACTIVE_PROFILE_ID, null)
+    }
+
+    fun setActiveProfileId(context: Context, profileId: String?) {
+        val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        with(sharedPrefs.edit()) {
+            if (profileId == null) {
+                remove(KEY_ACTIVE_PROFILE_ID)
+            } else {
+                putString(KEY_ACTIVE_PROFILE_ID, profileId)
+            }
+            commit()
+        }
+    }
+
+    fun getActiveProfile(context: Context): UserProfile? {
+        val profiles = getProfiles(context)
+        if (profiles.isEmpty()) return null
+        val activeId = getActiveProfileId(context)
+        return profiles.firstOrNull { it.id == activeId } ?: profiles.firstOrNull()
+    }
+
+    fun updateActiveProfileAvatarColor(context: Context, colorKey: String): Boolean {
+        val profiles = getProfiles(context)
+        val activeId = getActiveProfileId(context) ?: return false
+        if (profiles.isEmpty()) return false
+        val updated = profiles.map { profile ->
+            if (profile.id == activeId) {
+                profile.copy(avatarColor = AvatarColor.fromKey(colorKey).key, updatedAt = System.currentTimeMillis())
+            } else profile
+        }
+        saveProfiles(context, updated)
+        return true
+    }
+
+    fun setActiveProfilePinHash(context: Context, pinHash: String): Boolean {
+        val profiles = getProfiles(context)
+        val activeId = getActiveProfileId(context) ?: return false
+        if (profiles.isEmpty()) return false
+        val normalized = pinHash.trim()
+        val updated = profiles.map { profile ->
+            if (profile.id == activeId) {
+                profile.copy(pinHash = normalized, updatedAt = System.currentTimeMillis())
+            } else profile
+        }
+        saveProfiles(context, updated)
+        return true
+    }
+
+    private fun clearLegacyApiConfig(context: Context) {
+        val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        with(sharedPrefs.edit()) {
+            remove(KEY_PROTOCOL)
+            remove(KEY_HOSTNAME)
+            remove(KEY_CLOUDFLARE_ENABLED)
+            remove(KEY_CF_CLIENT_ID)
+            remove(KEY_CF_CLIENT_SECRET)
+            remove(KEY_AUTH_TYPE)
+            remove(KEY_API_KEY)
+            remove(KEY_USERNAME)
+            remove(KEY_PASSWORD)
+            remove(KEY_JELLYFIN_HOSTNAME)
+            remove(KEY_JELLYFIN_PORT)
+            remove(KEY_JELLYFIN_USE_SSL)
+            remove(KEY_JELLYFIN_URL_BASE)
+            remove(KEY_JELLYFIN_EMAIL)
+            remove(KEY_PLEX_CLIENT_ID)
+            remove(KEY_PLEX_AUTH_TOKEN)
+            putBoolean(KEY_CONFIG_VALID, false)
+            remove(KEY_API_URL)
+            commit()
+        }
+    }
+
+    /**
+     * Deletes the currently active profile.
+     * Domain rule: only "your" profile (active) is deletable.
+     */
+    fun deleteActiveProfile(context: Context): Boolean {
+        val profiles = getProfiles(context)
+        if (profiles.isEmpty()) return false
+        val activeId = getActiveProfileId(context) ?: return false
+
+        val updated = profiles.filterNot { it.id == activeId }
+        return if (updated.isEmpty()) {
+            // Clear profiles + API config so the app routes to initial setup.
+            val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            with(sharedPrefs.edit()) {
+                remove(KEY_PROFILES_JSON)
+                remove(KEY_ACTIVE_PROFILE_ID)
+                commit()
+            }
+            clearLegacyApiConfig(context)
+            true
+        } else {
+            saveProfiles(context, updated)
+            setActiveProfileId(context, updated.first().id)
+            true
+        }
+    }
+
+    /**
+     * Ensures we have a valid local profile list and an active profile id.
+     * If only legacy global config exists (no profiles JSON), we migrate it into a single default profile.
+     */
+    fun ensureProfilesInitialized(context: Context) {
+        val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val profilesJson = sharedPrefs.getString(KEY_PROFILES_JSON, null)
+        val activeProfileId = sharedPrefs.getString(KEY_ACTIVE_PROFILE_ID, null)
+
+        // Fresh install with legacy config
+        if (profilesJson.isNullOrBlank()) {
+            val legacyConfig = getConfig(context)
+            val hasLegacyConfig = legacyConfig != null && legacyConfig.isSubmitted
+            if (!hasLegacyConfig) return
+
+            val displayName =
+                getUserDisplayName(context)
+                    ?: legacyConfig.username.takeIf { it.isNotBlank() }
+                    ?: legacyConfig.jellyfinEmail.takeIf { it.isNotBlank() }
+                    ?: legacyConfig.hostname
+
+            val initials = resolveUniqueInitials(
+                desiredInitials = generateInitialsFromNameOrEmail(displayName, legacyConfig.jellyfinEmail),
+                existingInitials = emptySet(),
+                seed = displayName
+            )
+
+            val profile = UserProfile(
+                name = displayName,
+                email = legacyConfig.jellyfinEmail.takeIf { it.isNotBlank() },
+                avatarInitials = initials,
+                avatarColor = AvatarColor.PURPLE.key,
+                pinHash = "",
+                config = legacyConfig,
+                settings = ProfileSettings(
+                    appLanguage = sharedPrefs.getString(KEY_APP_LANGUAGE, "en") ?: "en",
+                    discoveryLanguage = (sharedPrefs.getString(KEY_DISCOVERY_LANGUAGE, "en") ?: "en").lowercase(),
+                    defaultStreamingRegion = (sharedPrefs.getString(KEY_DEFAULT_STREAMING_REGION, "US")
+                        ?: "US").uppercase(),
+                    folderSelectionEnabled = sharedPrefs.getBoolean(KEY_FOLDER_SELECTION_ENABLED, false),
+                    use24HourClock = sharedPrefs.getBoolean(KEY_USE_24_HOUR_CLOCK, true),
+                    useTrailerWebView = sharedPrefs.getBoolean(KEY_USE_TRAILER_WEBVIEW, false)
+                )
+            )
+            saveProfiles(context, listOf(profile))
+            setActiveProfileId(context, profile.id)
+            with(sharedPrefs.edit()) {
+                // Cleanup legacy globals after seeding the first profile settings.
+                remove(KEY_APP_LANGUAGE)
+                remove(KEY_DISCOVERY_LANGUAGE)
+                remove(KEY_DEFAULT_STREAMING_REGION)
+                remove(KEY_FOLDER_SELECTION_ENABLED)
+                remove(KEY_USE_24_HOUR_CLOCK)
+                remove(KEY_USE_TRAILER_WEBVIEW)
+                commit()
+            }
+            return
+        }
+
+        // Profiles exist but active id missing/invalid
+        val profiles = getProfiles(context)
+        if (profiles.isEmpty()) {
+            setActiveProfileId(context, null)
+            with(sharedPrefs.edit()) {
+                remove(KEY_PROFILES_JSON)
+                commit()
+            }
+            return
+        }
+
+        val isActiveValid = activeProfileId != null && profiles.any { it.id == activeProfileId }
+        if (!isActiveValid) {
+            setActiveProfileId(context, profiles.first().id)
+        }
+
+        // Upgrade migration: if legacy global setting keys are still present, move them into profile storage.
+        if (hasLegacyGlobalProfileSettingKeys(sharedPrefs) && profiles.isNotEmpty()) {
+            // If multiple profiles exist, legacy globals are applied to the first profile by design.
+            // For a single-profile install, applying to the only profile is equivalent and preserves data.
+            val firstProfileId = profiles.first().id
+            val migrated = profiles.map { profile ->
+                if (profile.id == firstProfileId) {
+                    profile.copy(
+                        settings = profile.settings.copy(
+                            appLanguage = sharedPrefs.getString(KEY_APP_LANGUAGE, profile.settings.appLanguage)
+                                ?: profile.settings.appLanguage,
+                            discoveryLanguage = (sharedPrefs.getString(
+                                KEY_DISCOVERY_LANGUAGE,
+                                profile.settings.discoveryLanguage
+                            ) ?: profile.settings.discoveryLanguage).lowercase(),
+                            defaultStreamingRegion = (sharedPrefs.getString(
+                                KEY_DEFAULT_STREAMING_REGION,
+                                profile.settings.defaultStreamingRegion
+                            ) ?: profile.settings.defaultStreamingRegion).uppercase(),
+                            folderSelectionEnabled = sharedPrefs.getBoolean(
+                                KEY_FOLDER_SELECTION_ENABLED,
+                                profile.settings.folderSelectionEnabled
+                            ),
+                            use24HourClock = sharedPrefs.getBoolean(
+                                KEY_USE_24_HOUR_CLOCK,
+                                profile.settings.use24HourClock
+                            ),
+                            useTrailerWebView = sharedPrefs.getBoolean(
+                                KEY_USE_TRAILER_WEBVIEW,
+                                profile.settings.useTrailerWebView
+                            )
+                        ),
+                        updatedAt = System.currentTimeMillis()
+                    )
+                } else profile
+            }
+            saveProfiles(context, migrated)
+            with(sharedPrefs.edit()) {
+                // Cleanup: once migrated, remove legacy global setting keys so profile storage is canonical.
+                remove(KEY_APP_LANGUAGE)
+                remove(KEY_DISCOVERY_LANGUAGE)
+                remove(KEY_DEFAULT_STREAMING_REGION)
+                remove(KEY_FOLDER_SELECTION_ENABLED)
+                remove(KEY_USE_24_HOUR_CLOCK)
+                remove(KEY_USE_TRAILER_WEBVIEW)
+                commit()
+            }
+        }
+    }
+
+    private fun hasLegacyGlobalProfileSettingKeys(sharedPrefs: android.content.SharedPreferences): Boolean {
+        return sharedPrefs.contains(KEY_APP_LANGUAGE) ||
+            sharedPrefs.contains(KEY_DISCOVERY_LANGUAGE) ||
+            sharedPrefs.contains(KEY_DEFAULT_STREAMING_REGION) ||
+            sharedPrefs.contains(KEY_FOLDER_SELECTION_ENABLED) ||
+            sharedPrefs.contains(KEY_USE_24_HOUR_CLOCK) ||
+            sharedPrefs.contains(KEY_USE_TRAILER_WEBVIEW)
+    }
+
+    fun consumeSkipProfileSelectionOnce(context: Context): Boolean {
+        val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val current = sharedPrefs.getBoolean(KEY_SKIP_PROFILE_SELECTION_ON_NEXT_MAIN, false)
+        if (current) {
+            with(sharedPrefs.edit()) {
+                remove(KEY_SKIP_PROFILE_SELECTION_ON_NEXT_MAIN)
+                commit()
+            }
+        }
+        return current
+    }
+
+    fun shouldSkipProfileSelectionOnce(context: Context): Boolean {
+        val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return sharedPrefs.getBoolean(KEY_SKIP_PROFILE_SELECTION_ON_NEXT_MAIN, false)
+    }
+
+    fun setSkipProfileSelectionOnce(context: Context, skip: Boolean) {
+        val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        with(sharedPrefs.edit()) {
+            if (skip) putBoolean(KEY_SKIP_PROFILE_SELECTION_ON_NEXT_MAIN, true) else remove(KEY_SKIP_PROFILE_SELECTION_ON_NEXT_MAIN)
+            commit()
+        }
+    }
+
+    fun setProfileSelectionTargetProfileId(context: Context, profileId: String?) {
+        val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        with(sharedPrefs.edit()) {
+            if (profileId == null) {
+                remove(KEY_PROFILE_SELECTION_TARGET_PROFILE_ID)
+            } else {
+                putString(KEY_PROFILE_SELECTION_TARGET_PROFILE_ID, profileId)
+            }
+            commit()
+        }
+    }
+
+    fun consumeProfileSelectionTargetProfileId(context: Context): String? {
+        val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val current = sharedPrefs.getString(KEY_PROFILE_SELECTION_TARGET_PROFILE_ID, null)
+        if (!current.isNullOrBlank()) {
+            with(sharedPrefs.edit()) {
+                remove(KEY_PROFILE_SELECTION_TARGET_PROFILE_ID)
+                commit()
+            }
+        }
+        return current
+    }
+
+    fun setProfileSelectionTargetPostActivationRoute(context: Context, route: String?) {
+        val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        with(sharedPrefs.edit()) {
+            if (route == null) {
+                remove(KEY_PROFILE_SELECTION_TARGET_POST_ACTIVATION_ROUTE)
+            } else {
+                putString(KEY_PROFILE_SELECTION_TARGET_POST_ACTIVATION_ROUTE, route)
+            }
+            commit()
+        }
+    }
+
+    fun consumeProfileSelectionTargetPostActivationRoute(context: Context): String? {
+        val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val current = sharedPrefs.getString(KEY_PROFILE_SELECTION_TARGET_POST_ACTIVATION_ROUTE, null)
+        if (!current.isNullOrBlank()) {
+            with(sharedPrefs.edit()) {
+                remove(KEY_PROFILE_SELECTION_TARGET_POST_ACTIVATION_ROUTE)
+                commit()
+            }
+        }
+        return current
+    }
+
+    fun setProfileSelectionCompleted(context: Context, completed: Boolean) {
+        val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        with(sharedPrefs.edit()) {
+            putBoolean(KEY_PROFILE_SELECTION_COMPLETED, completed)
+            commit()
+        }
+    }
+
+    fun isProfileSelectionCompleted(context: Context): Boolean {
+        val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return sharedPrefs.getBoolean(KEY_PROFILE_SELECTION_COMPLETED, true)
+    }
+
+    fun consumeForceSplashResetOnNext(context: Context): Boolean {
+        val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val current = sharedPrefs.getBoolean(KEY_FORCE_SPLASH_RESET_ON_NEXT, false)
+        if (current) {
+            with(sharedPrefs.edit()) {
+                remove(KEY_FORCE_SPLASH_RESET_ON_NEXT)
+                commit()
+            }
+        }
+        return current
+    }
+
+    fun setForceSplashResetOnNext(context: Context, reset: Boolean) {
+        val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        with(sharedPrefs.edit()) {
+            if (reset) putBoolean(KEY_FORCE_SPLASH_RESET_ON_NEXT, true) else remove(KEY_FORCE_SPLASH_RESET_ON_NEXT)
+            commit()
+        }
+    }
+
     fun getApiUrl(context: Context): String? {
         val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         return sharedPrefs.getString(KEY_API_URL, null)
     }
 
     fun isFolderSelectionEnabled(context: Context): Boolean {
+        val activeProfile = getActiveProfile(context)
+        if (activeProfile != null) return activeProfile.settings.folderSelectionEnabled
         val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         return sharedPrefs.getBoolean(KEY_FOLDER_SELECTION_ENABLED, false)
     }
 
     fun setFolderSelectionEnabled(context: Context, enabled: Boolean) {
+        val profiles = getProfiles(context)
+        val activeId = getActiveProfileId(context)
+        if (!activeId.isNullOrBlank() && profiles.any { it.id == activeId }) {
+            val updated = profiles.map { profile ->
+                if (profile.id == activeId) {
+                    profile.copy(
+                        settings = profile.settings.copy(folderSelectionEnabled = enabled),
+                        updatedAt = System.currentTimeMillis()
+                    )
+                } else profile
+            }
+            saveProfiles(context, updated)
+            return
+        }
         val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         with(sharedPrefs.edit()) {
             putBoolean(KEY_FOLDER_SELECTION_ENABLED, enabled)
@@ -275,11 +948,27 @@ object SharedPreferencesUtil {
     }
 
     fun use24HourClock(context: Context): Boolean {
+        val activeProfile = getActiveProfile(context)
+        if (activeProfile != null) return activeProfile.settings.use24HourClock
         val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         return sharedPrefs.getBoolean(KEY_USE_24_HOUR_CLOCK, true) // Default to 24-hour clock
     }
 
     fun setUse24HourClock(context: Context, enabled: Boolean) {
+        val profiles = getProfiles(context)
+        val activeId = getActiveProfileId(context)
+        if (!activeId.isNullOrBlank() && profiles.any { it.id == activeId }) {
+            val updated = profiles.map { profile ->
+                if (profile.id == activeId) {
+                    profile.copy(
+                        settings = profile.settings.copy(use24HourClock = enabled),
+                        updatedAt = System.currentTimeMillis()
+                    )
+                } else profile
+            }
+            saveProfiles(context, updated)
+            return
+        }
         val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         with(sharedPrefs.edit()) {
             putBoolean(KEY_USE_24_HOUR_CLOCK, enabled)
@@ -289,11 +978,27 @@ object SharedPreferencesUtil {
 
     /** Default = false (use YouTube app for trailers). When true, use in-app WebView overlay. */
     fun useTrailerWebView(context: Context): Boolean {
+        val activeProfile = getActiveProfile(context)
+        if (activeProfile != null) return activeProfile.settings.useTrailerWebView
         val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         return sharedPrefs.getBoolean(KEY_USE_TRAILER_WEBVIEW, false)
     }
 
     fun setUseTrailerWebView(context: Context, useWebView: Boolean) {
+        val profiles = getProfiles(context)
+        val activeId = getActiveProfileId(context)
+        if (!activeId.isNullOrBlank() && profiles.any { it.id == activeId }) {
+            val updated = profiles.map { profile ->
+                if (profile.id == activeId) {
+                    profile.copy(
+                        settings = profile.settings.copy(useTrailerWebView = useWebView),
+                        updatedAt = System.currentTimeMillis()
+                    )
+                } else profile
+            }
+            saveProfiles(context, updated)
+            return
+        }
         val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         with(sharedPrefs.edit()) {
             putBoolean(KEY_USE_TRAILER_WEBVIEW, useWebView)
@@ -322,6 +1027,47 @@ object SharedPreferencesUtil {
             putInt(KEY_USER_PERMISSIONS, permissions)
             commit()
         }
+        syncActiveProfileWithServerDisplayName(context, displayName)
+    }
+
+    /**
+     * Keeps the active local profile name + avatar initials aligned with [auth/me] after login.
+     */
+    private fun syncActiveProfileWithServerDisplayName(context: Context, displayName: String) {
+        val trimmed = displayName.trim()
+        if (trimmed.isEmpty()) return
+        val profilesJson =
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).getString(KEY_PROFILES_JSON, null)
+                ?: return
+        val profiles = runCatching { json.decodeFromString<List<UserProfile>>(profilesJson) }
+            .getOrElse { return }
+        if (profiles.isEmpty()) return
+        val activeId = getActiveProfileId(context) ?: return
+
+        val emailFromProfile: (UserProfile) -> String? = { p ->
+            p.config.jellyfinEmail.takeIf { it.isNotBlank() }
+                ?: p.config.username.takeIf { it.isNotBlank() && it.contains('@') }
+        }
+        val activeProfile = profiles.firstOrNull { it.id == activeId } ?: return
+        val emailCandidate = emailFromProfile(activeProfile)
+
+        val otherInitials = profiles.filter { it.id != activeId }.map { it.avatarInitials }.toSet()
+        val resolvedInitials = resolveUniqueInitials(
+            desiredInitials = generateInitialsFromNameOrEmail(trimmed, emailCandidate),
+            existingInitials = otherInitials,
+            seed = trimmed
+        )
+
+        val updated = profiles.map { p ->
+            if (p.id == activeId) {
+                p.copy(
+                    name = trimmed,
+                    avatarInitials = resolvedInitials,
+                    updatedAt = System.currentTimeMillis()
+                )
+            } else p
+        }
+        saveProfiles(context, updated)
     }
 
     fun getUserDisplayName(context: Context): String? {
@@ -407,6 +1153,8 @@ object SharedPreferencesUtil {
      * Always returns lowercase language code for consistency.
      */
     fun getDiscoveryLanguage(context: Context): String {
+        val activeProfile = getActiveProfile(context)
+        if (activeProfile != null) return activeProfile.settings.discoveryLanguage.lowercase()
         val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         return (sharedPrefs.getString(KEY_DISCOVERY_LANGUAGE, "en") ?: "en").lowercase()
     }
@@ -416,9 +1164,24 @@ object SharedPreferencesUtil {
      * @param value One of: en, de, es, fr, ja, nl, pt, zh (stored as lowercase)
      */
     fun setDiscoveryLanguage(context: Context, value: String) {
+        val normalized = value.lowercase()
+        val profiles = getProfiles(context)
+        val activeId = getActiveProfileId(context)
+        if (!activeId.isNullOrBlank() && profiles.any { it.id == activeId }) {
+            val updated = profiles.map { profile ->
+                if (profile.id == activeId) {
+                    profile.copy(
+                        settings = profile.settings.copy(discoveryLanguage = normalized),
+                        updatedAt = System.currentTimeMillis()
+                    )
+                } else profile
+            }
+            saveProfiles(context, updated)
+            return
+        }
         val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         with(sharedPrefs.edit()) {
-            putString(KEY_DISCOVERY_LANGUAGE, value.lowercase())
+            putString(KEY_DISCOVERY_LANGUAGE, normalized)
             commit()
         }
     }
@@ -428,6 +1191,8 @@ object SharedPreferencesUtil {
      * Returns uppercase region code (ISO 3166-1) for consistency.
      */
     fun getDefaultStreamingRegion(context: Context): String {
+        val activeProfile = getActiveProfile(context)
+        if (activeProfile != null) return activeProfile.settings.defaultStreamingRegion.uppercase()
         val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         return (sharedPrefs.getString(KEY_DEFAULT_STREAMING_REGION, "US") ?: "US").uppercase()
     }
@@ -437,9 +1202,24 @@ object SharedPreferencesUtil {
      * @param value ISO 3166-1 region code (e.g., "US", "CA", "GB")
      */
     fun setDefaultStreamingRegion(context: Context, value: String) {
+        val normalized = value.uppercase()
+        val profiles = getProfiles(context)
+        val activeId = getActiveProfileId(context)
+        if (!activeId.isNullOrBlank() && profiles.any { it.id == activeId }) {
+            val updated = profiles.map { profile ->
+                if (profile.id == activeId) {
+                    profile.copy(
+                        settings = profile.settings.copy(defaultStreamingRegion = normalized),
+                        updatedAt = System.currentTimeMillis()
+                    )
+                } else profile
+            }
+            saveProfiles(context, updated)
+            return
+        }
         val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         with(sharedPrefs.edit()) {
-            putString(KEY_DEFAULT_STREAMING_REGION, value.uppercase())
+            putString(KEY_DEFAULT_STREAMING_REGION, normalized)
             commit()
         }
     }

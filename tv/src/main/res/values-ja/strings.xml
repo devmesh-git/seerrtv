@@ -1,7 +1,11 @@
 <resources>
+    <!-- App Strings -->
     <string name="app_name">SeerrTV</string>
+    
+    <!-- Carousel Section Strings -->
     <string name="carouselSection_error_loadingFailed">メディアの読み込みエラー</string>
     <string name="carouselSection_error_noMediaFound">このカテゴリーにメディアが見つかりません</string>
+    <!-- Category Strings -->
     <string name="category_movieGenres">映画ジャンル</string>
     <string name="category_networks">ネットワーク</string>
     <string name="category_popularMovies">人気の映画</string>
@@ -12,8 +16,14 @@
     <string name="category_studios">制作会社</string>
     <string name="category_trending">トレンド</string>
     <string name="category_watchlist">ウォッチリスト</string>
+    <string name="action_add_to_watchlist">ウォッチリストに追加</string>
+    <string name="action_remove_from_watchlist">ウォッチリストから削除</string>
+    <string name="watchlist_added_success">ウォッチリストに追加しました</string>
+    <string name="watchlist_removed_success">ウォッチリストから削除しました</string>
+    <string name="watchlist_update_failed">ウォッチリストの更新に失敗しました</string>
     <string name="category_upcomingMovies">近日公開の映画</string>
     <string name="category_upcomingSeries">今後のテレビシリーズ</string>
+    <!-- Common Strings -->
     <string name="common_apiKey">APIキー</string>
     <string name="common_areYouSure">本当にいいですか？</string>
     <string name="common_cancel">キャンセル</string>
@@ -37,6 +47,7 @@
     <string name="common_versionPrefix">v</string>
     <string name="common_yes">はい</string>
     <string name="common_no">いいえ</string>
+    <!-- Config Screen Strings -->
     <string name="configScreen_apiKeyHelp">サーバー設定からAPIキーを入力してください</string>
     <string name="configScreen_authenticationFailed">認証失敗</string>
     <string name="configScreen_authFailedMessage">認証情報が無効です。パスワードの変更やアクセス権の取り消しが原因の可能性があります。有効な認証情報で再設定してください。</string>
@@ -98,6 +109,7 @@
     <string name="configScreen_unknownError">不明なエラーが発生しました</string>
     <string name="configScreen_username">ユーザー名</string>
     <string name="configScreen_waitingAuth">認証を待っています…</string>
+    <!-- Issue Strings -->
     <string name="issue_add_comment_button">コメントを追加</string>
     <string name="issue_add_comment_placeholder">コメントを追加してください...</string>
     <string name="issue_add_comment_title">問題にコメントを追加</string>
@@ -149,6 +161,7 @@
     <string name="issue_video_quality">動画の品質が悪い</string>
     <string name="issue_video_stuttering">動画がカクつく/フリーズする</string>
     <string name="issue_video_sync">動画の同期がずれている</string>
+    <!-- Main Screen Strings -->
     <string name="mainScreen_loading_pleaseWait">お待ちください</string>
     <string name="mainScreen_mediaBackdrop">メディアの背景</string>
     <string name="mainScreen_pressBackAgainToExit">もう一度戻るを押すとアプリケーションを終了します</string>
@@ -159,6 +172,7 @@
     <string name="mainScreen_appOrderSaved">アプリの並び順を保存しました</string>
     <string name="mainScreen_reorderModeHint">並べ替え：左右で移動、Enterまたは戻るで保存</string>
     <string name="mainScreen_appsRowReorderTitle">アプリ（並べ替え）</string>
+    <!-- Media Details Strings -->
     <string name="mediaDetails_cast">キャスト</string>
     <string name="mediaDetails_crew">スタッフ</string>
     <string name="mediaDetails_errorSubmittingRequest">リクエスト送信エラー: %1$s</string>
@@ -183,6 +197,7 @@
     <string name="mediaDetails_unknownType">不明なメディアタイプ</string>
     <string name="mediaDetails_watchTrailer">予告編を見る</string>
     <string name="mediaDetails_youTubeNotFound">YouTubeアプリが見つかりません。Play StoreからYouTubeをインストールしてください。</string>
+    <!-- Media Discovery Strings -->
     <string name="mediaDiscovery_movieKeywordSearch">キーワードを含む映画</string>
     <string name="mediaDiscovery_noImage">画像なし</string>
     <string name="mediaDiscovery_noResults">結果が見つかりませんでした。検索条件を調整して、もう一度お試しください。</string>
@@ -190,6 +205,7 @@
     <string name="mediaDiscovery_searchPlaceholder">映画やTVショーを検索</string>
     <string name="mediaDiscovery_searchResults">検索結果</string>
     <string name="mediaDiscovery_tvKeywordSearch">キーワードを含むTV番組</string>
+    <!-- Media Info Table Strings -->
     <string name="mediaInfoTable_budget">予算</string>
     <string name="mediaInfoTable_currentlyStreamingOn">現在配信中：</string>
     <string name="mediaInfoTable_firstAirDate">初回放送日</string>
@@ -210,12 +226,14 @@
     <string name="mediaInfoTable_status">ステータス</string>
     <string name="mediaInfoTable_studios">制作会社</string>
     <string name="mediaInfoTable_tmdbRating">TMDBの評価</string>
+    <!-- Person Screen Strings -->
     <string name="personScreen_alsoKnownAs">別名</string>
     <string name="personScreen_born">生年月日</string>
     <string name="personScreen_crew">スタッフ</string>
     <string name="personScreen_knownFor">代表作</string>
     <string name="personScreen_personProfile">人物プロフィール</string>
     <string name="personScreen_yearsOld">歳</string>
+    <!-- Request Action Strings -->
     <string name="requestAction_approve">承認</string>
     <string name="requestAction_by">担当者：</string>
     <string name="requestAction_decline">却下</string>
@@ -227,6 +245,7 @@
     <string name="requestAction_requestStatus">リクエストの状態</string>
     <string name="requestAction_unknownMediaType">不明なメディアタイプ</string>
     <string name="requestAction_unknownProfile">不明なプロファイル</string>
+    <!-- Request Modal Strings -->
     <string name="requestModal_episodes">エピソード</string>
     <string name="requestModal_errorLookingUpSeries">シリーズ検索エラー: %1$s</string>
     <string name="requestModal_errorSubmittingRequest">リクエスト送信中にエラーが発生しました</string>
@@ -253,6 +272,7 @@
     <string name="requestModal_tagsMenu">タグ</string>
     <string name="requestModal_title">メディアをリクエスト</string>
     <string name="requestModal_unableToMatch">このシリーズを自動的に一致させることができませんでした。以下から正しい一致を選択してください。</string>
+    <!-- Request Status Strings -->
     <string name="requestStatus_approved">承認済み</string>
     <string name="requestStatus_available">利用可能</string>
     <string name="requestStatus_blacklisted">ブラックリスト</string>
@@ -263,6 +283,7 @@
     <string name="requestStatus_notRequested">未リクエスト</string>
     <string name="requestStatus_partiallyAvailable">一部利用可能</string>
     <string name="requestStatus_pending">保留中</string>
+    <!-- Settings Menu Strings -->
     <string name="settingsMenu_12Hour">12時間</string>
     <string name="settingsMenu_24Hour">24時間</string>
     <string name="settingsMenu_aboutMenu">アプリについて</string>
@@ -270,6 +291,7 @@
     <string name="settingsMenu_authType">認証タイプ</string>
     <string name="settingsMenu_clockFormat">時刻表示形式</string>
     <string name="settingsMenu_configMenu">API設定</string>
+    <string name="settingsMenu_userProfiles">ユーザープロファイル</string>
     <string name="settingsMenu_debugMode">デバッグモード</string>
     <string name="settingsMenu_disabled">無効</string>
     <string name="settingsMenu_discoverLanguageDE">ドイツ語</string>
@@ -317,6 +339,7 @@
     <string name="settingsMenu_trailerPlayer_inApp">アプリ内プレイヤー</string>
     <string name="settingsMenu_title">設定</string>
     <string name="settingsMenu_username">アカウント</string>
+    <!-- Splash Screen Strings -->
     <string name="splashScreen_authenticating">認証中…</string>
     <string name="splashScreen_checkingConnection">接続を確認中…</string>
     <string name="splashScreen_checkingForUpdates">アップデートを確認中…</string>
@@ -329,6 +352,10 @@
     <string name="splashScreen_noRadarrServersInfo">Radarr: 設定されていません</string>
     <string name="splashScreen_noServersInfo">バックエンドサーバーが設定されていません - Overseerr/Jellyseerr/Seerrのみモードを使用</string>
     <string name="splashScreen_noSonarrServersInfo">Sonarr: 設定されていません</string>
+    <string name="splashScreen_mediaServerDetected_plex">Plex メディアサーバーを検出しました</string>
+    <string name="splashScreen_mediaServerDetected_jellyfin">Jellyfin メディアサーバーを検出しました</string>
+    <string name="splashScreen_mediaServerDetected_emby">Emby メディアサーバーを検出しました</string>
+    <string name="splashScreen_mediaServerNotConfigured">メディアサーバーが設定されていません</string>
     <string name="splashScreen_radarrConfigComplete">Radarr: %1$dサーバー - HD (%2$d) 4K (%3$d)</string>
     <string name="splashScreen_ready">準備完了！</string>
     <string name="splashScreen_sonarrConfigComplete">Sonarr: %1$dサーバー - HD (%2$d) 4K (%3$d)</string>
@@ -340,6 +367,7 @@
         <item quantity="one">Radarr: %1$dサーバー</item>
         <item quantity="other">Radarr: %1$dサーバー</item>
     </plurals>
+    <!-- Time Strings -->
     <string name="time_dayAgo">1日前</string>
     <string name="time_days">%1$d日</string>
     <string name="time_daysAgo">%1$d日前</string>
@@ -433,4 +461,39 @@
     <string name="filter_applyRange">範囲を適用</string>
     <string name="filter_clearFilter">フィルターをクリア</string>
     <string name="filter_clearAllDates">すべての日付フィルターをクリア</string>
+    <!-- User Profiles Strings -->
+    <string name="userProfiles_loadProfileInfoError">プロフィール情報を読み込めませんでした</string>
+    <string name="userProfiles_settingsSummary_title">ユーザープロフィール管理</string>
+    <string name="userProfiles_settingsSummary_noActiveProfile">アクティブなプロフィールがありません。</string>
+    <string name="userProfiles_settingsSummary_currentProfile">現在のプロフィール</string>
+    <string name="userProfiles_settingsSummary_manageHint">選択/Enter を押してプロフィールを表示・管理します。</string>
+    <string name="userProfiles_pinProtected">PIN保護</string>
+    <string name="userProfiles_loadingProfileInfo">プロフィール情報を読み込み中...</string>
+    <string name="userProfiles_totalRequests">合計リクエスト: %1$d</string>
+    <string name="userProfiles_movieRequests">映画リクエスト: %1$s</string>
+    <string name="userProfiles_seriesRequests">シリーズリクエスト: %1$s</string>
+    <string name="userProfiles_quotaUnlimited">無制限</string>
+    <string name="userProfiles_quotaPerDays">%2$d日ごとに%1$d件</string>
+    <string name="userProfiles_selectProfile">プロフィールを選択</string>
+    <string name="userProfiles_enterPin">PINを入力</string>
+    <string name="userProfiles_noProfilesConfigureServer">プロフィールがまだありません。サーバーを設定してください。</string>
+    <string name="userProfiles_incorrectPin">PINが正しくありません</string>
+    <string name="userProfiles_keyDelete">削除</string>
+    <string name="userProfiles_keyOk">OK</string>
+    <string name="userProfiles_actionConfigureApi">APIを設定</string>
+    <string name="userProfiles_actionAvatarColor">アバター色</string>
+    <string name="userProfiles_actionClearPin">PINをクリア</string>
+    <string name="userProfiles_actionSetPin">PINを設定</string>
+    <string name="userProfiles_actionDeleteProfile">プロフィールを削除</string>
+    <string name="userProfiles_pinMinimumLengthError">PINは4桁以上である必要があります</string>
+    <string name="userProfiles_titleList">ユーザープロフィール</string>
+    <string name="userProfiles_titleManageProfile">プロフィールを管理</string>
+    <string name="userProfiles_titleSetProfilePin">プロフィールPINを設定</string>
+    <string name="userProfiles_titleDeleteProfile">プロフィールを削除しますか？</string>
+    <string name="userProfiles_noProfilesYet">プロフィールがまだありません。</string>
+    <string name="userProfiles_noActiveProfileFound">アクティブなプロフィールが見つかりません。</string>
+    <string name="userProfiles_deleteConfirmMessage">現在のプロフィールを削除しますか？\nこの操作は元に戻せません。</string>
+    <string name="userProfiles_pinLabel">PIN</string>
+    <string name="userProfiles_active">アクティブ</string>
+    <string name="userProfiles_addProfile">プロフィールを追加</string>
 </resources>

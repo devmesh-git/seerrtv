@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.shape.CircleShape
 import ca.devmesh.seerrtv.BuildConfig
 import ca.devmesh.seerrtv.model.AuthType
 import ca.devmesh.seerrtv.R
@@ -39,6 +40,9 @@ import androidx.activity.compose.BackHandler
 import android.util.Log
 import ca.devmesh.seerrtv.data.SeerrApiService
 import ca.devmesh.seerrtv.data.ApiResult
+import ca.devmesh.seerrtv.model.AvatarColor
+import ca.devmesh.seerrtv.model.User
+import ca.devmesh.seerrtv.model.UserProfile
 import ca.devmesh.seerrtv.model.Region
 import androidx.navigation.NavController
 import ca.devmesh.seerrtv.ui.focus.AppFocusManager
@@ -50,7 +54,7 @@ private const val SETTINGS_LEFT_PANEL_WIDTH_DP = 320
 private const val UPDATE_JSON_URL = "https://api.github.com/repos/devmesh-git/seerrtv/releases/latest"
 
 enum class SettingsMenuItem {
-    CONFIG_API, APP_LANGUAGE, DISCOVERY_LANGUAGE,
+    CONFIG_API, USER_PROFILES, APP_LANGUAGE, DISCOVERY_LANGUAGE,
     DEFAULT_STREAMING_REGION,
     FOLDER_SELECTION, CLOCK_FORMAT, TRAILER_PLAYER,
     CHECK_FOR_UPDATE, ABOUT
@@ -63,6 +67,8 @@ enum class SettingsMenuItem {
 fun SettingsScreen(
     navController: NavController,
     onOpenConfigScreen: () -> Unit,
+    onOpenUserProfilesScreen: () -> Unit,
+    apiService: SeerrApiService,
     appFocusManager: AppFocusManager,
     dpadController: DpadController,
     updateJsonUrl: String = UPDATE_JSON_URL,
@@ -75,6 +81,7 @@ fun SettingsScreen(
         SettingsScreenController(
             onDismiss = { navController.popBackStack() },
             onOpenConfigScreen = onOpenConfigScreen,
+            onOpenUserProfilesScreen = onOpenUserProfilesScreen,
             hostname = SharedPreferencesUtil.getApiUrl(context) ?: "",
             context = context
         )
@@ -221,6 +228,10 @@ fun SettingsScreen(
             when {
                 controller.isSubMenuOpen -> SubMenu(controller, viewModel)
                 controller.selectedItem == SettingsMenuItem.CONFIG_API -> ConfigSummaryView(controller)
+                controller.selectedItem == SettingsMenuItem.USER_PROFILES -> UserProfilesSummaryView(
+                    apiService = apiService,
+                    context = context
+                )
                 controller.selectedItem == SettingsMenuItem.APP_LANGUAGE -> ToggleDetailView(
                     title = stringResource(R.string.settingsMenu_appLanguage),
                     value = stringResource(controller.getAppLanguageLabelRes(controller.appLanguage)),
@@ -400,10 +411,170 @@ private fun SettingsRightPanelPlaceholder() {
 }
 
 @Composable
+private fun UserProfilesSummaryView(
+    apiService: SeerrApiService,
+    context: Context
+) {
+    val loadProfileInfoErrorText = stringResource(R.string.userProfiles_loadProfileInfoError)
+    val activeProfile: UserProfile? = SharedPreferencesUtil.getActiveProfile(context)
+
+    var isLoading by remember { mutableStateOf(false) }
+    var authUser by remember { mutableStateOf<User?>(null) }
+    var errorText by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(activeProfile?.id) {
+        if (activeProfile == null) {
+            authUser = null
+            errorText = null
+            return@LaunchedEffect
+        }
+
+        isLoading = true
+        authUser = null
+        errorText = null
+
+        try {
+            when (val result = apiService.getAuthenticatedUser()) {
+                is ApiResult.Success -> authUser = result.data
+                is ApiResult.Error -> errorText = result.exception.message ?: loadProfileInfoErrorText
+                is ApiResult.Loading -> errorText = null
+            }
+        } catch (e: Exception) {
+            errorText = e.message ?: loadProfileInfoErrorText
+        } finally {
+            isLoading = false
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(24.dp)
+    ) {
+        Text(
+            text = stringResource(R.string.userProfiles_settingsSummary_title),
+            style = MaterialTheme.typography.titleLarge,
+            color = Color.White,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        if (activeProfile == null) {
+            Text(
+                text = stringResource(R.string.userProfiles_settingsSummary_noActiveProfile),
+                color = Color.White.copy(alpha = 0.9f)
+            )
+            return@Column
+        }
+
+        Text(
+            text = stringResource(R.string.userProfiles_settingsSummary_currentProfile),
+            style = MaterialTheme.typography.titleMedium,
+            color = Color.White,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.padding(bottom = 16.dp)
+        ) {
+            val avatarColor = AvatarColor.fromKey(activeProfile.avatarColor).toColor()
+            Box(
+                modifier = Modifier
+                    .size(56.dp)
+                    .background(avatarColor, CircleShape)
+            ) {
+                Text(
+                    text = activeProfile.avatarInitials.take(2),
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.align(Alignment.Center),
+                    fontSize = 20.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column {
+                Text(
+                    text = activeProfile.name,
+                    color = Color.White,
+                    style = MaterialTheme.typography.titleMedium
+                )
+                if (activeProfile.pinHash.isNotBlank()) {
+                    Text(
+                        text = stringResource(R.string.userProfiles_pinProtected),
+                        color = Color.White.copy(alpha = 0.7f),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+            }
+        }
+
+        if (isLoading) {
+            Text(
+                text = stringResource(R.string.userProfiles_loadingProfileInfo),
+                color = Color.White.copy(alpha = 0.7f)
+            )
+        } else if (!errorText.isNullOrBlank()) {
+            Text(
+                text = errorText ?: "",
+                color = Color.White.copy(alpha = 0.9f)
+            )
+        } else {
+            val requestCount = authUser?.requestCount ?: 0
+            Text(
+                text = stringResource(R.string.userProfiles_totalRequests, requestCount),
+                color = Color.White,
+                style = MaterialTheme.typography.bodyLarge
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = stringResource(
+                    R.string.userProfiles_movieRequests,
+                    formatQuota(limit = authUser?.movieQuotaLimit, days = authUser?.movieQuotaDays)
+                ),
+                color = Color.White,
+                style = MaterialTheme.typography.bodyLarge
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = stringResource(
+                    R.string.userProfiles_seriesRequests,
+                    formatQuota(limit = authUser?.tvQuotaLimit, days = authUser?.tvQuotaDays)
+                ),
+                color = Color.White,
+                style = MaterialTheme.typography.bodyLarge
+            )
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = stringResource(R.string.userProfiles_settingsSummary_manageHint),
+            color = Color.White.copy(alpha = 0.8f),
+            style = MaterialTheme.typography.bodyMedium
+        )
+    }
+}
+
+@Composable
+private fun formatQuota(limit: Int?, days: Int?): String {
+    val l = limit ?: return stringResource(R.string.userProfiles_quotaUnlimited)
+    val d = days ?: return stringResource(R.string.userProfiles_quotaUnlimited)
+    if (l <= 0 || d <= 0) return stringResource(R.string.userProfiles_quotaUnlimited)
+    return stringResource(R.string.userProfiles_quotaPerDays, l, d)
+}
+
+@Composable
 private fun buildMenuItems(controller: SettingsScreenController): List<MenuItem> {
     return controller.menuItemOrder.map { item ->
         when (item) {
             SettingsMenuItem.CONFIG_API -> MenuItem(stringResource(R.string.settingsMenu_configMenu), "")
+            SettingsMenuItem.USER_PROFILES -> MenuItem(stringResource(R.string.settingsMenu_userProfiles), "")
             SettingsMenuItem.APP_LANGUAGE -> MenuItem(
                 stringResource(R.string.settingsMenu_appLanguage),
                 stringResource(controller.getAppLanguageLabelRes(controller.appLanguage))
@@ -1030,11 +1201,13 @@ fun DefaultStreamingRegionSubMenu(
 class SettingsScreenController(
     private val onDismiss: () -> Unit,
     private val onOpenConfigScreen: () -> Unit,
+    private val onOpenUserProfilesScreen: () -> Unit,
     val hostname: String,
     private val context: Context
 ) {
     val menuItemOrder: List<SettingsMenuItem> = buildList {
         add(SettingsMenuItem.CONFIG_API)
+        add(SettingsMenuItem.USER_PROFILES)
         add(SettingsMenuItem.APP_LANGUAGE)
         add(SettingsMenuItem.DISCOVERY_LANGUAGE)
         add(SettingsMenuItem.DEFAULT_STREAMING_REGION)
@@ -1226,6 +1399,10 @@ class SettingsScreenController(
 
     private fun handleRightOrEnterKey(): Boolean {
         if (!isSubMenuOpen) {
+            if (selectedItem == SettingsMenuItem.USER_PROFILES) {
+                onOpenUserProfilesScreen()
+                return true
+            }
             isSubMenuOpen = true
             currentSubMenu = when (selectedItem) {
                 SettingsMenuItem.CONFIG_API -> SubMenu(

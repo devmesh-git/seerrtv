@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
@@ -19,12 +20,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import ca.devmesh.seerrtv.R
+import ca.devmesh.seerrtv.model.AvatarColor
+import ca.devmesh.seerrtv.util.SharedPreferencesUtil
+import ca.devmesh.seerrtv.model.UserProfile
 
 /**
  * Top bar mode enum for different navigation states
@@ -50,6 +55,7 @@ fun MainTopBar(
     isMoviesFocused: Boolean = false,
     isSeriesFocused: Boolean = false,
     isSettingsFocused: Boolean = false,
+    isAvatarFocused: Boolean = false,
     showRefreshHint: Boolean = false,
     isInTopBar: Boolean = false,
     isRefreshRowVisible: Boolean = false,
@@ -79,6 +85,10 @@ fun MainTopBar(
                 .padding(top = 8.dp, end = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            val activeProfile: UserProfile? = SharedPreferencesUtil.getActiveProfile(context)
+            val avatarInitials = activeProfile?.avatarInitials?.take(2) ?: "??"
+            val avatarColor = AvatarColor.fromKey(activeProfile?.avatarColor).toColor()
+
             // Settings icon
             Box(
                 modifier = Modifier
@@ -167,10 +177,39 @@ fun MainTopBar(
                     )
                 }
             }
+
             Spacer(modifier = Modifier.width(16.dp))
-            
+
             // Clock component
             Clock(context)
+
+            Spacer(modifier = Modifier.width(4.dp))
+
+            // Profile avatar (to enter profile selection) - right of the clock
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(CircleShape)
+                    .background(
+                        color = if (isAvatarFocused) avatarColor else avatarColor.copy(alpha = 0.85f),
+                        shape = CircleShape
+                    )
+                    .then(
+                        if (isAvatarFocused) {
+                            Modifier.border(2.dp, Color.White, CircleShape)
+                        } else {
+                            Modifier
+                        }
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = avatarInitials,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
         }
     }
 }

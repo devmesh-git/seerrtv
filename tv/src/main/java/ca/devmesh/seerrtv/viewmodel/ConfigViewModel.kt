@@ -76,7 +76,11 @@ class ConfigViewModel @Inject constructor(
             is ApiValidationResult.Success -> {
                 try {
                     // Persist the sanitized config so stored values are clean
-                    SharedPreferencesUtil.saveConfig(context, sanitized, true)
+                    if (SharedPreferencesUtil.isPendingNewProfileCreation(context)) {
+                        SharedPreferencesUtil.appendNewProfileWithValidatedConfig(context, sanitized)
+                    } else {
+                        SharedPreferencesUtil.saveConfig(context, sanitized, true)
+                    }
                     Log.d("ConfigViewModel", "Configuration saved and validated successfully")
                     // Load Radarr and Sonarr data for the new configuration
                     apiService.loadRadarrConfiguration()

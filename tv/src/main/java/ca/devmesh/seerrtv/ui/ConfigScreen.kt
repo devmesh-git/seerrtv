@@ -81,9 +81,12 @@ fun ConfigScreen(
     onConfigComplete: () -> Unit,
     viewModel: ConfigViewModel = hiltViewModel()
 ) {
+    val isPendingNewProfileCreation = SharedPreferencesUtil.isPendingNewProfileCreation(context)
     var configMethod by remember { mutableStateOf<ConfigMethod?>(null) }
     var showLanguageSelection by remember {
-        mutableStateOf(SharedPreferencesUtil.getAppLanguage(context) == null)
+        mutableStateOf(
+            isPendingNewProfileCreation || SharedPreferencesUtil.getAppLanguage(context) == null
+        )
     }
     var showConfigSelection by remember {
         mutableStateOf(SharedPreferencesUtil.getAppLanguage(context) != null)
@@ -171,6 +174,7 @@ fun ConfigScreen(
                 showLanguageSelection -> {
                     LanguageSelectionStep(
                         context = context,
+                        pendingNewProfileCreation = isPendingNewProfileCreation,
                         languageOptions = listOf(
                             "en" to R.string.settingsMenu_discoverLanguageEN,
                             "de" to R.string.settingsMenu_discoverLanguageDE,
@@ -1824,12 +1828,13 @@ private fun ConfigStepLayout(
 }
 
 class LanguageSelectionController(
-    private val context: Context,
+    initialLanguage: String,
     private val languageOptions: List<Pair<String, Int>>,
     private val onLanguageSelected: (String) -> Unit,
+    private val persistLanguage: (String) -> Unit,
     private val onNext: () -> Unit
 ) {
-    val currentLanguage = SharedPreferencesUtil.getAppLanguage(context) ?: "en"
+    val currentLanguage = initialLanguage
     
     // Navigation state: 0..size-1 = list item focused
     var selectedIndex by mutableStateOf(
@@ -1845,7 +1850,7 @@ class LanguageSelectionController(
         val (code, _) = languageOptions[index]
         if (code != currentLanguage) {
             selectedLanguage = code
-            SharedPreferencesUtil.setAppLanguage(context, code)
+            persistLanguage(code)
             onLanguageSelected(code)
         } else {
             selectedLanguage = code
@@ -1890,6 +1895,7 @@ class LanguageSelectionController(
 @Composable
 fun LanguageSelectionStep(
     context: Context,
+    pendingNewProfileCreation: Boolean = false,
     languageOptions: List<Pair<String, Int>>,
     onNext: () -> Unit
 ) {
@@ -1898,11 +1904,27 @@ fun LanguageSelectionStep(
     val focusRequester = remember { FocusRequester() }
     
     val controller = remember {
+        val initialLanguage = if (pendingNewProfileCreation) {
+            SharedPreferencesUtil.getPendingNewProfileAppLanguage(context)
+                ?: SharedPreferencesUtil.getAppLanguage(context)
+                ?: "en"
+        } else {
+            SharedPreferencesUtil.getAppLanguage(context) ?: "en"
+        }
         LanguageSelectionController(
-            context = context,
+            initialLanguage = initialLanguage,
             languageOptions = languageOptions,
             onLanguageSelected = {
-                (context as? android.app.Activity)?.recreate()
+                if (!pendingNewProfileCreation) {
+                    (context as? android.app.Activity)?.recreate()
+                }
+            },
+            persistLanguage = { selected ->
+                if (pendingNewProfileCreation) {
+                    SharedPreferencesUtil.setPendingNewProfileAppLanguage(context, selected)
+                } else {
+                    SharedPreferencesUtil.setAppLanguage(context, selected)
+                }
             },
             onNext = onNext
         )

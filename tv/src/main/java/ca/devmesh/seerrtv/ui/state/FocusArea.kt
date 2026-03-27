@@ -24,5 +24,6 @@ object FocusArea {
     const val MANAGE_SINGLE = 15
     const val TRAILER = 16
     const val ISSUE = 17 // Issue reporting/details
+    const val WATCHLIST_ACTION = 18
 }
 

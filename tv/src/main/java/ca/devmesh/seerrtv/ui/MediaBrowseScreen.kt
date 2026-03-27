@@ -655,6 +655,8 @@ fun MediaBrowseScreen(
                         (appFocusManager.currentFocus as AppFocusState.TopBar).focus == TopBarFocus.Series,
                 isSettingsFocused = appFocusManager.currentFocus is AppFocusState.TopBar &&
                         (appFocusManager.currentFocus as AppFocusState.TopBar).focus == TopBarFocus.Settings,
+                isAvatarFocused = appFocusManager.currentFocus is AppFocusState.TopBar &&
+                        (appFocusManager.currentFocus as AppFocusState.TopBar).focus == TopBarFocus.Avatar,
                 showRefreshHint = false,
                 isInTopBar = appFocusManager.currentFocus is AppFocusState.TopBar,
                 isRefreshRowVisible = false,
