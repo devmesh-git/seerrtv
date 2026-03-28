@@ -1122,10 +1122,12 @@ class SeerrApiService @Inject constructor(
         results.map { media ->
             async {
                 val base = media.tmdbId?.let { tid ->
-                    if (media.id != tid) media.copy(id = tid) else media
+                    if (tid > 0 && media.id != tid) media.copy(id = tid) else media
                 } ?: media
                 if (base.posterPath.isNullOrBlank()) {
-                    val tmdbKey = (base.tmdbId ?: base.id).toString()
+                    // Same sentinel as main-screen rows: tmdbId may be 0 while id is the real TMDB id.
+                    val tmdbKey =
+                        (base.tmdbId?.takeIf { it > 0 } ?: base.id.takeIf { it > 0 } ?: base.tmdbId ?: base.id).toString()
                     when (base.mediaType.lowercase()) {
                         "movie" -> when (val details = getMovieDetails(tmdbKey)) {
                             is ApiResult.Success -> base.copy(

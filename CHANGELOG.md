@@ -1,4 +1,24 @@
 # Changelog
+
+## 0.28.02
+
+### Media details & routing
+
+#### Fix movie/TV details failing with HTTP 500 (`/movie/0`)
+- **Root cause** – v0.28.01 navigation used `tmdbId` ahead of `id` for the details route. Many discover responses include `tmdbId: 0` as a sentinel while `id` holds the real TMDB id; Kotlin’s `tmdbId ?: id` still chose `0`, so the app called `/api/v1/movie/0` and the server returned “Unable to retrieve movie.”
+- **Main screen** – Restored opening media details with `Media.id` (same behavior as v0.27.03). Watchlist rows are still normalized in `SeerrApiService` so `id` matches the TMDB id before items appear in carousels.
+- **Watchlist poster enrichment** – Only align `id` from `tmdbId` when `tmdbId > 0` (never copy `0`). When fetching poster/backdrop, resolve the TMDB key the same way so enrichment does not hit `movie/0` or `tv/0`.
+- **Removed** – The `idForDetailsRoute` / `effectiveIdForTmdbApi` helpers on `Media` (no longer needed for navigation).
+
+### Files Modified
+
+- `tv/build.gradle.kts` – Version 0.28.02 (versionCode 125).
+- `tv/src/main/java/ca/devmesh/seerrtv/data/SeerrApiService.kt` – Watchlist enrichment guards and TMDB key resolution.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/MainScreen.kt` – Details navigation uses `id` again.
+- `tv/src/main/java/ca/devmesh/seerrtv/model/MainScreenModels.kt` – Dropped routing helper extensions.
+
+---
+
 ## 0.28.01
 
 ### Multi-user Profiles

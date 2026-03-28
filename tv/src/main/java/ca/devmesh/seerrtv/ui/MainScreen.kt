@@ -60,7 +60,6 @@ import ca.devmesh.seerrtv.BuildConfig
 import ca.devmesh.seerrtv.data.ApiResult
 import ca.devmesh.seerrtv.model.MediaDetails
 import ca.devmesh.seerrtv.model.Media
-import ca.devmesh.seerrtv.model.idForDetailsRoute
 import ca.devmesh.seerrtv.model.Request
 import ca.devmesh.seerrtv.navigation.NavigationManager
 import ca.devmesh.seerrtv.navigation.rememberNavigationManager
@@ -934,7 +933,7 @@ fun MainScreen(
                                     mediaState.selectedRequest = selectedItem.request
                                 } else {
                                     navigationManager.navigateToDetails(
-                                        selectedItem.idForDetailsRoute(),
+                                        selectedItem.id.toString(),
                                         selectedItem.mediaType
                                     )
                                 }
@@ -949,7 +948,7 @@ fun MainScreen(
                             if (sliderResult is ApiResult.Success && currentIndex < sliderResult.data.size) {
                                 val selectedItem = sliderResult.data[currentIndex]
                                 navigationManager.navigateToDetails(
-                                    selectedItem.idForDetailsRoute(),
+                                    selectedItem.id.toString(),
                                     selectedItem.mediaType
                                 )
                             }
