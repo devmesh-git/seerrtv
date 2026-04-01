@@ -110,7 +110,8 @@ data class ExternalIds(
     val imdbId: String?,
     val facebookId: String?,
     val instagramId: String?,
-    val twitterId: String?
+    val twitterId: String?,
+    val tvdbId: Int? = null
 )
 
 @Serializable

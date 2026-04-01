@@ -1171,13 +1171,13 @@ fun MediaDetails(
 
                 // Handle ISSUE button activation and modal routing (unified manager)
                 val internalMediaId = media.mediaInfo?.id ?: -1
-                if (internalMediaId == -1) {
-                    Log.w(
-                        "MediaDetails",
-                        "⚠️ media.mediaInfo.id is null; opening modal but submit will be blocked"
-                    )
-                }
                 if (modalManager.showIssueReport) {
+                    if (internalMediaId == -1) {
+                        Log.w(
+                            "MediaDetails",
+                            "⚠️ media.mediaInfo.id is null; issue report submit may fail because Seerr internal media ID is unavailable"
+                        )
+                    }
                     Box(
                         modifier = Modifier
                             .fillMaxSize()

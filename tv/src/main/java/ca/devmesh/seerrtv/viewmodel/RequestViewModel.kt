@@ -233,7 +233,19 @@ class RequestViewModel @Inject constructor(
                 }
             }
             MediaType.TV -> {
-                mediaDetails.mediaInfo?.tvdbId?.let { request["tvdbId"] = it }
+                val mediaInfoTvdbId = mediaDetails.mediaInfo?.tvdbId
+                val externalTvdbId = mediaDetails.externalIds.tvdbId
+                val tvdbId = mediaInfoTvdbId ?: externalTvdbId
+                val tvdbSource = when {
+                    mediaInfoTvdbId != null -> "mediaInfo"
+                    externalTvdbId != null -> "externalIds"
+                    else -> "none"
+                }
+                Log.d(
+                    "RequestViewModel",
+                    "Default TV request tvdbId source=$tvdbSource value=$tvdbId (mediaInfo.tvdbId=$mediaInfoTvdbId, externalIds.tvdbId=$externalTvdbId)"
+                )
+                tvdbId?.let { request["tvdbId"] = it }
                 // Use first quality profile if only one available
                 val profiles = getQualityProfiles(mediaType, is4kRequest)
                 if (profiles.size == 1) {

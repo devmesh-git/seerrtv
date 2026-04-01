@@ -28,9 +28,12 @@ import ca.devmesh.seerrtv.ui.components.AppLogo
 import ca.devmesh.seerrtv.ui.components.VersionNumber
 import ca.devmesh.seerrtv.util.PinUtils
 import ca.devmesh.seerrtv.util.SharedPreferencesUtil
-import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.lazy.LazyListLayoutInfo
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.ui.Alignment.Companion.CenterVertically
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -43,6 +46,10 @@ import androidx.compose.ui.draw.shadow
 import ca.devmesh.seerrtv.R
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+
+/** Lazy row slot width — keep close to avatar + label; extra width only adds empty space between circles. */
+private val ProfileCarouselItemWidth = 120.dp
+private val ProfileCarouselItemSpacing = 12.dp
 
 enum class ProfileGateMode {
     SELECT_LIST,
@@ -334,16 +341,35 @@ fun UserProfileSelectionScreen(
                             color = Color.White.copy(alpha = 0.9f)
                         )
                     } else {
-                        LazyRow(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(
-                                24.dp,
-                                Alignment.CenterHorizontally
-                            )
-                        ) {
-                            itemsIndexed(profiles) { index, profile ->
-                                val selected = index == selectedProfileIndex
-                                ProfileRow(profile = profile, isSelected = selected)
+                        val listState = rememberLazyListState()
+                        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                            // Inset so the first/last profile can scroll to the horizontal center of the row.
+                            val sidePad =
+                                ((maxWidth - ProfileCarouselItemWidth) / 2).coerceAtLeast(0.dp)
+
+                            LaunchedEffect(selectedProfileIndex, profiles.size, sidePad) {
+                                if (profiles.isNotEmpty() &&
+                                    selectedProfileIndex in profiles.indices
+                                ) {
+                                    listState.animateScrollProfileCarouselToCenter(selectedProfileIndex)
+                                }
+                            }
+
+                            LazyRow(
+                                state = listState,
+                                modifier = Modifier.fillMaxWidth(),
+                                contentPadding = PaddingValues(horizontal = sidePad),
+                                horizontalArrangement = Arrangement.spacedBy(
+                                    ProfileCarouselItemSpacing,
+                                    Alignment.CenterHorizontally
+                                ),
+                                userScrollEnabled = false,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                itemsIndexed(profiles) { index, profile ->
+                                    val selected = index == selectedProfileIndex
+                                    ProfileRow(profile = profile, isSelected = selected)
+                                }
                             }
                         }
                     }
@@ -435,6 +461,28 @@ fun UserProfileSelectionScreen(
     }
 }
 
+/**
+ * Keeps the selected profile in the horizontal center of the [LazyRow] (see lazy list scrollOffset rules).
+ * If the target is not composed yet, [scrollToItem] runs first, then the centering offset is applied.
+ */
+private suspend fun LazyListState.animateScrollProfileCarouselToCenter(index: Int) {
+    layoutInfo.profileCarouselCenterScrollOffset(index)?.let { offset ->
+        animateScrollToItem(index, offset)
+        return
+    }
+    scrollToItem(index)
+    layoutInfo.profileCarouselCenterScrollOffset(index)?.let { offset ->
+        animateScrollToItem(index, offset)
+    }
+}
+
+private fun LazyListLayoutInfo.profileCarouselCenterScrollOffset(index: Int): Int? {
+    val itemInfo = visibleItemsInfo.firstOrNull { it.index == index } ?: return null
+    val containerSize = viewportSize.width - beforeContentPadding - afterContentPadding
+    if (containerSize <= 0) return null
+    return -(containerSize - itemInfo.size) / 2
+}
+
 @Composable
 private fun ProfileRow(profile: UserProfile, isSelected: Boolean) {
     val avatarColor = AvatarColor.fromKey(profile.avatarColor).toColor()
@@ -442,7 +490,7 @@ private fun ProfileRow(profile: UserProfile, isSelected: Boolean) {
     val avatarBorderAlpha = if (isSelected) 0.95f else 0.25f
 
     Column(
-        modifier = Modifier.width(240.dp).padding(vertical = 12.dp),
+        modifier = Modifier.width(ProfileCarouselItemWidth).padding(vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {

@@ -200,8 +200,17 @@ class RequestModalController(
      * Check if lookup is required for TV series without tvdbId
      */
     private fun isLookupRequired(): Boolean {
-        return mediaDetails.mediaType == MediaType.TV &&
-               mediaDetails.mediaInfo?.tvdbId == null
+        val mediaInfoTvdbId = mediaDetails.mediaInfo?.tvdbId
+        val externalTvdbId = mediaDetails.externalIds.tvdbId
+        val tvdbId = mediaInfoTvdbId ?: externalTvdbId
+        val requiresLookup = mediaDetails.mediaType == MediaType.TV && tvdbId == null
+        if (mediaDetails.mediaType == MediaType.TV) {
+            Log.d(
+                "RequestModalController",
+                "TVDB lookup decision: requiresLookup=$requiresLookup (selectedTvdbId=$selectedTvdbId, mediaInfo.tvdbId=$mediaInfoTvdbId, externalIds.tvdbId=$externalTvdbId, resolvedTvdbId=$tvdbId)"
+            )
+        }
+        return requiresLookup
     }
 
     /**
@@ -999,8 +1008,20 @@ class RequestModalController(
                 }
             }
             MediaType.TV -> {
-                // Use selectedTvdbId if available (from lookup), otherwise use mediaInfo.tvdbId
-                val tvdbId = selectedTvdbId ?: mediaDetails.mediaInfo?.tvdbId
+                // Prefer explicit lookup selection, then mediaInfo, then externalIds from details endpoint.
+                val mediaInfoTvdbId = mediaDetails.mediaInfo?.tvdbId
+                val externalTvdbId = mediaDetails.externalIds.tvdbId
+                val tvdbId = selectedTvdbId ?: mediaInfoTvdbId ?: externalTvdbId
+                val tvdbSource = when {
+                    selectedTvdbId != null -> "selected_lookup"
+                    mediaInfoTvdbId != null -> "mediaInfo"
+                    externalTvdbId != null -> "externalIds"
+                    else -> "none"
+                }
+                Log.d(
+                    "RequestModalController",
+                    "TV request tvdbId source=$tvdbSource value=$tvdbId (selectedTvdbId=$selectedTvdbId, mediaInfo.tvdbId=$mediaInfoTvdbId, externalIds.tvdbId=$externalTvdbId)"
+                )
                 tvdbId?.let { request["tvdbId"] = it }
                 // Only include profileId if there is more than one profile
                 if (qualityProfiles.value.size > 1) {

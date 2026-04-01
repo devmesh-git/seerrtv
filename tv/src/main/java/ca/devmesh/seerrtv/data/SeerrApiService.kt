@@ -49,15 +49,18 @@ import io.ktor.client.network.sockets.ConnectTimeoutException
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.plugins.ResponseException
+import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.header
 import io.ktor.client.request.request
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.client.statement.HttpResponse
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
 import io.ktor.http.isSuccess
 import io.ktor.http.takeFrom
 import io.ktor.serialization.kotlinx.json.json
+import java.net.URLDecoder
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.security.cert.X509Certificate
@@ -146,7 +149,9 @@ class SeerrApiService @Inject constructor(
     private val context: Context
 ) {
     private data class AuthToken(
-        val token: String,
+        val connectSid: String,
+        val csrfCookieValue: String? = null,
+        val xsrfToken: String? = null,
         val expiresAt: Instant
     )
 
@@ -157,6 +162,9 @@ class SeerrApiService @Inject constructor(
     )
 
     private var currentAuthToken: AuthToken? = null
+    /** CSRF cookies when using API key + Seerr CSRF protection (no connect.sid). */
+    private var apiKeyCsrfCookieValue: String? = null
+    private var apiKeyXsrfToken: String? = null
     private var currentUserInfo: UserInfo? = null
     private var cachedRadarrData: RadarrServerInfo? = null
     private var cachedSonarrData: SonarrServerInfo? = null
@@ -167,6 +175,127 @@ class SeerrApiService @Inject constructor(
     
     private companion object {
         const val DEFAULT_PAGE_SIZE = 20
+        const val COOKIE_CONNECT_SID = "connect.sid"
+        const val COOKIE_CSRF = "_csrf"
+        const val COOKIE_XSRF = "XSRF-TOKEN"
+    }
+
+    private data class ParsedSeerrCookies(
+        val connectSid: String?,
+        val csrfCookieValue: String?,
+        val xsrfToken: String?
+    )
+
+    private fun parseSeerrCookiesFromSetCookieLines(setCookies: List<String>?): ParsedSeerrCookies {
+        if (setCookies.isNullOrEmpty()) return ParsedSeerrCookies(null, null, null)
+        var newSid: String? = null
+        var newCsrf: String? = null
+        var newXsrf: String? = null
+        for (line in setCookies) {
+            val (name, rawValue) = parseSetCookieNameValue(line) ?: continue
+            when (name) {
+                COOKIE_CONNECT_SID -> newSid = rawValue
+                COOKIE_CSRF -> newCsrf = rawValue
+                COOKIE_XSRF -> newXsrf = decodeCookieValue(rawValue)
+            }
+        }
+        return ParsedSeerrCookies(newSid, newCsrf, newXsrf)
+    }
+
+    private fun HttpMethod.isUnsafe(): Boolean = when (this) {
+        HttpMethod.Post, HttpMethod.Put, HttpMethod.Patch, HttpMethod.Delete -> true
+        else -> false
+    }
+
+    /** First name=value pair from a Set-Cookie header line (before attributes). */
+    private fun parseSetCookieNameValue(setCookieLine: String): Pair<String, String>? {
+        val part = setCookieLine.trim().substringBefore(';').trim()
+        if (part.isEmpty() || !part.contains('=')) return null
+        val name = part.substringBefore('=', missingDelimiterValue = "").trim()
+        val rawValue = part.substringAfter('=', missingDelimiterValue = "").trim()
+        if (name.isEmpty()) return null
+        return name to rawValue
+    }
+
+    private fun decodeCookieValue(raw: String): String = try {
+        URLDecoder.decode(raw, StandardCharsets.UTF_8.name())
+    } catch (_: Exception) {
+        raw
+    }
+
+    /**
+     * Merge Seerr Set-Cookie headers into session or API-key CSRF state.
+     * Only used for responses from the main Seerr API (not raw third-party URLs).
+     */
+    private fun mergeCookiesFromSeerrResponse(response: HttpResponse) {
+        val parsed = parseSeerrCookiesFromSetCookieLines(response.headers.getAll(HttpHeaders.SetCookie))
+        if (parsed.connectSid == null && parsed.csrfCookieValue == null && parsed.xsrfToken == null) return
+
+        if (isSessionBasedAuth(config.getAuthType())) {
+            val existing = currentAuthToken ?: return
+            currentAuthToken = existing.copy(
+                connectSid = parsed.connectSid ?: existing.connectSid,
+                csrfCookieValue = parsed.csrfCookieValue ?: existing.csrfCookieValue,
+                xsrfToken = parsed.xsrfToken ?: existing.xsrfToken
+            )
+        } else if (config.getAuthType() == AuthType.ApiKey) {
+            if (parsed.csrfCookieValue != null) apiKeyCsrfCookieValue = parsed.csrfCookieValue
+            if (parsed.xsrfToken != null) apiKeyXsrfToken = parsed.xsrfToken
+        }
+    }
+
+    private fun buildSessionCookieHeader(token: AuthToken): String {
+        val parts = mutableListOf<String>()
+        parts.add("$COOKIE_CONNECT_SID=${token.connectSid}")
+        token.csrfCookieValue?.let { v -> parts.add("$COOKIE_CSRF=$v") }
+        return parts.joinToString("; ")
+    }
+
+    private fun HttpRequestBuilder.applySeerrAuthHeaders(endpoint: String, raw: Boolean, method: HttpMethod) {
+        if (raw) return
+
+        when (config.getAuthType()) {
+            AuthType.ApiKey -> {
+                if (config.apiKey.isNotBlank()) {
+                    header("X-Api-Key", config.apiKey)
+                }
+                val cookieParts = mutableListOf<String>()
+                apiKeyCsrfCookieValue?.let { cookieParts.add("$COOKIE_CSRF=$it") }
+                if (cookieParts.isNotEmpty()) {
+                    header("Cookie", cookieParts.joinToString("; "))
+                }
+                if (method.isUnsafe() && !apiKeyXsrfToken.isNullOrBlank()) {
+                    header("X-XSRF-TOKEN", apiKeyXsrfToken!!)
+                }
+            }
+            AuthType.LocalUser -> {
+                if (!endpoint.startsWith("auth/local") && currentAuthToken != null) {
+                    val t = currentAuthToken!!
+                    header("Cookie", buildSessionCookieHeader(t))
+                    if (method.isUnsafe() && !t.xsrfToken.isNullOrBlank()) {
+                        header("X-XSRF-TOKEN", t.xsrfToken)
+                    }
+                }
+            }
+            AuthType.Jellyfin, AuthType.Emby -> {
+                if (!endpoint.startsWith("auth/jellyfin") && currentAuthToken != null) {
+                    val t = currentAuthToken!!
+                    header("Cookie", buildSessionCookieHeader(t))
+                    if (method.isUnsafe() && !t.xsrfToken.isNullOrBlank()) {
+                        header("X-XSRF-TOKEN", t.xsrfToken)
+                    }
+                }
+            }
+            AuthType.Plex -> {
+                if (!endpoint.startsWith("auth/plex") && currentAuthToken != null) {
+                    val t = currentAuthToken!!
+                    header("Cookie", buildSessionCookieHeader(t))
+                    if (method.isUnsafe() && !t.xsrfToken.isNullOrBlank()) {
+                        header("X-XSRF-TOKEN", t.xsrfToken)
+                    }
+                }
+            }
+        }
     }
 
     internal fun getOrCreatePaginationState(endpoint: String): MutablePaginationInfo {
@@ -568,46 +697,19 @@ class SeerrApiService @Inject constructor(
                 headers?.forEach { (key, value) ->
                     header(key, value)
                 }
+
+                applySeerrAuthHeaders(endpoint, raw, method)
                 
-                // Handle all authentication in one place
-                when (config.getAuthType()) {
-                    AuthType.ApiKey -> {
-                        if (config.apiKey.isNotBlank()) {
-                            header("X-Api-Key", config.apiKey)
-                        }
-                    }
-                    AuthType.LocalUser -> {
-                        // Skip sending auth cookie for authentication endpoints
-                        if (!endpoint.startsWith("auth/local") && currentAuthToken != null) {
-                            header("Cookie", "connect.sid=${currentAuthToken!!.token}")
-                        }
-                    }
-                    AuthType.Jellyfin -> {
-                        // Skip sending auth cookie for authentication endpoints
-                        if (!endpoint.startsWith("auth/jellyfin") && currentAuthToken != null) {
-                            header("Cookie", "connect.sid=${currentAuthToken!!.token}")
-                        }
-                    }
-                    AuthType.Emby -> {
-                        // Skip sending auth cookie for authentication endpoints
-                        if (!endpoint.startsWith("auth/jellyfin") && currentAuthToken != null) {
-                            header("Cookie", "connect.sid=${currentAuthToken!!.token}")
-                        }
-                    }
-                    AuthType.Plex -> {
-                        // Skip sending auth cookie for authentication endpoints
-                        if (!endpoint.startsWith("auth/plex") && currentAuthToken != null) {
-                            header("Cookie", "connect.sid=${currentAuthToken!!.token}")
-                        }
-                    }
-                }
-                
-                if (method == HttpMethod.Post) {
+                if (method == HttpMethod.Post && body != null) {
                     header("Content-Type", "application/json")
                 }
                 body?.let { 
                     setBody(it)
                 }
+            }
+
+            if (!raw) {
+                mergeCookiesFromSeerrResponse(response)
             }
             
             // Log request and response in a single line
@@ -666,7 +768,7 @@ class SeerrApiService @Inject constructor(
                                     endpoint = endpoint,
                                     method = method,
                                     body = body,
-                                    raw = raw,
+                                    raw = false,
                                     testResponse = testResponse,
                                     headers = headers,
                                     retryCount = 1
@@ -733,46 +835,19 @@ class SeerrApiService @Inject constructor(
                 headers?.forEach { (key, value) ->
                     header(key, value)
                 }
+
+                applySeerrAuthHeaders(endpoint, raw, method)
                 
-                // Handle all authentication in one place
-                when (config.getAuthType()) {
-                    AuthType.ApiKey -> {
-                        if (config.apiKey.isNotBlank()) {
-                            header("X-Api-Key", config.apiKey)
-                        }
-                    }
-                    AuthType.LocalUser -> {
-                        // Skip sending auth cookie for authentication endpoints
-                        if (!endpoint.startsWith("auth/local") && currentAuthToken != null) {
-                            header("Cookie", "connect.sid=${currentAuthToken!!.token}")
-                        }
-                    }
-                    AuthType.Jellyfin -> {
-                        // Skip sending auth cookie for authentication endpoints
-                        if (!endpoint.startsWith("auth/jellyfin") && currentAuthToken != null) {
-                            header("Cookie", "connect.sid=${currentAuthToken!!.token}")
-                        }
-                    }
-                    AuthType.Emby -> {
-                        // Skip sending auth cookie for authentication endpoints
-                        if (!endpoint.startsWith("auth/jellyfin") && currentAuthToken != null) {
-                            header("Cookie", "connect.sid=${currentAuthToken!!.token}")
-                        }
-                    }
-                    AuthType.Plex -> {
-                        // Skip sending auth cookie for authentication endpoints
-                        if (!endpoint.startsWith("auth/plex") && currentAuthToken != null) {
-                            header("Cookie", "connect.sid=${currentAuthToken!!.token}")
-                        }
-                    }
-                }
-                
-                if (method == HttpMethod.Post) {
+                if (method == HttpMethod.Post && body != null) {
                     header("Content-Type", "application/json")
                 }
                 body?.let { 
                     setBody(it)
                 }
+            }
+
+            if (!raw) {
+                mergeCookiesFromSeerrResponse(response)
             }
             
             // Log request and response in a single line
@@ -830,12 +905,15 @@ class SeerrApiService @Inject constructor(
      * Check if the response indicates an authentication error
      */
     private fun isAuthenticationError(statusCode: Int, errorBody: String): Boolean {
-        return statusCode == 401 || 
-               statusCode == 403 || 
-               errorBody.contains("unauthorized", ignoreCase = true) ||
-               errorBody.contains("forbidden", ignoreCase = true) ||
-               errorBody.contains("authentication", ignoreCase = true) ||
-               errorBody.contains("login", ignoreCase = true)
+        if (statusCode == 403 && errorBody.contains("invalid csrf token", ignoreCase = true)) {
+            return false
+        }
+        return statusCode == 401 ||
+            statusCode == 403 ||
+            errorBody.contains("unauthorized", ignoreCase = true) ||
+            errorBody.contains("forbidden", ignoreCase = true) ||
+            errorBody.contains("authentication", ignoreCase = true) ||
+            errorBody.contains("login", ignoreCase = true)
     }
 
     private suspend fun login(): ApiResult<Unit> {
@@ -989,35 +1067,30 @@ class SeerrApiService @Inject constructor(
         }
 
         try {
-            // Get the session ID from Set-Cookie header
-            val setCookieHeaders = authResponse.headers.getAll("Set-Cookie")
+            val setCookieHeaders = authResponse.headers.getAll(HttpHeaders.SetCookie)
             Log.d("SeerrApiService", "🍪 Set-Cookie headers found: ${setCookieHeaders?.size ?: 0}")
             if (setCookieHeaders.isNullOrEmpty()) {
                 Log.e("SeerrApiService", "❌ No Set-Cookie headers found in response")
                 return ApiResult.Error(Exception("No session cookie received"))
             }
-            
-            // Find the connect.sid cookie
-            val connectSidCookie = setCookieHeaders.find { it.startsWith("connect.sid=") }
-                ?: run {
-                    Log.e("SeerrApiService", "❌ No connect.sid cookie found in headers: $setCookieHeaders")
-                    return ApiResult.Error(Exception("No session cookie received"))
-                }
-            
-            Log.d("SeerrApiService", "✅ Found connect.sid cookie")
 
-            // Parse the cookie value
-            val cookieValue = connectSidCookie
-                .substringAfter("connect.sid=")
-                .substringBefore(";")
-                .trim()
-            
-            Log.d("SeerrApiService", "🔑 Cookie value: ${cookieValue.take(10)}...")
-            
-            // Store the session ID
+            val parsed = parseSeerrCookiesFromSetCookieLines(setCookieHeaders)
+            val sid = parsed.connectSid ?: run {
+                Log.e("SeerrApiService", "❌ No connect.sid cookie found in headers: $setCookieHeaders")
+                return ApiResult.Error(Exception("No session cookie received"))
+            }
+
+            Log.d("SeerrApiService", "✅ Found connect.sid cookie")
+            Log.d("SeerrApiService", "🔑 Cookie value: ${sid.take(10)}...")
+
+            apiKeyCsrfCookieValue = null
+            apiKeyXsrfToken = null
+
             val expiryTime = Instant.now().plus(30, ChronoUnit.DAYS)
             currentAuthToken = AuthToken(
-                token = cookieValue,
+                connectSid = sid,
+                csrfCookieValue = parsed.csrfCookieValue,
+                xsrfToken = parsed.xsrfToken,
                 expiresAt = expiryTime
             )
 
@@ -1794,6 +1867,34 @@ class SeerrApiService @Inject constructor(
         return executeApiCall("auth/me")
     }
 
+    /**
+     * True when [previous] and [next] refer to the same Seerr instance and credentials
+     * (in-memory session + CSRF cookies remain valid). False on profile switch, host change, or auth change.
+     */
+    private fun isSameSeerrConnection(previous: SeerrConfig, next: SeerrConfig): Boolean {
+        if (buildApiUrl(previous) != buildApiUrl(next)) return false
+        if (previous.getAuthType() != next.getAuthType()) return false
+        if (previous.cloudflareEnabled != next.cloudflareEnabled) return false
+        if (previous.cfClientId != next.cfClientId) return false
+        if (previous.cfClientSecret != next.cfClientSecret) return false
+        return when (previous.getAuthType()) {
+            AuthType.ApiKey -> previous.apiKey == next.apiKey
+            AuthType.LocalUser ->
+                previous.username == next.username && previous.password == next.password
+            AuthType.Jellyfin, AuthType.Emby ->
+                previous.username == next.username &&
+                    previous.password == next.password &&
+                    previous.jellyfinHostname == next.jellyfinHostname &&
+                    previous.jellyfinPort == next.jellyfinPort &&
+                    previous.jellyfinUseSsl == next.jellyfinUseSsl &&
+                    previous.jellyfinUrlBase == next.jellyfinUrlBase &&
+                    previous.jellyfinEmail == next.jellyfinEmail
+            AuthType.Plex ->
+                previous.plexAuthToken == next.plexAuthToken &&
+                    previous.plexClientId == next.plexClientId
+        }
+    }
+
     fun updateConfig(newConfig: SeerrConfig) {
         Log.d("SeerrApiService", "Updating API Service configuration:")
         Log.d("SeerrApiService", "- Protocol: ${newConfig.protocol}")
@@ -1801,6 +1902,9 @@ class SeerrApiService @Inject constructor(
         Log.d("SeerrApiService", "- Auth Type: ${newConfig.authType}")
         Log.d("SeerrApiService", "- Cloudflare Enabled: ${newConfig.cloudflareEnabled}")
         Log.d("SeerrApiService", "Updating config from ${config.getAuthType()} to ${newConfig.getAuthType()}")
+
+        val previousConfig = config
+        val sameConnection = isSameSeerrConnection(previousConfig, newConfig)
 
         // Update the config first
         config = newConfig
@@ -1812,6 +1916,14 @@ class SeerrApiService @Inject constructor(
         // Clear caches since we're effectively creating a new connection
         cachedRadarrData = null
         cachedSonarrData = null
+        apiKeyCsrfCookieValue = null
+        apiKeyXsrfToken = null
+
+        if (!sameConnection) {
+            currentAuthToken = null
+            currentUserInfo = null
+            Log.d("SeerrApiService", "Cleared session and user info (server, profile, or credentials changed)")
+        }
     }
 
     fun getConfig(): SeerrConfig {
@@ -3263,8 +3375,8 @@ class SeerrApiService @Inject constructor(
     data class PaginatedResponse<T>(
         val page: Int,
         val results: List<T>,
-        val total_pages: Int,
-        val total_results: Int
+        @SerialName("total_pages") val totalPages: Int,
+        @SerialName("total_results") val totalResults: Int
     )
 
     /**
@@ -3324,7 +3436,7 @@ class SeerrApiService @Inject constructor(
         slider: ca.devmesh.seerrtv.viewmodel.DiscoverSlider,
         reset: Boolean = false,
         loadMore: Boolean = false
-    ): ApiResult<ca.devmesh.seerrtv.model.Discover> {
+    ): ApiResult<Discover> {
         val paginationKey = "custom_slider_${slider.id}"
         if (reset || !loadMore) resetPaginationState(paginationKey)
         val state = getOrCreatePaginationState(paginationKey)
@@ -3358,7 +3470,7 @@ class SeerrApiService @Inject constructor(
         }
         val localizedEndpoint = if (locale != "en") "$pageEndpoint&language=$locale" else pageEndpoint
 
-        return when (val result = executeApiCall<ca.devmesh.seerrtv.model.Discover>(localizedEndpoint)) {
+        return when (val result = executeApiCall<Discover>(localizedEndpoint)) {
             is ApiResult.Success -> {
                 state.totalPages = result.data.totalPages
                 state.totalResults = result.data.totalResults

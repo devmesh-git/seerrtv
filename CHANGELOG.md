@@ -1,5 +1,59 @@
 # Changelog
 
+## 0.28.03
+
+### Seerr CSRF & session cookies
+
+#### API client
+- **Set-Cookie handling** – Parses `connect.sid`, `_csrf`, and `XSRF-TOKEN` from Seerr responses and merges them into session state (or API-key CSRF state when using `X-Api-Key` without a browser session).
+- **Request headers** – Session-based auth sends `Cookie` with `connect.sid` and optional `_csrf`; unsafe methods (`POST` / `PUT` / `PATCH` / `DELETE`) also send `X-XSRF-TOKEN` when available. API-key mode can send `_csrf` / `X-XSRF-TOKEN` the same way when the server enables CSRF protection.
+- **403 vs re-login** – A 403 whose body indicates an invalid CSRF token is no longer treated as a generic authentication failure (avoids wiping a valid session on transient CSRF mismatch).
+- **POST `Content-Type`** – `application/json` is set only for `POST` requests that include a body (avoids incorrect headers on empty POSTs).
+- **Config updates** – API-key CSRF cookies are cleared whenever config changes. Session and cached user info are cleared only when host, auth type, credentials, or Cloudflare client settings actually change (`isSameSeerrConnection`), so harmless config refreshes do not force a full re-login.
+- **`PaginatedResponse` JSON** – `total_pages` / `total_results` are deserialized via `@SerialName` into `totalPages` / `totalResults` so snake_case API fields map correctly to Kotlin properties.
+
+### TV requests & TVDB id
+
+#### Models & request flow
+- **`ExternalIds`** – Added optional `tvdbId` (from the details endpoint) so TV shows can be requested when `mediaInfo.tvdbId` is missing but TMDB/external ids expose TVDB.
+- **Request modal & default request** – TV lookup requirement and submitted `tvdbId` prefer explicit lookup selection, then `mediaInfo.tvdbId`, then `externalIds.tvdbId`. Added debug logging for the resolved source.
+
+### Direct-release APK naming & updates
+
+#### Build & GitHub releases
+- **Launcher asset name** – Direct-release launcher APKs are renamed to `SeerrTV-vX.Y.Z.launcher.apk` (dot before `launcher`) so GitHub’s default name sort lists the main app APK first; legacy `SeerrTV-vX.Y.Z-launcher.apk` remains supported.
+- **In-app updater** – `UpdateManager` treats both naming patterns as launcher assets and excludes them from the main-app “first `.apk`” fallback.
+
+### Docs & UX
+
+- **README** – Documented the new launcher filename; bug-report FAQ now points to [Support Logs Guide](docs/HOWTO_SupportLogs.md).
+- **Issue report modal** – Warning when Seerr internal media id is missing is logged only when the issue modal is shown, with a clearer message.
+
+### Profile selection carousel
+
+- **Scroll & center** – The startup profile picker’s horizontal list uses `LazyListState` with side padding and animated scrolling so the focused profile stays centered and no longer moves off-screen when navigating with the d-pad (touch scrolling disabled on the row).
+- **Layout** – Profile column width and inter-item spacing are tightened so avatars sit closer together (wide columns were adding empty space between circles, not just `spacedBy`).
+
+### Dependencies
+
+- **Version catalog** (`gradle/libs.versions.toml`) – Kotlin 2.3.20; Compose BOM 2026.03.01; Compose Foundation/UI 1.10.6; Ktor 3.4.2.
+- **Ktor** – Removed unused `ktor-client-android` and `ktor-client-cio` library entries from the catalog (the app uses the OkHttp client only).
+
+### Files Modified
+
+- `gradle/libs.versions.toml` – Dependency version bumps and unused Ktor catalog cleanup.
+- `tv/build.gradle.kts` – Version 0.28.03 (versionCode 126); direct-release APK rename to `.launcher.apk`.
+- `README.md` – Launcher APK naming; support logs link in FAQ.
+- `tv/src/main/java/ca/devmesh/seerrtv/data/SeerrApiService.kt` – CSRF/session cookies, auth headers, config/session clearing, POST content-type guard; `PaginatedResponse` `@SerialName` mapping; refresh retry `raw = false`; `X-XSRF-TOKEN` cleanup; custom-slider discover typing cleanup.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/UserProfileSelectionScreen.kt` – Centered carousel scroll, tighter profile slot width/spacing, d-pad-only row scrolling.
+- `tv/src/main/java/ca/devmesh/seerrtv/model/CommonModels.kt` – `ExternalIds.tvdbId`.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/MediaDetails.kt` – Issue modal logging.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/RequestModal.kt` – TVDB resolution from `externalIds`.
+- `tv/src/main/java/ca/devmesh/seerrtv/util/UpdateManager.kt` – Launcher asset name compatibility.
+- `tv/src/main/java/ca/devmesh/seerrtv/viewmodel/RequestViewModel.kt` – Default TV request `tvdbId` from `externalIds`.
+
+---
+
 ## 0.28.02
 
 ### Media details & routing

@@ -263,7 +263,7 @@ Build the **direct** flavor for sideloading (includes auto-update from GitHub Re
 ./gradlew assembleDirectRelease  # Release: builds app + launcher APKs
 ```
 
-- Release outputs: `SeerrTV-vX.Y.Z.apk` and `SeerrTV-vX.Y.Z-launcher.apk` under `tv/build/outputs/apk/`
+- Release outputs: `SeerrTV-vX.Y.Z.apk` and `SeerrTV-vX.Y.Z.launcher.apk` under `tv/build/outputs/apk/`
 - Upload both to a GitHub Release for the in-app updater to work
 
 **Platform notes**: macOS uses Android Studio’s JBR via `gradle.properties`; set `JAVA_HOME` or `org.gradle.java.home` on Linux/Windows if needed.
@@ -377,7 +377,7 @@ For detailed signing setup instructions, see [Signing Setup Guide](docs/SIGNING_
 - Default value points to `https://seerrtv.devmesh.ca`
 - This file is gitignored for security
 
-**Release:** Play Store → `./gradlew bundlePlayRelease`, upload the `.aab` to Play Console. Direct → `./gradlew assembleDirectRelease`, upload `SeerrTV-vX.Y.Z.apk` and `SeerrTV-vX.Y.Z-launcher.apk` to a GitHub Release (tag e.g. `v0.26.4`). The app checks GitHub Releases for updates.
+**Release:** Play Store → `./gradlew bundlePlayRelease`, upload the `.aab` to Play Console. Direct → `./gradlew assembleDirectRelease`, upload `SeerrTV-vX.Y.Z.apk` and `SeerrTV-vX.Y.Z.launcher.apk` to a GitHub Release (tag e.g. `v0.26.4`). The app checks GitHub Releases for updates.
 
 ## App Configuration
 
@@ -614,6 +614,7 @@ A:
 2. If not, create a new issue using our [bug report template](.github/ISSUE_TEMPLATE/bug_report.md)
 3. Include as much information as possible: app version, device model, Android version, steps to reproduce
 4. For D-pad navigation issues, include the exact navigation path
+5. If possible, attach logs captured using the [Support Logs Guide](docs/HOWTO_SupportLogs.md)
 
 **Q: How do I request a new feature?**
 

@@ -2,8 +2,8 @@ import java.io.File
 import java.util.Properties
 
 // Single source for app version; used in defaultConfig and for direct-release APK naming
-val appVersionName = "0.28.02"
-val appVersionCode = 125
+val appVersionName = "0.28.03"
+val appVersionCode = 126
 
 plugins {
     // https://developer.android.com/jetpack/androidx/releases/hilt
@@ -196,7 +196,8 @@ dependencies {
     testImplementation("io.ktor:ktor-client-mock:${libs.versions.ktor.get()}")
 }
 
-// Rename direct release APKs to SeerrTV-vX.Y.Z.apk and SeerrTV-vX.Y.Z-launcher.apk (runs after assemble)
+// Rename direct release APKs to SeerrTV-vX.Y.Z.apk and SeerrTV-vX.Y.Z.launcher.apk (runs after assemble).
+// ".launcher" before ".apk" sorts after the main APK name on GitHub so legacy "first .apk" updaters get the main build.
 // Registered in afterEvaluate so variant tasks exist
 project.afterEvaluate {
     fun registerRenameDirectApkTask(flavorSuffix: String, isLauncher: Boolean) {
@@ -205,9 +206,9 @@ project.afterEvaluate {
         val taskName = "renameDirect${flavorSuffix}ReleaseApk"
         tasks.register(taskName) {
             group = "build"
-            description = "Renames direct $flavorSuffix release APK to SeerrTV-v${appVersionName}${if (isLauncher) "-launcher" else ""}.apk"
+            description = "Renames direct $flavorSuffix release APK to SeerrTV-v${appVersionName}${if (isLauncher) ".launcher" else ""}.apk"
             dependsOn(assembleTaskName)
-            val launcherSuffix = if (isLauncher) "-launcher" else ""
+            val launcherSuffix = if (isLauncher) ".launcher" else ""
             val targetName = "SeerrTV-v${appVersionName}${launcherSuffix}.apk"
             val apkDir = layout.buildDirectory.dir("outputs/apk/$variantDir/release")
             inputs.files(apkDir.map { it.asFileTree.matching { include("*.apk") } })
@@ -263,7 +264,7 @@ tasks.register("assembleDirectDebug") {
 }
 tasks.register("assembleDirectRelease") {
     group = "build"
-    description = "Assembles both direct app and launcher release APKs (SeerrTV-vX.Y.Z.apk, SeerrTV-vX.Y.Z-launcher.apk)."
+    description = "Assembles both direct app and launcher release APKs (SeerrTV-vX.Y.Z.apk, SeerrTV-vX.Y.Z.launcher.apk)."
     dependsOn("assembleDirectAppRelease", "assembleDirectLauncherRelease")
 }
 
