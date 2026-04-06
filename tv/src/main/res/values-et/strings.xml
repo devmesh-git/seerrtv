@@ -1,0 +1,517 @@
+<resources>    
+    <!-- App Strings -->
+    <string name="app_name">SeerrTV</string>
+    
+    <!-- Carousel Section Strings -->
+    <string name="carouselSection_error_loadingFailed">Meedia laadimise viga</string>
+    <string name="carouselSection_error_noMediaFound">Sellest kategooriast ei leitud meediat</string>
+    
+    <!-- Category Strings -->
+    <string name="category_movieGenres">Filmižanrid</string>
+    <string name="category_networks">Telekanalid</string>
+    <string name="category_popularMovies">Populaarsed filmid</string>
+    <string name="category_popularSeries">Populaarsed sarjad</string>
+    <string name="category_recentlyAdded">Hiljuti lisatud</string>
+    <string name="category_recentRequests">Viimased soovid</string>
+    <string name="category_seriesGenres">Sarjade žanrid</string>
+    <string name="category_studios">Stuudiod</string>
+    <string name="category_trending">Trendid</string>
+    <string name="category_watchlist">Teie vaatamisloend</string>
+    <string name="action_add_to_watchlist">Lisa vaatamisloendisse</string>
+    <string name="action_remove_from_watchlist">Eemalda vaatamisloendist</string>
+    <string name="watchlist_added_success">Lisatud vaatamisloendisse</string>
+    <string name="watchlist_removed_success">Eemaldatud vaatamisloendist</string>
+    <string name="watchlist_update_failed">Vaatamisloendi uuendamine ebaõnnestus</string>
+    <string name="category_upcomingMovies">Tulevased filmid</string>
+    <string name="category_upcomingSeries">Tulevased sarjad</string>
+    
+    <!-- Common Strings -->
+    <string name="common_apiKey">API-võti</string>
+    <string name="common_areYouSure">Kas olete kindel?</string>
+    <string name="common_cancel">Tühista</string>
+    <string name="common_collectionLabel">KOGUMIK</string>
+    <string name="common_devmeshLogo">DevMeshi logo</string>
+    <string name="common_email">E-post</string>
+    <string name="common_error">Viga</string>
+    <string name="common_loadingMore">Laadimine…</string>
+    <string name="common_mediaPoster">Meedia plakat</string>
+    <string name="common_movieLabel">FILM</string>
+    <string name="common_notRequested">Pole soovitud</string>
+    <string name="common_personLabel">ISIK</string>
+    <string name="common_processing">Töötlemine</string>
+    <string name="common_readLess">Loe vähem</string>
+    <string name="common_readMore">Loe rohkem</string>
+    <string name="common_requested">Soovitud</string>
+    <string name="common_search">Otsi</string>
+    <string name="common_seriesLabel">SARI</string>
+    <string name="common_success">Edukas!</string>
+    <string name="common_unknown">Tundmatu</string>
+    <string name="common_versionPrefix">v</string>
+    <string name="common_yes">Jah</string>
+    <string name="common_no">Ei</string>
+    
+    <!-- Config Screen Strings -->
+    <string name="configScreen_apiKeyHelp">Sisestage oma API-võti serveri seadetest</string>
+    <string name="configScreen_authenticationFailed">Autentimine ebaõnnestus</string>
+    <string name="configScreen_authFailedMessage">Teie mandaadid ei kehti. See võib olla tingitud parooli muutusest või tühistatud juurdepääsust. Palun seadistage uuesti kehtivate mandaatidega.</string>
+    <string name="configScreen_authMethod">Autentimismeetod</string>
+    <string name="configScreen_authMethodHelp">Valige, kuidas soovite serveris autentida</string>
+    <string name="configScreen_authTypeEmby">Emby</string>
+    <string name="configScreen_authTypeJellyfin">Jellyfin</string>
+    <string name="configScreen_authTypeLocalUser">@string/configScreen_localUser</string>
+    <string name="configScreen_authTypePlex">Plex</string>
+    <string name="configScreen_browserBasedConfiguration">Brauseripõhine seadistamine</string>
+    <string name="configScreen_cloudflareClientId">Cloudflare Accessi kliendi ID</string>
+    <string name="configScreen_cloudflareClientSecret">Cloudflare Accessi kliendi saladus</string>
+    <string name="configScreen_cloudflareConfig">Cloudflare seadistamine</string>
+    <string name="configScreen_cloudflareHelp">Teie server on kaitstud Cloudflare Accessiga. Palun sisestage oma Cloudflare\'i mandaadid.</string>
+    <string name="configScreen_configInstructions">Palun skannige allolev QR-kood oma telefoniga või minge allolevale URL-ile, et SeerrTV seadistada</string>
+    <string name="configScreen_configServiceUnavailable">VIGA: Seadistusteenus pole saadaval. Palun proovige hiljem uuesti.</string>
+    <string name="configScreen_configSuccess">Seadistamine õnnestus!</string>
+    <string name="configScreen_connecting">Ühenduse loomine SeerrTV brauseri seadistusteenusega…</string>
+    <string name="configScreen_connectionFailed">Ühenduse loomine ebaõnnestus</string>
+    <string name="configScreen_connectionTimeout">Ühenduse aegumine - server kättesaamatu</string>
+    <string name="configScreen_displayName">Kuvatav nimi</string>
+    <string name="configScreen_embyConfig">Emby seadistamine</string>
+    <string name="configScreen_embyHelp">Sisestage oma Emby mandaadid. Seda kasutatakse teie meediaserveris autentimiseks.</string>
+    <string name="configScreen_hostname">Hostinimi</string>
+    <string name="configScreen_hostnameHelp">Sisestage siia oma Jellyseerr/Overseerr/Seerr teenuse hostinimi:</string>
+    <string name="configScreen_jellyfinConfig">Jellyfini seadistamine</string>
+    <string name="configScreen_jellyfinHelp">Sisestage oma Jellyfini serveri andmed ja mandaadid. Seda kasutatakse teie meediaserveris autentimiseks.</string>
+    <string name="configScreen_jellyfinHostname">Jellyfini serveri hostinimi</string>
+    <string name="configScreen_jellyfinPort">Serveri port</string>
+    <string name="configScreen_jellyfinUseSsl">Kasuta SSL-i</string>
+    <string name="configScreen_jellyseerrDetected">Tuvastati Jellyseerr server!</string>
+    <string name="configScreen_seerrDetected">Tuvastati Seerr server!</string>
+    <string name="configScreen_localUser">Kohalik kasutaja</string>
+    <string name="configScreen_localUserHelp">Sisestage oma e-posti aadress ja parool</string>
+    <string name="configScreen_loginSuccess">Sisse logitud!</string>
+    <string name="configScreen_manualConfiguration">Käsitsi seadistamine</string>
+    <string name="configScreen_next">Järgmine</string>
+    <string name="configScreen_orVisit">Või külastage:</string>
+    <string name="configScreen_overseerrDetected">Tuvastati Overseerr server!</string>
+    <string name="configScreen_password">Parool</string>
+    <string name="configScreen_permissions">Load</string>
+    <string name="configScreen_plexGettingPin">Plex PIN-koodi hankimine…</string>
+    <string name="configScreen_plexHelp">Logige sisse oma Plexi kontole, et pääseda juurde Overseerr/Jellyseerr/Seerrile.</string>
+    <string name="configScreen_plexInstructions">Oma Plexi konto linkimiseks järgige neid samme:</string>
+    <string name="configScreen_plexPinCode">Sisestage see kood:</string>
+    <string name="configScreen_plexTitle">Plexi autentimine</string>
+    <string name="configScreen_plexVisitLink">Külastage seda linki mis tahes seadmes:</string>
+    <string name="configScreen_protocol">Protokoll</string>
+    <string name="configScreen_protocolHttp">HTTP</string>
+    <string name="configScreen_protocolHttps">HTTPS</string>
+    <string name="configScreen_qrCode">Seadistamise QR-kood</string>
+    <string name="configScreen_reconfigure">Seadista uuesti</string>
+    <string name="configScreen_retry">Proovi uuesti</string>
+    <string name="configScreen_seerrIcon">Seerri ikoon</string>
+    <string name="configScreen_selectConfigurationMethod">Valige seadistusmeetod</string>
+    <string name="configScreen_serverConnection">Serveri ühendus</string>
+    <string name="configScreen_serverError">Serveri viga</string>
+    <string name="configScreen_testAndSave">Testi ja salvesta seadistus</string>
+    <string name="configScreen_unknownError">Tekkis tundmatu viga</string>
+    <string name="configScreen_username">Kasutajanimi</string>
+    <string name="configScreen_waitingAuth">Ootame autentimist…</string>
+    
+    <!-- Issue Strings -->
+    <string name="issue_add_comment_button">Lisa kommentaar</string>
+    <string name="issue_add_comment_placeholder">Lisa oma kommentaar...</string>
+    <string name="issue_add_comment_title">Lisa probleemile kommentaar</string>
+    <string name="issue_additional_comment_title">Lisakommentaar</string>
+    <string name="issue_audio_language">Vale heliriba keel</string>
+    <string name="issue_audio_missing">Heli puudub</string>
+    <string name="issue_audio_quality">Halb helikvaliteet</string>
+    <string name="issue_audio_stuttering">Heli hakkimine</string>
+    <string name="issue_audio_sync">Heli nihkes</string>
+    <string name="issue_button_report_issues">Teata probleemidest</string>
+    <string name="issue_button_view_issues">Vaata probleeme</string>
+    <string name="issue_by_label"> autor: </string>
+    <string name="issue_common_issues_title">Levinud probleemid (valikuline)</string>
+    <string name="issue_createdSuccessfully">Probleemist teatamine õnnestus</string>
+    <string name="issue_describe_placeholder">Kirjeldage probleemi...</string>
+    <string name="issue_details_title">Probleemid</string>
+    <string name="issue_episode">Osa</string>
+    <string name="issue_more_comments">+%1$d veel kommentaare</string>
+    <string name="issue_new_issue_button">Uus probleem</string>
+    <string name="issue_no_issues_message">Selle meedia kohta pole probleeme teatatud.</string>
+    <string name="issue_none_option">Puudub (ainult kohandatud kommentaar)</string>
+    <string name="issue_opened_label">Avatud </string>
+    <string name="issue_other_app_crash">Rakendus krahhis taasesituse ajal</string>
+    <string name="issue_other_incorrect_metadata">Valed metaandmed</string>
+    <string name="issue_other_missing_content">Puuduv sisu</string>
+    <string name="issue_other_other">Muu probleem</string>
+    <string name="issue_other_wrong_content">Vale film/osa</string>
+    <string name="issue_press_back_to_close">Sulgemiseks vajutage Tagasi</string>
+    <string name="issue_report_title">Teata probleemist</string>
+    <string name="issue_season_episode_title">Hooaeg ja osa</string>
+    <string name="issue_season">Hooaeg</string>
+    <string name="issue_status_label">Staatus</string>
+    <string name="issue_status_open">Avatud</string>
+    <string name="issue_status_resolved">Lahendatud</string>
+    <string name="issue_submit_button">Esita probleem</string>
+    <string name="issue_subtitle_display">Subtiitreid ei kuvata</string>
+    <string name="issue_subtitle_language">Vale subtiitrite keel</string>
+    <string name="issue_subtitle_missing">Subtiitrid puuduvad</string>
+    <string name="issue_subtitle_quality">Halb subtiitrite kvaliteet</string>
+    <string name="issue_subtitle_sync">Subtiitrid nihkes</string>
+    <string name="issue_type_audio">Heli</string>
+    <string name="issue_type_label">Tüüp</string>
+    <string name="issue_type_other">Muu</string>
+    <string name="issue_type_subtitle">Subtiiter</string>
+    <string name="issue_type_title">Probleemi tüüp</string>
+    <string name="issue_type_video">Video</string>
+    <string name="issue_video_aspect">Vale kuvasuhe</string>
+    <string name="issue_video_playback">Video ei mängi</string>
+    <string name="issue_video_quality">Halb videokvaliteet</string>
+    <string name="issue_video_stuttering">Video hakkib/hangub</string>
+    <string name="issue_video_sync">Video nihkes</string>
+    
+    <!-- Main Screen Strings -->
+    <string name="mainScreen_loading_pleaseWait">Palun oota</string>
+    <string name="mainScreen_mediaBackdrop">Meedia taustapilt</string>
+    <string name="mainScreen_pressBackAgainToExit">Rakendusest väljumiseks vajutage uuesti TAGASI</string>
+    <string name="mainScreen_pressUpToRefresh">Kõigi kategooriate värskendamiseks vajutage ÜLES</string>
+    <string name="mainScreen_refreshed">Värskendatud!</string>
+    <string name="mainScreen_settings">Seaded</string>
+    <string name="mainScreen_appsRow">Rakendused</string>
+    <string name="mainScreen_appOrderSaved">Rakenduste järjekord salvestatud</string>
+    <string name="mainScreen_reorderModeHint">Ümberjärjestamine: Vasak/Parem liigutamiseks, Enter või Tagasi salvestamiseks</string>
+    <string name="mainScreen_appsRowReorderTitle">Rakendused (ümberjärjestamine)</string>
+    
+    <!-- Media Details Strings -->
+    <string name="mediaDetails_cast">Näitlejad</string>
+    <string name="mediaDetails_crew">Meeskond</string>
+    <string name="mediaDetails_errorSubmittingRequest">Viga soovi esitamisel: %1$s</string>
+    <string name="mediaDetails_information">Teave</string>
+    <string name="mediaDetails_embyNotFound">Emby rakendust ei leitud. Palun installige Emby Play poest.</string>
+    <string name="mediaDetails_jellyfinNotFound">Jellyfini rakendust ei leitud. Palun installige Jellyfin Play poest.</string>
+    <string name="mediaDetails_manageRequest">Halda soovi</string>
+    <string name="mediaDetails_minutes">minutit</string>
+    <string name="mediaDetails_noMediaPlayerFound">Seadmest ei leitud meediamängija rakendust</string>
+    <string name="mediaDetails_ok">OK</string>
+    <string name="mediaDetails_playOnEmby">Mängi Emby-s</string>
+    <string name="mediaDetails_playOnJellyfin">Mängi Jellyfin-is</string>
+    <string name="mediaDetails_playOnPlex">Mängi PLEX-is</string>
+    <string name="mediaDetails_plexNotFound">Plexi rakendust ei leitud. Palun installige Plex Play poest.</string>
+    <string name="mediaDetails_requestMore">Soovi rohkem</string>
+    <string name="mediaDetails_similarMovies">Sarnased filmid</string>
+    <string name="mediaDetails_similarSeries">Sarnased sarjad</string>
+    <string name="mediaDetails_tvSeries">TV-sarjad</string>
+    <string name="mediaDetails_unknownDuration">Tundmatu</string>
+    <string name="mediaDetails_unknownError">Tundmatu viga</string>
+    <string name="mediaDetails_unknownTitle">Tundmatu pealkiri</string>
+    <string name="mediaDetails_unknownType">Tundmatu meediatüüp</string>
+    <string name="mediaDetails_watchTrailer">Vaata treilerit</string>
+    <string name="mediaDetails_youTubeNotFound">YouTube\'i rakendust ei leitud. Palun installige YouTube Play poest.</string>
+    
+    <!-- Media Discovery Strings -->
+    <string name="mediaDiscovery_movieKeywordSearch">Märksõnaga filmid</string>
+    <string name="mediaDiscovery_noImage">Pilt puudub</string>
+    <string name="mediaDiscovery_noResults">Tulemusi ei leitud. Proovige uuesti otsingukriteeriume kohandada.</string>
+    <string name="mediaDiscovery_personImage">Isiku pilt</string>
+    <string name="mediaDiscovery_searchPlaceholder">Otsi filme või sarju</string>
+    <string name="mediaDiscovery_searchResults">Otsingu tulemused</string>
+    <string name="mediaDiscovery_tvKeywordSearch">Märksõnaga sarjad</string>
+    
+    <!-- Media Info Table Strings -->
+    <string name="mediaInfoTable_budget">Eelarve</string>
+    <string name="mediaInfoTable_currentlyStreamingOn">Praegu voogedastatav teenuses</string>
+    <string name="mediaInfoTable_firstAirDate">Esmakordselt eetris</string>
+    <string name="mediaInfoTable_lastAirDate">Viimati eetris</string>
+    <string name="mediaInfoTable_more">rohkem</string>
+    <string name="mediaInfoTable_network">Telekanal</string>
+    <string name="mediaInfoTable_notApplicable">PUDUB</string>
+    <string name="mediaInfoTable_numberOfEpisodes">Osade arv</string>
+    <string name="mediaInfoTable_numberOfSeasons">Hooaegade arv</string>
+    <string name="mediaInfoTable_originalTitle">Originaalpealkiri</string>
+    <string name="mediaInfoTable_productionCountry">Tootjamaa</string>
+    <string name="mediaInfoTable_releaseDate">Väljalaske kuupäev</string>
+    <string name="mediaInfoTable_releaseDateTheatrical">Kinos</string>
+    <string name="mediaInfoTable_releaseDateDigital">Digitaalne</string>
+    <string name="mediaInfoTable_releaseDatePhysical">Füüsiline</string>
+    <string name="mediaInfoTable_revenue">Tulu</string>
+    <string name="mediaInfoTable_rottenTomatoesRating">Rotten Tomatoesi reiting</string>
+    <string name="mediaInfoTable_status">Staatus</string>
+    <string name="mediaInfoTable_studios">Stuudiod</string>
+    <string name="mediaInfoTable_tmdbRating">TMDB reiting</string>
+    
+    <!-- Person Screen Strings -->
+    <string name="personScreen_alsoKnownAs">Tuntud ka kui</string>
+    <string name="personScreen_born">Sündinud</string>
+    <string name="personScreen_crew">Meeskond</string>
+    <string name="personScreen_knownFor">Tuntud teoste poolest</string>
+    <string name="personScreen_personProfile">Isiku profiil</string>
+    <string name="personScreen_yearsOld">aastat vana</string>
+    
+    <!-- Request Action Strings -->
+    <string name="requestAction_approve">Kiida heaks</string>
+    <string name="requestAction_by">autor:</string>
+    <string name="requestAction_decline">Keeldu</string>
+    <string name="requestAction_delete">Kustuta</string>
+    <string name="requestAction_mediaStatus">Meedia staatus</string>
+    <string name="requestAction_modified">Muudetud</string>
+    <string name="requestAction_removeFromRadarr">Eemalda Radarrist</string>
+    <string name="requestAction_removeFromSonarr">Eemalda Sonarrist</string>
+    <string name="requestAction_requestStatus">Soovi staatus</string>
+    <string name="requestAction_unknownMediaType">Tundmatu meediatüüp</string>
+    <string name="requestAction_unknownProfile">Tundmatu profiil</string>
+    
+    <!-- Request Modal Strings -->
+    <string name="requestModal_episodes">Osad</string>
+    <string name="requestModal_errorLookingUpSeries">Viga sarja otsimisel: %1$s</string>
+    <string name="requestModal_errorSubmittingRequest">Viga soovi esitamisel</string>
+    <string name="requestModal_folderMenu">Juuskaust</string>
+    <string name="requestModal_lookupError">Viga sarja otsimisel</string>
+    <string name="requestModal_lookupLoading">Sarja otsimine...</string>
+    <string name="requestModal_noSeriesFound">Sarja ei leitud</string>
+    <string name="requestModal_notSelected">Pole valitud</string>
+    <string name="requestModal_qualityMenu">Kvaliteediprofiil</string>
+    <string name="requestModal_requestedSuccessfully">Soov on edukalt esitatud!</string>
+    <string name="requestModal_requestSeriesTitle">Soovi sarja</string>
+    <string name="requestModal_season">Hooaeg</string>
+    <string name="requestModal_seasonsMenu">Hooajad</string>
+    <string name="requestModal_selected">Valitud</string>
+    <string name="requestModal_selectQualityProfile">Vali kvaliteediprofiil</string>
+    <string name="requestModal_selectRootFolder">Vali juuskaust</string>
+    <string name="requestModal_selectSeasonError">Palun valige vähemalt üks hooaeg</string>
+    <string name="requestModal_selectServer">Vali server</string>
+    <string name="requestModal_selectTags">Vali sildid</string>
+    <string name="requestModal_serverMenu">Server</string>
+    <string name="requestModal_submit">Soovi</string>
+    <string name="requestModal_success">@string/common_success</string>
+    <string name="requestModal_tag">Silt</string>
+    <string name="requestModal_tagsMenu">Sildid</string>
+    <string name="requestModal_title">Soovi meediat</string>
+    <string name="requestModal_unableToMatch">Me ei suutnud seda sarja automaatselt tuvastada. Palun valige allpool õige vaste.</string>
+    
+    <!-- Request Status Strings -->
+    <string name="requestStatus_approved">Heaks kiidetud</string>
+    <string name="requestStatus_available">Saadaval</string>
+    <string name="requestStatus_blacklisted">Mustas nimekirjas</string>
+    <string name="requestStatus_completed">Lõpetatud</string>
+    <string name="requestStatus_declined">Tagasi lükatud</string>
+    <string name="requestStatus_deleted">Kustutatud</string>
+    <string name="requestStatus_failed">Ebaõnnestus</string>
+    <string name="requestStatus_notRequested">Pole soovitud</string>
+    <string name="requestStatus_partiallyAvailable">Osaliselt saadaval</string>
+    <string name="requestStatus_pending">Ootel</string>
+    
+    <!-- Settings Menu Strings -->
+    <string name="settingsMenu_12Hour">12 t</string>
+    <string name="settingsMenu_24Hour">24 t</string>
+    <string name="settingsMenu_aboutMenu">Teave</string>
+    <string name="settingsMenu_appLanguage">Rakenduse keel</string>
+    <string name="settingsMenu_authType">Autentimise tüüp</string>
+    <string name="settingsMenu_clockFormat">Kella vorming</string>
+    <string name="settingsMenu_configMenu">API seadistus</string>
+    <string name="settingsMenu_userProfiles">Kasutajaprofiilid</string>
+    <string name="settingsMenu_debugMode">Silumisrežiim</string>
+    <string name="settingsMenu_disabled">Väljas</string>
+    <string name="settingsMenu_discoverLanguageDE">Saksa</string>
+    <string name="settingsMenu_discoverLanguageEN">Inglise</string>
+    <string name="settingsMenu_discoverLanguageES">Hispaania</string>
+    <string name="settingsMenu_discoverLanguageFR">Prantsuse</string>
+    <string name="settingsMenu_discoverLanguageJA">Jaapani</string>
+    <string name="settingsMenu_discoverLanguageNL">Hollandi</string>
+    <string name="settingsMenu_discoverLanguagePT">Portugali</string>
+    <string name="settingsMenu_discoverLanguageZH">Hiina</string>
+    <string name="settingsMenu_discoverLanguageET">Eesti</string>
+    <string name="settingsMenu_discoveryMenu">Avastamiskeel</string>
+    <string name="settingsMenu_defaultStreamingRegion">Vaikimisi voogedastuspiirkond</string>
+    <string name="settingsMenu_edit">MUUDA</string>
+    <string name="settingsMenu_enabled">Sees</string>
+    <string name="settingsMenu_folderSelection">Kausta valik</string>
+    <string name="settingsMenu_hostname">Hostinimi</string>
+    <string name="settingsMenu_mediaServerType">Meediaserver</string>
+    <string name="settingsMenu_mediaServerTypeEmby">Emby</string>
+    <string name="settingsMenu_mediaServerTypeJellyfin">Jellyfin</string>
+    <string name="settingsMenu_mediaServerTypeNotConfigured">Pole seadistatud</string>
+    <string name="settingsMenu_mediaServerTypePlex">Plex</string>
+    <string name="settingsMenu_serverType">Serveri tüüp</string>
+    <string name="settingsMenu_thankYou">Täname teid meie toote toetamise eest.</string>
+    <string name="settingsMenu_aboutIntro">Oleme tänulikud kõigile, kes on panustanud SeerrTV-sse ja Seerri ökosüsteemi.</string>
+    <string name="settingsMenu_aboutOriginalAuthorLabel">Algne autor</string>
+    <string name="settingsMenu_aboutOriginalAuthorUrl">devmesh.ca</string>
+    <string name="settingsMenu_aboutCommunityLabel">Seerri kogukond</string>
+    <string name="settingsMenu_aboutCommunityUrl">https://seerr.dev</string>
+    <string name="settingsMenu_aboutDescription">SeerrTV on nüüd kogukonnapõhine ja loodud armastusega panustajate poolt kogu maailmas.</string>
+    <string name="settingsMenu_noUpdateAvailable">Uuendusi pole saadaval</string>
+    <string name="settingsMenu_appLanguageDescription">Rakenduse praegune keel.</string>
+    <string name="settingsMenu_discoveryLanguageDescription">Avastatava sisu jaoks kasutatav keel.</string>
+    <string name="settingsMenu_defaultRegionDescription">Voogedastusteenuste vaikepiirkond.</string>
+    <string name="settingsMenu_folderSelectionDescription">Kas soovide esitamisel kausta valida.</string>
+    <string name="settingsMenu_clockFormatDescription">Kellaaja kuvamine 12-tunnises või 24-tunnises vormingus.</string>
+    <string name="settingsMenu_trailerPlayerDescription">Mängi treilereid rakenduses või YouTube\'is.</string>
+    <string name="settingsMenu_toggleHint">Vajutage lülitamiseks Enter või Parem.</string>
+    <string name="settingsMenu_checkForUpdateTitle">Kontrolli uuendusi</string>
+    <string name="settingsMenu_checkForUpdateDescription">Kontrollige, kas rakenduse uus versioon on saadaval.</string>
+    <string name="settingsMenu_checkForUpdateHint">Kontrollimiseks vajutage Enter või Parem.</string>
+    <string name="settingsMenu_rightPanelPlaceholder">Valige üksus, et vaadata või muuta selle seadeid.</string>
+    <string name="settingsMenu_loadingRegions">Piirkondade laadimine...</string>
+    <string name="settingsMenu_trailerPlayer">Treileri mängija</string>
+    <string name="settingsMenu_trailerPlayer_youtubeApp">YouTube</string>
+    <string name="settingsMenu_trailerPlayer_inApp">Rakendusesisene</string>
+    <string name="settingsMenu_title">Seaded</string>
+    <string name="settingsMenu_username">Konto</string>
+
+    <!-- User Profiles Strings -->
+    <string name="userProfiles_loadProfileInfoError">Profiili teabe laadimine ebaõnnestus</string>
+    <string name="userProfiles_settingsSummary_title">Kasutajaprofiilide haldamine</string>
+    <string name="userProfiles_settingsSummary_noActiveProfile">Aktiivset profiili pole.</string>
+    <string name="userProfiles_settingsSummary_currentProfile">Praegune profiil</string>
+    <string name="userProfiles_settingsSummary_manageHint">Profiilide haldamiseks vajuta OK.</string>
+    <string name="userProfiles_pinProtected">PIN-iga kaitstud</string>
+    <string name="userProfiles_loadingProfileInfo">Profiili teabe laadimine...</string>
+    <string name="userProfiles_totalRequests">Soove kokku: %1$d</string>
+    <string name="userProfiles_movieRequests">Filmisoovid: %1$s</string>
+    <string name="userProfiles_seriesRequests">Sarjasoovid: %1$s</string>
+    <string name="userProfiles_quotaUnlimited">Piiranguta</string>
+    <string name="userProfiles_quotaPerDays">%1$d iga %2$d päeva tagant</string>
+    <string name="userProfiles_selectProfile">Vali profiil</string>
+    <string name="userProfiles_enterPin">Sisesta PIN</string>
+    <string name="userProfiles_noProfilesConfigureServer">Profiile pole veel. Seadistage oma server.</string>
+    <string name="userProfiles_incorrectPin">Vale PIN-kood</string>
+    <string name="userProfiles_keyDelete">DEL</string>
+    <string name="userProfiles_keyOk">OK</string>
+    <string name="userProfiles_actionConfigureApi">Seadista API</string>
+    <string name="userProfiles_actionAvatarColor">Avatari värv</string>
+    <string name="userProfiles_actionClearPin">Eemalda PIN</string>
+    <string name="userProfiles_actionSetPin">Määra PIN</string>
+    <string name="userProfiles_actionDeleteProfile">Kustuta profiil</string>
+    <string name="userProfiles_pinMinimumLengthError">PIN-kood peab olema vähemalt 4-kohaline</string>
+    <string name="userProfiles_titleList">Kasutajaprofiilid</string>
+    <string name="userProfiles_titleManageProfile">Halda profiili</string>
+    <string name="userProfiles_titleSetProfilePin">Määra profiili PIN-kood</string>
+    <string name="userProfiles_titleDeleteProfile">Kas kustutada profiil?</string>
+    <string name="userProfiles_noProfilesYet">Profiile pole veel.</string>
+    <string name="userProfiles_noActiveProfileFound">Aktiivset profiili ei leitud.</string>
+    <string name="userProfiles_deleteConfirmMessage">Kas kustutada oma aktiivne profiil? Seda ei saa tagasi võtta.</string>
+    <string name="userProfiles_pinLabel">PIN</string>
+    <string name="userProfiles_active">Aktiivne</string>
+    <string name="userProfiles_addProfile">Lisa profiil</string>
+    
+    <!-- Splash Screen Strings -->
+    <string name="splashScreen_authenticating">Autentimine…</string>
+    <string name="splashScreen_checkingConnection">Ühenduse kontrollimine…</string>
+    <string name="splashScreen_checkingForUpdates">Uuenduste kontrollimine…</string>
+    <string name="splashScreen_errorAuthFailed">Autentimise viga: Juurdepääs keelatud - Teie mandaadid ei kehti</string>
+    <string name="splashScreen_errorCloudflareRequired">Tuvastati Cloudflare\'i kaitse</string>
+    <string name="splashScreen_errorConnectionFailed">Ühenduse viga: Ühendus ebaõnnestus</string>
+    <string name="splashScreen_loadingConfiguration">Seadistuse laadimine…</string>
+    <string name="splashScreen_loadingRadarrConfig">Radari seadistuse laadimine…</string>
+    <string name="splashScreen_loadingSonarrConfig">Sonari seadistuse laadimine…</string>
+    <string name="splashScreen_noRadarrServersInfo">Radarr: Pole seadistatud</string>
+    <string name="splashScreen_noServersInfo">Ühtegi serverit pole seadistatud - kasutatakse ainult Overseerr/Jellyseerr/Seerr režiimi</string>
+    <string name="splashScreen_noSonarrServersInfo">Sonarr: Pole seadistatud</string>
+    <string name="splashScreen_mediaServerDetected_plex">Tuvastati Plex meediaserver</string>
+    <string name="splashScreen_mediaServerDetected_jellyfin">Tuvastati Jellyfin meediaserver</string>
+    <string name="splashScreen_mediaServerDetected_emby">Tuvastati Emby meediaserver</string>
+    <string name="splashScreen_mediaServerNotConfigured">Meediaserverit pole seadistatud</string>
+    <string name="splashScreen_radarrConfigComplete">Radarr: %1$d serverit - HD (%2$d) 4K (%3$d)</string>
+    <string name="splashScreen_ready">Valmis!</string>
+    <string name="splashScreen_sonarrConfigComplete">Sonarr: %1$d serverit - HD (%2$d) 4K (%3$d)</string>
+    <plurals name="splashScreen_sonarrConfigComplete_basic">
+        <item quantity="one">Sonarr: %1$d server</item>
+        <item quantity="other">Sonarr: %1$d serverit</item>
+    </plurals>
+    <plurals name="splashScreen_radarrConfigComplete_basic">
+        <item quantity="one">Radarr: %1$d server</item>
+        <item quantity="other">Radarr: %1$d serverit</item>
+    </plurals>
+    
+    <!-- Time Strings -->
+    <string name="time_dayAgo">1 päev tagasi</string>
+    <string name="time_days">%1$d päeva</string>
+    <string name="time_daysAgo">%1$d päeva tagasi</string>
+    <string name="time_estimatedIn">Hinnanguliselt</string>
+    <string name="time_hourAgo">1 tund tagasi</string>
+    <string name="time_hours">%1$d tundi</string>
+    <string name="time_hoursAgo">%1$d tundi tagasi</string>
+    <string name="time_justNow">just nüüd</string>
+    <string name="time_minuteAgo">1 minut tagasi</string>
+    <string name="time_minutes">%1$d minutit</string>
+    <string name="time_minutesAgo">%1$d minutit tagasi</string>
+    <string name="time_monthAgo">1 kuu tagasi</string>
+    <string name="time_monthsAgo">%1$d kuud tagasi</string>
+    <string name="time_secondAgo">1 sekund tagasi</string>
+    <string name="time_seconds">%1$d sekundit</string>
+    <string name="time_secondsAgo">%1$d sekundit tagasi</string>
+    <string name="time_yearAgo">1 aasta tagasi</string>
+    <string name="time_yearsAgo">%1$d aastat tagasi</string>
+    
+    <!-- Browse Screen Strings -->
+    <string name="browse_movies">Filmid</string>
+    <string name="browse_series">Sarjad</string>
+    <string name="browse_noResults">Tulemusi ei leitud</string>
+    
+    <!-- Sort Menu Strings -->
+    <string name="sort_title">Sorteeri</string>
+    <string name="sort_popularity">Populaarsus</string>
+    <string name="sort_releaseDate">Väljalaske kuupäev</string>
+    <string name="sort_firstAirDate">Esmaeetri kuupäev</string>
+    <string name="sort_tmdbRating">TMDB reiting</string>
+    <string name="sort_title_az">Pealkiri A→Z</string>
+    
+    <!-- Filter Strings -->
+    <string name="filter_title">Filtrid</string>
+    <string name="filter_clearAll">Eemalda kõik filtrid</string>
+    
+    <!-- Filter Section Strings -->
+    <string name="filter_releaseDate">Väljalaske kuupäev</string>
+    <string name="filter_genres">Žanrid</string>
+    <string name="filter_keywords">Märksõnad</string>
+    <string name="filter_originalLanguage">Originaalkeel</string>
+    <string name="filter_contentRating">Sisuhinnang</string>
+    <string name="filter_runtime">Kestus (minutites)</string>
+    <string name="filter_userScore">Kasutajate hinne</string>
+    <string name="filter_voteCount">Häälte arv</string>
+    <string name="filter_studios">Stuudiod</string>
+    <string name="filter_networks">Telekanalid</string>
+    <string name="filter_region">Piirkond</string>
+    <string name="filter_firstAirDate">Esmaeetri kuupäev</string>
+    <string name="filter_streamingServices">Voogedastusteenused</string>
+    <string name="filter_comingSoon">Tulekul</string>
+    
+    <!-- Filter Control Strings -->
+    <string name="filter_from">Alates</string>
+    <string name="filter_to">Kuni</string>
+    <string name="filter_min">Min</string>
+    <string name="filter_max">Max</string>
+    <string name="filter_anyLanguage">Mis tahes keel</string>
+    <string name="filter_dateFormat">AAAA-KK-PP</string>
+    <string name="filter_minRuntime">0</string>
+    <string name="filter_maxRuntime">400</string>
+    <string name="filter_minScore">1.0</string>
+    <string name="filter_maxScore">10.0</string>
+    <string name="filter_maxVotes">1000</string>
+    
+    <!-- Content Rating Strings -->
+    <string name="rating_nr">NR</string>
+    <string name="rating_g">G</string>
+    <string name="rating_pg">PG</string>
+    <string name="rating_pg13">PG-13</string>
+    <string name="rating_r">R</string>
+    <string name="rating_nc17">NC-17</string>
+    
+    <!-- Language Names -->
+    <string name="language_english">Inglise</string>
+    <string name="language_spanish">Hispaania</string>
+    <string name="language_french">Prantsuse</string>
+    <string name="language_german">Saksa</string>
+    <string name="language_italian">Itaalia</string>
+    <string name="language_portuguese">Portugali</string>
+    <string name="language_russian">Vene</string>
+    <string name="language_japanese">Jaapani</string>
+    <string name="language_korean">Korea</string>
+    <string name="language_chinese">Hiina</string>
+    <string name="language_estonian">Eesti</string>
+    
+    <!-- Other Filter Strings -->
+    <string name="filter_close">Sulge</string>
+    <string name="filter_regionChangeConfirm">Kas uuendada vaikimisi voogedastuspiirkonnaks %1$s?</string>
+    <string name="filter_notSet">Määramata</string>
+    <string name="filter_clearSelection">Tühista valik</string>
+    <string name="filter_applyRange">Rakenda vahemik</string>
+    <string name="filter_clearFilter">Eemalda filter</string>
+    <string name="filter_clearAllDates">Eemalda kõik kuupäevafiltrid</string>
+</resources>

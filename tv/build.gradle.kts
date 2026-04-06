@@ -2,8 +2,8 @@ import java.io.File
 import java.util.Properties
 
 // Single source for app version; used in defaultConfig and for direct-release APK naming
-val appVersionName = "0.28.03"
-val appVersionCode = 126
+val appVersionName = "0.28.04"
+val appVersionCode = 127
 
 plugins {
     // https://developer.android.com/jetpack/androidx/releases/hilt

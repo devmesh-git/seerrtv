@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.28.04
+
+### Estonian (ET) Language Support
+
+- **Full UI Localization** – Added comprehensive Estonian translations for the entire application interface (over 500 strings).
+- **Settings Integration** – Estonian is now selectable as both an Application Language and a Discovery Language in the settings menu.
+- **UI Optimization** – Tailored the length of Estonian translations specifically for TV screens to ensure critical labels and descriptions fit without clipping or overlapping.
+- **Supported Languages** – Registered the Estonian locale (`et`) in the core language management system to ensure persistence across sessions.
+
+### Files Modified
+
+- `tv/build.gradle.kts` – Version 0.28.04 (versionCode 127).
+- `tv/src/main/res/values/strings.xml` – Added Estonian language name and setting keys.
+- `tv/src/main/res/values-et/strings.xml` – New Estonian localization resource file.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/SettingsScreen.kt` – Registered Estonian in the UI selection menus.
+- `tv/src/main/java/ca/devmesh/seerrtv/util/SharedPreferencesUtil.kt` – Added `et` to `SUPPORTED_APP_LANGUAGES`.
+
+---
+
 ## 0.28.03
 
 ### Seerr CSRF & session cookies

@@ -141,7 +141,7 @@ object SharedPreferencesUtil {
     private const val KEY_FORCE_SPLASH_RESET_ON_NEXT = "force_splash_reset_on_next"
     private const val KEY_PENDING_NEW_PROFILE_CREATION = "pending_new_profile_creation"
     // Supported app languages
-    val SUPPORTED_APP_LANGUAGES = listOf("en", "de", "es", "fr", "ja", "nl", "pt", "zh")
+    val SUPPORTED_APP_LANGUAGES = listOf("en", "de", "es", "fr", "ja", "nl", "pt", "zh", "et")
 
     fun getAppLanguage(context: Context): String? {
         val activeProfile = getActiveProfile(context)

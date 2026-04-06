@@ -315,6 +315,7 @@
     <string name="settingsMenu_discoverLanguageNL">Dutch</string>
     <string name="settingsMenu_discoverLanguagePT">Portuguese</string>
     <string name="settingsMenu_discoverLanguageZH">Chinese</string>
+    <string name="settingsMenu_discoverLanguageET">Estonian</string>
     <string name="settingsMenu_discoveryMenu">Discovery Language</string>
     <string name="settingsMenu_defaultStreamingRegion">Default Streaming Region</string>
     <string name="settingsMenu_edit">EDIT</string>
@@ -503,6 +504,7 @@
     <string name="language_japanese">Japanese</string>
     <string name="language_korean">Korean</string>
     <string name="language_chinese">Chinese</string>
+    <string name="language_estonian">Estonian</string>
     
     <!-- Other Filter Strings -->
     <string name="filter_close">Close</string>

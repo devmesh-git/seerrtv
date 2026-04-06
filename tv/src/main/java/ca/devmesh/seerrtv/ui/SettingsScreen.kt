@@ -1265,6 +1265,7 @@ class SettingsScreenController(
         "nl" to R.string.settingsMenu_discoverLanguageNL,
         "pt" to R.string.settingsMenu_discoverLanguagePT,
         "zh" to R.string.settingsMenu_discoverLanguageZH,
+        "et" to R.string.settingsMenu_discoverLanguageET,
     )
 
     // App Language options (same as discovery for now)
