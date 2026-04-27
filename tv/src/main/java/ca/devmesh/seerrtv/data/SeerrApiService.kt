@@ -374,7 +374,7 @@ class SeerrApiService @Inject constructor(
     data class GenreResponse(
         val id: Int,
         val name: String,
-        val backdrops: List<String>
+        val backdrops: List<String> = emptyList()
     )
 
     /**
@@ -2533,6 +2533,77 @@ class SeerrApiService @Inject constructor(
             totalResults = allGenres.size,
             hasMorePages = hasMorePages
         ))
+    }
+
+    /**
+     * Get the FULL list of movie genres from TMDB (via Jellyseerr/Overseerr `genres/movie` endpoint).
+     * Unlike [getMovieGenres] which uses the curated `discover/genreslider/movie` endpoint
+     * (used for the home-screen carousel and limited to genres that have backdrop art),
+     * this returns every TMDB movie genre (Action, Adventure, Animation, Comedy, Crime,
+     * Documentary, Drama, Family, Fantasy, History, Horror, Music, Mystery, Romance,
+     * Science Fiction, TV Movie, Thriller, War, Western).
+     * Used by the filters drawer so the user can filter by ANY genre.
+     */
+    suspend fun getAllMovieGenres(context: Context): ApiResult<List<GenreResponse>> {
+        val locale = SharedPreferencesUtil.getDiscoveryLanguage(context)
+        val apiEndpoint = "genres/movie"
+        val localizedEndpoint = if (locale != "en") "$apiEndpoint?language=$locale" else apiEndpoint
+
+        return try {
+            when (val httpResult = executeApiCall<HttpResponse>(localizedEndpoint)) {
+                is ApiResult.Success -> {
+                    val responseBody = httpResult.data.bodyAsText()
+                    try {
+                        val genresList = json.decodeFromString<List<GenreResponse>>(responseBody)
+                        if (BuildConfig.DEBUG) {
+                            Log.d("SeerrApiService", "Loaded ${genresList.size} movie genres from genres/movie")
+                        }
+                        ApiResult.Success(genresList)
+                    } catch (e: kotlinx.serialization.SerializationException) {
+                        Log.e("SeerrApiService", "Error parsing movie genres array: ${e.message}")
+                        ApiResult.Error(e)
+                    }
+                }
+                is ApiResult.Error -> ApiResult.Error(httpResult.exception, httpResult.statusCode)
+                else -> ApiResult.Loading()
+            }
+        } catch (e: Exception) {
+            Log.e("SeerrApiService", "Error fetching all movie genres: ${e.message}")
+            ApiResult.Error(e)
+        }
+    }
+
+    /**
+     * Get the FULL list of TV genres from TMDB (via Jellyseerr/Overseerr `genres/tv` endpoint).
+     * See [getAllMovieGenres] for the rationale.
+     */
+    suspend fun getAllTVGenres(context: Context): ApiResult<List<GenreResponse>> {
+        val locale = SharedPreferencesUtil.getDiscoveryLanguage(context)
+        val apiEndpoint = "genres/tv"
+        val localizedEndpoint = if (locale != "en") "$apiEndpoint?language=$locale" else apiEndpoint
+
+        return try {
+            when (val httpResult = executeApiCall<HttpResponse>(localizedEndpoint)) {
+                is ApiResult.Success -> {
+                    val responseBody = httpResult.data.bodyAsText()
+                    try {
+                        val genresList = json.decodeFromString<List<GenreResponse>>(responseBody)
+                        if (BuildConfig.DEBUG) {
+                            Log.d("SeerrApiService", "Loaded ${genresList.size} TV genres from genres/tv")
+                        }
+                        ApiResult.Success(genresList)
+                    } catch (e: kotlinx.serialization.SerializationException) {
+                        Log.e("SeerrApiService", "Error parsing TV genres array: ${e.message}")
+                        ApiResult.Error(e)
+                    }
+                }
+                is ApiResult.Error -> ApiResult.Error(httpResult.exception, httpResult.statusCode)
+                else -> ApiResult.Loading()
+            }
+        } catch (e: Exception) {
+            Log.e("SeerrApiService", "Error fetching all TV genres: ${e.message}")
+            ApiResult.Error(e)
+        }
     }
 
     /**
