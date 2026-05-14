@@ -6,7 +6,8 @@ on:
     tags:
       - 'v*'
   pull_request:
-    types: [opened, closed]
+    branches: [main]
+    types: [opened, closed, reopened,synchronize]
   issues:
     types: [opened, closed]
   release:
