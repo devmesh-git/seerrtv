@@ -9,15 +9,6 @@ data class UserResponse(
 )
 
 @Serializable
-data class AuthMeResponse(
-    val id: Int,
-    val email: String? = null,
-    val permissions: Int? = null,
-    val username: String? = null,
-    val displayName: String
-)
-
-@Serializable
 data class User(
     val id: Int,
     val email: String? = null,

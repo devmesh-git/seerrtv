@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import ca.devmesh.seerrtv.model.AvatarColor
+import ca.devmesh.seerrtv.ui.components.ProfileAvatar
 import ca.devmesh.seerrtv.model.UserProfile
 import ca.devmesh.seerrtv.ui.focus.AppFocusManager
 import ca.devmesh.seerrtv.ui.focus.AppFocusState
@@ -429,10 +430,13 @@ fun UserProfilesManagementScreen(
                         Column(modifier = Modifier.fillMaxSize()) {
                             val result = authUserResult
                             val authUser = (result as? ApiResult.Success)?.data
+                            val remoteAvatarUrl = apiService.resolveAvatarImageUrl(authUser?.avatar)
+                                ?: activeProfile.remoteAvatarUrl
                             ProfileMgmtActiveCard(
                                 activeProfile = activeProfile,
                                 authUser = authUser,
-                                isLoadingAuthUser = isLoadingAuthUser
+                                isLoadingAuthUser = isLoadingAuthUser,
+                                remoteAvatarUrl = remoteAvatarUrl
                             )
                             Spacer(modifier = Modifier.height(16.dp))
                             LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -525,16 +529,14 @@ private fun ProfileMgmtRow(
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
+        ProfileAvatar(
             modifier = Modifier
                 .size(48.dp)
-                .clip(CircleShape)
-                .background(avatarColor)
                 .border(2.dp, Color.White.copy(alpha = 0.25f), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(text = profile.avatarInitials.take(2), color = Color.White, fontWeight = FontWeight.Bold)
-        }
+            initials = profile.avatarInitials,
+            backgroundColor = avatarColor,
+            remoteAvatarUrl = profile.remoteAvatarUrl
+        )
         Spacer(modifier = Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
             Text(
@@ -590,7 +592,8 @@ private fun AddProfileRow(
 private fun ProfileMgmtActiveCard(
     activeProfile: UserProfile,
     authUser: User?,
-    isLoadingAuthUser: Boolean
+    isLoadingAuthUser: Boolean,
+    remoteAvatarUrl: String?
 ) {
     val avatarColor = AvatarColor.fromKey(activeProfile.avatarColor).toColor()
     Row(
@@ -600,16 +603,15 @@ private fun ProfileMgmtActiveCard(
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
+        ProfileAvatar(
             modifier = Modifier
                 .size(56.dp)
-                .clip(CircleShape)
-                .background(avatarColor)
                 .border(2.dp, Color.White.copy(alpha = 0.25f), CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(text = activeProfile.avatarInitials.take(2), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-        }
+            initials = activeProfile.avatarInitials,
+            backgroundColor = avatarColor,
+            remoteAvatarUrl = remoteAvatarUrl,
+            fontSize = 18.sp
+        )
         Spacer(modifier = Modifier.width(16.dp))
         Column {
             Text(text = activeProfile.name, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)

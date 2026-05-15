@@ -122,6 +122,7 @@ object SharedPreferencesUtil {
     private const val KEY_USER_PERMISSIONS = "user_permissions"
     private const val KEY_USER_ID = "user_id"
     private const val KEY_USER_DISPLAY_NAME = "user_display_name"
+    private const val KEY_USER_REMOTE_AVATAR = "user_remote_avatar_url"
     private const val KEY_PLEX_CLIENT_ID = "plex_client_id"
     private const val KEY_PLEX_AUTH_TOKEN = "plex_auth_token"
     private const val KEY_DISCOVERY_LANGUAGE = "discovery_language"
@@ -1019,21 +1020,37 @@ object SharedPreferencesUtil {
         return sharedPrefs.getString(KEY_SERVER_TYPE, "UNKNOWN") ?: "UNKNOWN"
     }
 
-    fun saveUserInfo(context: Context, userId: Int, displayName: String, permissions: Int) {
+    fun saveUserInfo(
+        context: Context,
+        userId: Int,
+        displayName: String,
+        permissions: Int,
+        remoteAvatarUrl: String? = null
+    ) {
         val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         with(sharedPrefs.edit()) {
             putInt(KEY_USER_ID, userId)
             putString(KEY_USER_DISPLAY_NAME, displayName)
             putInt(KEY_USER_PERMISSIONS, permissions)
+            putString(KEY_USER_REMOTE_AVATAR, remoteAvatarUrl.orEmpty())
             commit()
         }
-        syncActiveProfileWithServerDisplayName(context, displayName)
+        syncActiveProfileWithServerUser(context, displayName, remoteAvatarUrl)
+    }
+
+    fun getRemoteAvatarUrl(context: Context): String? {
+        val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        return sharedPrefs.getString(KEY_USER_REMOTE_AVATAR, null)?.trim()?.takeIf { it.isNotEmpty() }
     }
 
     /**
-     * Keeps the active local profile name + avatar initials aligned with [auth/me] after login.
+     * Keeps the active local profile name, initials, and remote avatar aligned with [auth/me] after login.
      */
-    private fun syncActiveProfileWithServerDisplayName(context: Context, displayName: String) {
+    private fun syncActiveProfileWithServerUser(
+        context: Context,
+        displayName: String,
+        remoteAvatarUrl: String?
+    ) {
         val trimmed = displayName.trim()
         if (trimmed.isEmpty()) return
         val profilesJson =
@@ -1063,6 +1080,7 @@ object SharedPreferencesUtil {
                 p.copy(
                     name = trimmed,
                     avatarInitials = resolvedInitials,
+                    remoteAvatarUrl = remoteAvatarUrl,
                     updatedAt = System.currentTimeMillis()
                 )
             } else p

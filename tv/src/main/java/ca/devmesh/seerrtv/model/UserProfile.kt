@@ -22,6 +22,8 @@ data class UserProfile(
     @SerialName("email") val email: String? = null,
     @SerialName("avatar_initials") val avatarInitials: String,
     @SerialName("avatar_color") val avatarColor: String,
+    /** Resolved absolute URL from Seerr `/auth/me` avatar when available (Plex thumb or `/avatarproxy/...`). */
+    @SerialName("remote_avatar_url") val remoteAvatarUrl: String? = null,
     /**
      * Optional PIN hash used for lightweight profile protection.
      * Empty string means no PIN configured.

@@ -5,7 +5,7 @@ import android.content.Context
 import android.util.Log
 import androidx.compose.ui.text.intl.Locale
 import ca.devmesh.seerrtv.BuildConfig
-import ca.devmesh.seerrtv.model.AuthMeResponse
+import ca.devmesh.seerrtv.util.AvatarUrlResolver
 import ca.devmesh.seerrtv.model.AuthType
 import ca.devmesh.seerrtv.model.BrowseModels
 import ca.devmesh.seerrtv.model.CombinedCredits
@@ -158,7 +158,9 @@ class SeerrApiService @Inject constructor(
     data class UserInfo(
         val id: Int,
         val displayName: String,
-        val permissions: Int
+        val permissions: Int,
+        val avatar: String? = null,
+        val remoteAvatarUrl: String? = null
     )
 
     private var currentAuthToken: AuthToken? = null
@@ -364,6 +366,74 @@ class SeerrApiService @Inject constructor(
     }
 
     fun getCurrentUserInfo(): UserInfo? = currentUserInfo
+
+    /** Site origin for Seerr (no `/api/v1` suffix); used for `/avatarproxy/...` paths. */
+    fun getSeerrOrigin(): String {
+        val protocol = SharedPreferencesUtil.sanitizeProtocolForApi(config.protocol)
+        val hostname = SharedPreferencesUtil.sanitizeHostnameForApi(config.hostname, stripPort = false)
+        return "$protocol://$hostname".replace(Regex("([^:])//+"), "$1/")
+    }
+
+    fun resolveAvatarImageUrl(avatar: String?): String? {
+        val origin = getSeerrOrigin()
+        if (origin.isBlank()) return null
+        return AvatarUrlResolver.resolve(avatar, origin)
+    }
+
+    /** Returns an authenticated copy of [request] if it targets the Seerr origin, or null otherwise. */
+    internal fun authenticateImageRequestIfNeeded(request: okhttp3.Request): okhttp3.Request? {
+        val url = request.url.toString()
+        if (url.isBlank()) return null
+        val origin = getSeerrOrigin()
+        if (origin.isBlank() || !origin.contains("://")) return null
+        if (!url.startsWith(origin, ignoreCase = true)) return null
+        return buildAuthenticatedImageRequest(request, origin)
+    }
+
+    private fun buildAuthenticatedImageRequest(request: okhttp3.Request, origin: String): okhttp3.Request {
+        val builder = request.newBuilder()
+        builder.header("User-Agent", "SeerrTV v${BuildConfig.VERSION_NAME}")
+        if (config.cloudflareEnabled && config.cfClientId.isNotBlank() && config.cfClientSecret.isNotBlank()) {
+            builder.header("CF-Access-Client-Id", config.cfClientId)
+            builder.header("CF-Access-Client-Secret", config.cfClientSecret)
+        }
+        when (config.getAuthType()) {
+            AuthType.ApiKey -> {
+                if (config.apiKey.isNotBlank()) {
+                    builder.header("X-Api-Key", config.apiKey)
+                }
+                val cookieParts = mutableListOf<String>()
+                apiKeyCsrfCookieValue?.let { cookieParts.add("$COOKIE_CSRF=$it") }
+                if (cookieParts.isNotEmpty()) {
+                    builder.header("Cookie", cookieParts.joinToString("; "))
+                }
+            }
+            AuthType.LocalUser, AuthType.Jellyfin, AuthType.Emby, AuthType.Plex -> {
+                currentAuthToken?.let { token ->
+                    builder.header("Cookie", buildSessionCookieHeader(token))
+                }
+            }
+        }
+        return builder.build()
+    }
+
+    private fun persistAuthenticatedUser(user: ca.devmesh.seerrtv.model.User) {
+        val remoteAvatarUrl = resolveAvatarImageUrl(user.avatar)
+        currentUserInfo = UserInfo(
+            id = user.id,
+            displayName = user.displayName,
+            permissions = user.permissions ?: 0,
+            avatar = user.avatar,
+            remoteAvatarUrl = remoteAvatarUrl
+        )
+        SharedPreferencesUtil.saveUserInfo(
+            context,
+            user.id,
+            user.displayName,
+            user.permissions ?: 0,
+            remoteAvatarUrl
+        )
+    }
 
     fun getAuthType(): AuthType = config.getAuthType()
 
@@ -1774,26 +1844,15 @@ class SeerrApiService @Inject constructor(
                     is ApiResult.Success -> {
                         Log.d("SeerrApiService", "✅ Login successful, testing token with /auth/me")
                         // Test if the token works by making a request to /auth/me
-                        when (val tokenTestResponse = executeApiCall<AuthMeResponse>("auth/me")) {
+                        when (val tokenTestResponse = executeApiCall<ca.devmesh.seerrtv.model.User>("auth/me")) {
                             is ApiResult.Success -> {
                                 Log.d("SeerrApiService", "✅ Authentication successful")
                                 val user = tokenTestResponse.data
-                                // Update user info with correct permissions
-                                currentUserInfo = UserInfo(
-                                    id = user.id,
-                                    displayName = user.displayName,
-                                    permissions = user.permissions ?: 0
-                                )
+                                persistAuthenticatedUser(user)
                                 Log.d("SeerrApiService", "ID: ${currentUserInfo?.id}")
                                 Log.d("SeerrApiService", "DisplayName: ${currentUserInfo?.displayName}")
                                 Log.d("SeerrApiService", "Permissions: ${currentUserInfo?.permissions}")
-                                // Store in SharedPreferences
-                                SharedPreferencesUtil.saveUserInfo(
-                                    context,
-                                    user.id,
-                                    user.displayName,
-                                    user.permissions ?: 0
-                                )
+                                Log.d("SeerrApiService", "Avatar: ${currentUserInfo?.remoteAvatarUrl ?: "none"}")
                                 
                                 // Detect media server type after successful authentication
                                 detectMediaServerType()
@@ -3157,16 +3216,10 @@ class SeerrApiService @Inject constructor(
 
             // Test the current token to make sure it's still valid
             Log.d("SeerrApiService", "Testing current auth token...")
-            when (val testResult = executeApiCall<AuthMeResponse>("auth/me")) {
+            when (val testResult = executeApiCall<ca.devmesh.seerrtv.model.User>("auth/me")) {
                 is ApiResult.Success -> {
                     Log.d("SeerrApiService", "Current auth token is valid")
-                    // Update user info
-                    val user = testResult.data
-                    currentUserInfo = UserInfo(
-                        id = user.id,
-                        displayName = user.displayName,
-                        permissions = user.permissions ?: 0
-                    )
+                    persistAuthenticatedUser(testResult.data)
                     ApiResult.Success(Unit)
                 }
                 is ApiResult.Error -> {

@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import ca.devmesh.seerrtv.model.AvatarColor
+import ca.devmesh.seerrtv.ui.components.ProfileAvatar
 import ca.devmesh.seerrtv.model.UserProfile
 import ca.devmesh.seerrtv.data.SeerrApiService
 import ca.devmesh.seerrtv.ui.focus.AppFocusManager
@@ -494,25 +495,19 @@ private fun ProfileRow(profile: UserProfile, isSelected: Boolean) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Box(
+        ProfileAvatar(
             modifier = Modifier
                 .size(90.dp)
-                .clip(CircleShape)
-                .background(avatarColor)
                 .border(
                     width = avatarBorderWidth,
                     color = Color.White.copy(alpha = avatarBorderAlpha),
                     shape = CircleShape
                 ),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = profile.avatarInitials.take(2),
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                fontSize = 24.sp
-            )
-        }
+            initials = profile.avatarInitials,
+            backgroundColor = avatarColor,
+            remoteAvatarUrl = profile.remoteAvatarUrl,
+            fontSize = 24.sp
+        )
 
         Spacer(modifier = Modifier.height(12.dp))
 

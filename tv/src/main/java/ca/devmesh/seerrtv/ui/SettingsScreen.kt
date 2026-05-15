@@ -41,6 +41,7 @@ import android.util.Log
 import ca.devmesh.seerrtv.data.SeerrApiService
 import ca.devmesh.seerrtv.data.ApiResult
 import ca.devmesh.seerrtv.model.AvatarColor
+import ca.devmesh.seerrtv.ui.components.ProfileAvatar
 import ca.devmesh.seerrtv.model.User
 import ca.devmesh.seerrtv.model.UserProfile
 import ca.devmesh.seerrtv.model.Region
@@ -478,19 +479,18 @@ private fun UserProfilesSummaryView(
             modifier = Modifier.padding(bottom = 16.dp)
         ) {
             val avatarColor = AvatarColor.fromKey(activeProfile.avatarColor).toColor()
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .background(avatarColor, CircleShape)
-            ) {
-                Text(
-                    text = activeProfile.avatarInitials.take(2),
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.align(Alignment.Center),
-                    fontSize = 20.sp
-                )
-            }
+            // Screens with live authUser re-resolve here; screens without it (TopBar, ProfileSelection)
+            // fall back directly to the pre-stored profile.remoteAvatarUrl.
+            val remoteAvatarUrl = apiService.resolveAvatarImageUrl(authUser?.avatar)
+                ?: activeProfile.remoteAvatarUrl
+                ?: SharedPreferencesUtil.getRemoteAvatarUrl(context)
+            ProfileAvatar(
+                modifier = Modifier.size(56.dp),
+                initials = activeProfile.avatarInitials,
+                backgroundColor = avatarColor,
+                remoteAvatarUrl = remoteAvatarUrl,
+                fontSize = 20.sp
+            )
 
             Spacer(modifier = Modifier.width(16.dp))
 

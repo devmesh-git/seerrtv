@@ -80,6 +80,7 @@ import ca.devmesh.seerrtv.viewmodel.MediaDiscoveryViewModel
 import ca.devmesh.seerrtv.viewmodel.PersonViewModel
 import ca.devmesh.seerrtv.viewmodel.SeerrViewModel
 import ca.devmesh.seerrtv.util.LocaleContextWrapper
+import ca.devmesh.seerrtv.data.SeerrImageAuthInterceptor
 import coil3.ImageLoader
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import dagger.hilt.android.AndroidEntryPoint
@@ -128,6 +129,7 @@ class SeerrTV : Application() {
                 TrustAllCerts.trustAllCerts[0]
             )
             .hostnameVerifier { _, _ -> true }
+            .addInterceptor(SeerrImageAuthInterceptor())
             .build()
         val optimizedOkHttpClient = okHttpClient.newBuilder()
             .dispatcher(

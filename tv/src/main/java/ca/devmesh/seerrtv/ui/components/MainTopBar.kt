@@ -88,6 +88,8 @@ fun MainTopBar(
             val activeProfile: UserProfile? = SharedPreferencesUtil.getActiveProfile(context)
             val avatarInitials = activeProfile?.avatarInitials?.take(2) ?: "??"
             val avatarColor = AvatarColor.fromKey(activeProfile?.avatarColor).toColor()
+            val remoteAvatarUrl = activeProfile?.remoteAvatarUrl?.takeIf { it.isNotBlank() }
+                ?: SharedPreferencesUtil.getRemoteAvatarUrl(context)
 
             // Settings icon
             Box(
@@ -186,14 +188,9 @@ fun MainTopBar(
             Spacer(modifier = Modifier.width(4.dp))
 
             // Profile avatar (to enter profile selection) - right of the clock
-            Box(
+            ProfileAvatar(
                 modifier = Modifier
                     .size(48.dp)
-                    .clip(CircleShape)
-                    .background(
-                        color = if (isAvatarFocused) avatarColor else avatarColor.copy(alpha = 0.85f),
-                        shape = CircleShape
-                    )
                     .then(
                         if (isAvatarFocused) {
                             Modifier.border(2.dp, Color.White, CircleShape)
@@ -201,15 +198,11 @@ fun MainTopBar(
                             Modifier
                         }
                     ),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = avatarInitials,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
+                initials = avatarInitials,
+                backgroundColor = if (isAvatarFocused) avatarColor else avatarColor.copy(alpha = 0.85f),
+                remoteAvatarUrl = remoteAvatarUrl,
+                fontSize = MaterialTheme.typography.bodyMedium.fontSize
+            )
         }
     }
 }
