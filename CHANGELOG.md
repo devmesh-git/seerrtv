@@ -1,5 +1,60 @@
 # Changelog
 
+## 0.28.05
+
+### Browse / genre filters (parity with Seerr web)
+
+- **Full TMDB genre lists** – The Movies/Series filters drawer loads genres from `genres/movie` and `genres/tv` instead of the paginated `discover/genreslider/*` path (which only ever surfaced the first client-side page of genres). Users now see every official TMDB genre, alphabetically sorted, aligned with how the Seerr web browse filters work.
+- **Home carousel unchanged** – The main-screen Movie/Series genre rows still use `discover/genreslider/*` so backdrop artwork remains unchanged.
+- **`GenreResponse.backdrops`** – Defaults to an empty list so the same model deserializes both endpoints (`genres/*` omits backdrops).
+- **Clear API naming** – Carousel helpers renamed to `getMovieGenreSlider` / `getTVGenreSlider`; filter loaders renamed to `getMovieGenresForFilters` / `getTVGenresForFilters`. Credits to [@leceuv](https://github.com/leceuv) for the filter endpoint fix ([#6](https://github.com/devmesh-git/seerrtv/pull/6)).
+
+### User profiles / remote avatars
+
+- **`UserProfile.remoteAvatarUrl`** – Persists the resolved avatar URL from Seerr `/auth/me` when the backend supplies Plex thumbs or root-relative paths (`/avatarproxy/...`, Jellyfin/Emby).
+- **`AvatarUrlResolver`** – Normalizes avatar strings to absolute HTTPS URLs against the configured Seerr origin (handles absolute URLs, protocol-relative `//`, and leading `/`).
+- **`ProfileAvatar` composable** – Circular avatar with Coil loading over initials fallback; logs failures and falls back cleanly when the image cannot load.
+- **Authenticated profile images** – Shared Coil `ImageLoader` attaches `SeerrImageAuthInterceptor`, which applies existing session/API-key cookies and CSRF headers to requests targeting the Seerr host (`authenticateImageRequestIfNeeded` in `SeerrApiService`).
+- **UI wiring** – Top bar, settings header, profile selection, and profile management screens use `ProfileAvatar` with persisted remote URLs.
+
+### Build toolchains & dependencies
+
+- **`tv/build.gradle.kts`** – Version 0.28.05 (versionCode 128).
+- **Android Gradle Plugin** – 9.2.1.
+- **Kotlin** – 2.3.21; **KSP** – 2.3.2.
+- **Compose BOM** – 2026.05.00 (Compose UI/Foundation 1.11.1 per BOM pins).
+- **Other bumps** – Ktor 3.5.0; Coil 3.4.0; assorted AndroidX lifecycle/navigation versions aligned with the catalog.
+- **Gradle wrapper** – 9.4.1.
+
+### CI
+
+- **Discord notifications** – Workflow also reacts to GitHub **release** events (published) and tag pushes (in addition to existing triggers).
+
+### Files Modified
+
+- `.github/workflows/discord-notifications.yml` – Release/tag Discord notification steps.
+- `gradle/libs.versions.toml` – AGP, Kotlin, Compose BOM, Ktor, Coil, and related dependency bumps.
+- `gradle/wrapper/gradle-wrapper.properties` – Gradle 9.4.1.
+- `tv/build.gradle.kts` – Version 0.28.05 (versionCode 128).
+- `tv/src/main/java/ca/devmesh/seerrtv/MainActivity.kt` – Coil `ImageLoader` adds `SeerrImageAuthInterceptor`.
+- `tv/src/main/java/ca/devmesh/seerrtv/di/AppModule.kt` – Registers `SeerrImageAuthHolder.apiService` for image auth.
+- `tv/src/main/java/ca/devmesh/seerrtv/data/SeerrApiService.kt` – Genre slider vs filter endpoints; `authenticateImageRequestIfNeeded`; optional `GenreResponse.backdrops`.
+- `tv/src/main/java/ca/devmesh/seerrtv/data/SeerrImageAuthHolder.kt` – **New** — holder for image-auth delegation.
+- `tv/src/main/java/ca/devmesh/seerrtv/data/SeerrImageAuthInterceptor.kt` – **New** — OkHttp interceptor for Seerr-hosted images.
+- `tv/src/main/java/ca/devmesh/seerrtv/model/UserProfile.kt` – `remoteAvatarUrl` field.
+- `tv/src/main/java/ca/devmesh/seerrtv/model/UserModels.kt` – **Removed** (unused types consolidated elsewhere).
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/components/ProfileAvatar.kt` – **New** — remote avatar + initials UI.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/components/MainTopBar.kt` – Uses `ProfileAvatar`.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/SettingsScreen.kt` – Uses `ProfileAvatar`.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/UserProfileSelectionScreen.kt` – Uses `ProfileAvatar`.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/UserProfilesManagementScreen.kt` – Uses `ProfileAvatar`.
+- `tv/src/main/java/ca/devmesh/seerrtv/util/AvatarUrlResolver.kt` – **New** — Seerr avatar URL resolution.
+- `tv/src/main/java/ca/devmesh/seerrtv/util/SharedPreferencesUtil.kt` – Persist/restore `remoteAvatarUrl` on profiles.
+- `tv/src/main/java/ca/devmesh/seerrtv/viewmodel/MediaDiscoveryViewModel.kt` – `loadGenres` uses filter genre endpoints + sort.
+- `tv/src/main/java/ca/devmesh/seerrtv/viewmodel/SeerrViewModel.kt` – Calls renamed genre slider methods.
+
+---
+
 ## 0.28.04
 
 ### Estonian (ET) Language Support
