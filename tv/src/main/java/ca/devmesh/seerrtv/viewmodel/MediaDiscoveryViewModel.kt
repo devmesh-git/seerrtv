@@ -924,13 +924,11 @@ class MediaDiscoveryViewModel @Inject constructor(
     
     fun loadGenres(mediaType: MediaType) {
         viewModelScope.launch {
-            // Use the full TMDB genres list (genres/movie or genres/tv) so the user
-            // can filter by every genre — not the curated genreslider list which is
-            // limited to genres that have backdrop art and is paginated to 8 per page.
+            // genres/movie | genres/tv — full filter list (matches Seerr web app; not genreslider)
             val result = if (mediaType == MediaType.MOVIE) {
-                apiService.getAllMovieGenres(getApplication())
+                apiService.getMovieGenresForFilters(getApplication())
             } else {
-                apiService.getAllTVGenres(getApplication())
+                apiService.getTVGenresForFilters(getApplication())
             }
 
             when (result) {

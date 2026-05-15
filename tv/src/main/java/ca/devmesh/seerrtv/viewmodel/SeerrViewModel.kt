@@ -845,8 +845,8 @@ class SeerrViewModel @Inject constructor(
                     MediaCategory.UPCOMING_MOVIES -> apiService.getUpcomingMovies(reset = true)
                     MediaCategory.POPULAR_SERIES -> apiService.getPopularSeries(reset = true)
                     MediaCategory.UPCOMING_SERIES -> apiService.getUpcomingSeries(reset = true)
-                    MediaCategory.MOVIE_GENRES -> apiService.getMovieGenres(context, reset = true)
-                    MediaCategory.SERIES_GENRES -> apiService.getTVGenres(context, reset = true)
+                    MediaCategory.MOVIE_GENRES -> apiService.getMovieGenreSlider(context, reset = true)
+                    MediaCategory.SERIES_GENRES -> apiService.getTVGenreSlider(context, reset = true)
                     MediaCategory.STUDIOS -> apiService.getStudios(reset = true)
                     MediaCategory.NETWORKS -> apiService.getNetworks(reset = true)
                 }
@@ -1083,13 +1083,13 @@ class SeerrViewModel @Inject constructor(
 
         try {
             val result = when (category) {
-                MediaCategory.MOVIE_GENRES -> apiService.getMovieGenres(
+                MediaCategory.MOVIE_GENRES -> apiService.getMovieGenreSlider(
                     context,
                     reset = forceRefresh,
                     loadMore = loadMore
                 )
 
-                MediaCategory.SERIES_GENRES -> apiService.getTVGenres(
+                MediaCategory.SERIES_GENRES -> apiService.getTVGenreSlider(
                     context,
                     reset = forceRefresh,
                     loadMore = loadMore
