@@ -374,7 +374,7 @@ class SeerrApiService @Inject constructor(
     data class GenreResponse(
         val id: Int,
         val name: String,
-        val backdrops: List<String>
+        val backdrops: List<String> = emptyList()
     )
 
     /**
@@ -539,11 +539,11 @@ class SeerrApiService @Inject constructor(
             httpClient ?: createHttpClient().also { httpClient = it }
         }
 
-    // Cache for all genres data (scoped by discovery language)
-    private var cachedMovieGenres: List<GenreResponse>? = null
-    private var cachedTVGenres: List<GenreResponse>? = null
-    private var cachedMovieGenresLanguage: String? = null
-    private var cachedTVGenresLanguage: String? = null
+    // Cache for discover/genreslider responses (home-screen genre carousel; scoped by discovery language)
+    private var cachedMovieGenreSlider: List<GenreResponse>? = null
+    private var cachedTVGenreSlider: List<GenreResponse>? = null
+    private var cachedMovieGenreSliderLanguage: String? = null
+    private var cachedTVGenreSliderLanguage: String? = null
     
     // Predefined lists of studio and network IDs from requirements
     private val studioIds = listOf(2, 127928, 34, 174, 33, 4, 3, 521, 420, 9993, 41077)
@@ -2302,20 +2302,21 @@ class SeerrApiService @Inject constructor(
     }
 
     /**
-     * Get a list of movie genres
+     * Paginated movie genres from `discover/genreslider/movie` (backdrop images for the home-screen carousel).
+     * For the full TMDB genre list used in browse filters, use [getMovieGenresForFilters].
+     *
      * @param reset Whether to reset pagination state
      * @param loadMore Whether to load more items (next page)
-     * @return ApiResult containing list of genre responses
      */
-    suspend fun getMovieGenres(context: Context, loadMore: Boolean = false, reset: Boolean = false): ApiResult<List<GenreResponse>> {
+    suspend fun getMovieGenreSlider(context: Context, loadMore: Boolean = false, reset: Boolean = false): ApiResult<List<GenreResponse>> {
         val endpoint = "discover/genreslider/movie"
         val locale = SharedPreferencesUtil.getDiscoveryLanguage(context)
         
         if (reset) {
             resetPaginationState(endpoint)
             // Clear cache if resetting
-            cachedMovieGenres = null
-            cachedMovieGenresLanguage = null
+            cachedMovieGenreSlider = null
+            cachedMovieGenreSliderLanguage = null
         }
         
         if (!loadMore) {
@@ -2338,7 +2339,7 @@ class SeerrApiService @Inject constructor(
         }
         
         // If cache is empty or language changed, fetch all genres again
-        if (cachedMovieGenres == null || cachedMovieGenresLanguage != locale) {
+        if (cachedMovieGenreSlider == null || cachedMovieGenreSliderLanguage != locale) {
             val apiEndpoint = "discover/genreslider/movie"
             val localizedEndpoint = if (locale != "en") "$apiEndpoint?language=$locale" else apiEndpoint
             
@@ -2350,9 +2351,9 @@ class SeerrApiService @Inject constructor(
                         try {
                             // Parse the raw JSON array response
                             val genresList = json.decodeFromString<List<GenreResponse>>(responseBody)
-                            cachedMovieGenres = genresList
-                            cachedMovieGenresLanguage = locale
-                            Log.d("SeerrApiService", "Cached ${cachedMovieGenres?.size} movie genres")
+                            cachedMovieGenreSlider = genresList
+                            cachedMovieGenreSliderLanguage = locale
+                            Log.d("SeerrApiService", "Cached ${cachedMovieGenreSlider?.size} movie genre slider items")
                         } catch (e: kotlinx.serialization.SerializationException) {
                             Log.e("SeerrApiService", "Error parsing genre array: ${e.message}")
                             return ApiResult.Error(e)
@@ -2374,7 +2375,7 @@ class SeerrApiService @Inject constructor(
         }
         
         // Calculate pagination based on our cached data
-        val allGenres = cachedMovieGenres ?: emptyList()
+        val allGenres = cachedMovieGenreSlider ?: emptyList()
         val startIndex = (pageState.currentPage - 1) * pageSize
         
         if (startIndex >= allGenres.size) {
@@ -2419,20 +2420,21 @@ class SeerrApiService @Inject constructor(
     }
 
     /**
-     * Get a list of TV genres
+     * Paginated TV genres from `discover/genreslider/tv` (backdrop images for the home-screen carousel).
+     * For the full TMDB genre list used in browse filters, use [getTVGenresForFilters].
+     *
      * @param reset Whether to reset pagination state
      * @param loadMore Whether to load more items (next page)
-     * @return ApiResult containing list of genre responses
      */
-    suspend fun getTVGenres(context: Context, loadMore: Boolean = false, reset: Boolean = false): ApiResult<List<GenreResponse>> {
+    suspend fun getTVGenreSlider(context: Context, loadMore: Boolean = false, reset: Boolean = false): ApiResult<List<GenreResponse>> {
         val endpoint = "discover/genreslider/tv"
         val locale = SharedPreferencesUtil.getDiscoveryLanguage(context)
         
         if (reset) {
             resetPaginationState(endpoint)
             // Clear cache if resetting
-            cachedTVGenres = null
-            cachedTVGenresLanguage = null
+            cachedTVGenreSlider = null
+            cachedTVGenreSliderLanguage = null
         }
         
         if (!loadMore) {
@@ -2455,7 +2457,7 @@ class SeerrApiService @Inject constructor(
         }
         
         // If cache is empty or language changed, fetch all genres again
-        if (cachedTVGenres == null || cachedTVGenresLanguage != locale) {
+        if (cachedTVGenreSlider == null || cachedTVGenreSliderLanguage != locale) {
             val apiEndpoint = "discover/genreslider/tv"
             val localizedEndpoint = if (locale != "en") "$apiEndpoint?language=$locale" else apiEndpoint
             
@@ -2467,9 +2469,9 @@ class SeerrApiService @Inject constructor(
                         try {
                             // Parse the raw JSON array response
                             val genresList = json.decodeFromString<List<GenreResponse>>(responseBody)
-                            cachedTVGenres = genresList
-                            cachedTVGenresLanguage = locale
-                            Log.d("SeerrApiService", "Cached ${cachedTVGenres?.size} TV genres")
+                            cachedTVGenreSlider = genresList
+                            cachedTVGenreSliderLanguage = locale
+                            Log.d("SeerrApiService", "Cached ${cachedTVGenreSlider?.size} TV genre slider items")
                         } catch (e: kotlinx.serialization.SerializationException) {
                             Log.e("SeerrApiService", "Error parsing genre array: ${e.message}")
                             return ApiResult.Error(e)
@@ -2491,7 +2493,7 @@ class SeerrApiService @Inject constructor(
         }
         
         // Calculate pagination based on our cached data
-        val allGenres = cachedTVGenres ?: emptyList()
+        val allGenres = cachedTVGenreSlider ?: emptyList()
         val startIndex = (pageState.currentPage - 1) * pageSize
         
         if (startIndex >= allGenres.size) {
@@ -2533,6 +2535,72 @@ class SeerrApiService @Inject constructor(
             totalResults = allGenres.size,
             hasMorePages = hasMorePages
         ))
+    }
+
+    /**
+     * Full movie genre list from `genres/movie` for the browse filters drawer (matches the Seerr web app).
+     * For the home-screen genre carousel with backdrop art, use [getMovieGenreSlider].
+     */
+    suspend fun getMovieGenresForFilters(context: Context): ApiResult<List<GenreResponse>> {
+        val locale = SharedPreferencesUtil.getDiscoveryLanguage(context)
+        val apiEndpoint = "genres/movie"
+        val localizedEndpoint = if (locale != "en") "$apiEndpoint?language=$locale" else apiEndpoint
+
+        return try {
+            when (val httpResult = executeApiCall<HttpResponse>(localizedEndpoint)) {
+                is ApiResult.Success -> {
+                    val responseBody = httpResult.data.bodyAsText()
+                    try {
+                        val genresList = json.decodeFromString<List<GenreResponse>>(responseBody)
+                        if (BuildConfig.DEBUG) {
+                            Log.d("SeerrApiService", "Loaded ${genresList.size} movie genres from genres/movie")
+                        }
+                        ApiResult.Success(genresList)
+                    } catch (e: kotlinx.serialization.SerializationException) {
+                        Log.e("SeerrApiService", "Error parsing movie genres array: ${e.message}")
+                        ApiResult.Error(e)
+                    }
+                }
+                is ApiResult.Error -> ApiResult.Error(httpResult.exception, httpResult.statusCode)
+                else -> ApiResult.Loading()
+            }
+        } catch (e: Exception) {
+            Log.e("SeerrApiService", "Error fetching movie genres for filters: ${e.message}")
+            ApiResult.Error(e)
+        }
+    }
+
+    /**
+     * Full TV genre list from `genres/tv` for the browse filters drawer (matches the Seerr web app).
+     * For the home-screen genre carousel with backdrop art, use [getTVGenreSlider].
+     */
+    suspend fun getTVGenresForFilters(context: Context): ApiResult<List<GenreResponse>> {
+        val locale = SharedPreferencesUtil.getDiscoveryLanguage(context)
+        val apiEndpoint = "genres/tv"
+        val localizedEndpoint = if (locale != "en") "$apiEndpoint?language=$locale" else apiEndpoint
+
+        return try {
+            when (val httpResult = executeApiCall<HttpResponse>(localizedEndpoint)) {
+                is ApiResult.Success -> {
+                    val responseBody = httpResult.data.bodyAsText()
+                    try {
+                        val genresList = json.decodeFromString<List<GenreResponse>>(responseBody)
+                        if (BuildConfig.DEBUG) {
+                            Log.d("SeerrApiService", "Loaded ${genresList.size} TV genres from genres/tv")
+                        }
+                        ApiResult.Success(genresList)
+                    } catch (e: kotlinx.serialization.SerializationException) {
+                        Log.e("SeerrApiService", "Error parsing TV genres array: ${e.message}")
+                        ApiResult.Error(e)
+                    }
+                }
+                is ApiResult.Error -> ApiResult.Error(httpResult.exception, httpResult.statusCode)
+                else -> ApiResult.Loading()
+            }
+        } catch (e: Exception) {
+            Log.e("SeerrApiService", "Error fetching TV genres for filters: ${e.message}")
+            ApiResult.Error(e)
+        }
     }
 
     /**

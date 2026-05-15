@@ -924,14 +924,15 @@ class MediaDiscoveryViewModel @Inject constructor(
     
     fun loadGenres(mediaType: MediaType) {
         viewModelScope.launch {
+            // genres/movie | genres/tv — full filter list (matches Seerr web app; not genreslider)
             val result = if (mediaType == MediaType.MOVIE) {
-                apiService.getMovieGenres(getApplication())
+                apiService.getMovieGenresForFilters(getApplication())
             } else {
-                apiService.getTVGenres(getApplication())
+                apiService.getTVGenresForFilters(getApplication())
             }
-            
+
             when (result) {
-                is ApiResult.Success -> _availableGenres.value = result.data
+                is ApiResult.Success -> _availableGenres.value = result.data.sortedBy { it.name }
                 is ApiResult.Error -> Log.e("MediaDiscoveryViewModel", "Failed to load genres", result.exception)
                 else -> {}
             }
