@@ -110,11 +110,8 @@ fun MediaBrowseScreen(
     val shouldRestorePosition = remember(screenKey) { 
         GridPositionManager.isReturningFromDetails(screenKey)
     }
-    val savedPosition = remember(screenKey) { 
+    val savedPosition = remember(screenKey) {
         if (shouldRestorePosition) GridPositionManager.getSavedPosition(screenKey) else null
-    }
-    val savedSelection = remember(screenKey) { 
-        if (shouldRestorePosition) GridPositionManager.getSavedSelection(screenKey) else null
     }
 
     // Create grid state - only use saved position if returning from details

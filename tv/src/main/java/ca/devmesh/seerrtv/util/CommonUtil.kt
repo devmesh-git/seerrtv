@@ -1,5 +1,7 @@
 package ca.devmesh.seerrtv.util
 
+import android.content.Context
+import android.os.Build
 import ca.devmesh.seerrtv.model.MediaType
 import java.text.NumberFormat
 import java.text.SimpleDateFormat
@@ -237,4 +239,19 @@ object CommonUtil {
         "zh" -> "CN"
         else -> "US"
     }
-} 
+
+    /**
+     * Primary locale from the current app configuration, version-safe on API < 24.
+     * `Configuration#getLocales` / `LocaleList` are API 24+, so fall back to the
+     * deprecated `Configuration#locale` on API 23 (minSdk).
+     */
+    @Suppress("DEPRECATION")
+    fun primarySystemLocale(context: Context): Locale {
+        val config = context.resources.configuration
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            if (!config.locales.isEmpty) config.locales[0] else Locale.getDefault()
+        } else {
+            config.locale ?: Locale.getDefault()
+        }
+    }
+}

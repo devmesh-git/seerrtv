@@ -1,5 +1,87 @@
 # Changelog
 
+## 0.28.06
+
+### Hungarian (HU) Language Support
+
+- **Full UI Localization** – Added comprehensive Hungarian translations for the entire application interface (over 450 strings).
+- **Settings Integration** – Hungarian is now selectable as both an Application Language and a Discovery Language in the settings menu.
+- **First-run Wizard** – Registered Hungarian (and the previously missing Estonian) in the initial language selection shown during setup.
+- **Supported Languages** – Registered the Hungarian locale (`hu`) in the core language management system to ensure persistence across sessions.
+- **Localized Language Names** – Added the localized name for Hungarian to every existing locale's picker (e.g. "Ungarisch", "Hongrois", "匈牙利语"), and backfilled the previously missing Estonian name across those same locales.
+
+### Resilient User Deserialization
+
+- **Malformed-field tolerance** – The `User` model now decodes its nullable integer fields through a new `SafeIntSerializer`. Some Seerr/Overseerr/Jellyseerr backends return quota and permission values in loosely-typed forms — a JSON string like `"15"` instead of the number `15`, a non-numeric placeholder string, or `null`. Previously any of these threw a `SerializationException` that failed the entire user parse and broke profile loading. The serializer now coerces numeric strings to `Int`, and falls back to `null` (instead of crashing) for non-numeric or unexpected values.
+- **Fields covered** – `permissions`, `userType`, `plexId`, `movieQuotaLimit`, `movieQuotaDays`, `tvQuotaLimit`, `tvQuotaDays`, and `requestCount`.
+- **Optional required fields** – `createdAt`, `updatedAt`, and `displayName` are no longer mandatory during deserialization (`createdAt`/`updatedAt` default to `null`, `displayName` to `""`). A Seerr `/auth/me` response that omits any of these no longer aborts the parse and breaks first-time setup, which authenticates by validating the session against `/auth/me`. Fixes a reported "quotalimit in json" setup failure after migrating from Overseerr to Seerr (affected both API-key and Plex login).
+- **Friendlier auth error** – When `/auth/me` returns a shape the client can't parse, setup now shows a localized "server returned an unexpected response / may be running an incompatible version" message (`auth_error_unexpected_response`, translated across all locales) instead of surfacing the raw `SerializationException` text.
+- **Diagnosable parse failures** – API responses are now decoded from text, so a deserialization failure logs the raw JSON body (debug builds only, to avoid leaking tokens/PII in release logs) for backend-shape diagnosis.
+- **Test coverage** – Added `UserSerializationTest` exercising valid integers, nulls, corrupted (non-numeric) strings, numeric strings, and an `/auth/me` payload that omits `createdAt`/`updatedAt`/`displayName`, to lock in the graceful-degradation behavior.
+
+### Wider Android TV Compatibility
+
+- **Lowered minimum Android version to 6.0 (API 23)** – The build declared `minSdk = 25` (Android 7.1), so Android 6.0 devices were rejected at install time with `INSTALL_FAILED_OLDER_SDK` / "problem parsing the package." `minSdk` is now 23, the lowest level the remaining dependency set supports (`androidx.hilt:hilt-navigation-compose` requires API 23), restoring installation on Android 6.0 TV hardware. The README, which previously overstated support as "Android 5.0 / API 21," has been corrected to match. Fixes [#7](https://github.com/devmesh-git/seerrtv/issues/7).
+- **Removed unused `androidx.webkit` dependency** – The AndroidX WebKit compat library was declared but never imported (the in-app trailer player uses the `androidyoutubeplayer` library, and no code references `androidx.webkit`). It alone forced a minimum of API 24, so dropping it was required to reach API 23.
+- **Version-safe locale lookup** – Lowering `minSdk` exposed two calls to `Configuration.getLocales()` / `LocaleList` (API 24). A new `CommonUtil.primarySystemLocale()` helper now reads the current locale safely, falling back to the deprecated `Configuration.locale` on API 23, so the app does not crash on Android 6.0.
+
+### Unified Language Selection
+
+- **Single source of truth (`LanguageCatalog`)** – The app-language picker, the discovery-language picker, and the first-run wizard previously each defined their own language lists using duplicate `settingsMenu_discoverLanguage*` strings that shadowed the existing `language_*` names. All three now derive their options and display names from one ordered `LanguageCatalog`, and `SUPPORTED_APP_LANGUAGES` is derived from it. The catalog must mirror the shipped `res/values-*` translation folders.
+- **De-duplicated strings** – Removed the redundant `settingsMenu_discoverLanguage*` strings from every locale, added the missing `language_dutch`, and reconciled an Estonian display-name spelling that had drifted between the two former string sets.
+
+### Full Language List for the Browse Filter
+
+- **Live `/languages` endpoint** – The browse *Original Language* filter previously offered a small hardcoded list. `getLanguages()` now fetches the full TMDB language set from the Seerr API (`GET /api/v1/languages`), mirroring the existing `getRegions()` call, so the offered languages always match the connected server. On failure the list is simply empty (the app is backend-dependent, so no offline fallback is warranted).
+- **Searchable language selector** – The language filter is now type-to-search (client-side over the loaded list) so the full ~180-language set is navigable with a remote. The shared single-select search component was generalized to support non-integer (ISO-code) item ids.
+- **Removed dead code** – Deleted `FilterControls.kt`, an earlier set of filter composables that was fully superseded by `FiltersDrawer` and no longer referenced, plus the ~16 filter/rating string resources it orphaned.
+
+### Release-Build Lint Cleanup
+
+- `lintDirectAppRelease` now passes with **0 errors** (previously 20+). Completed the previously-partial language-name translations across every locale (`MissingTranslation`), version-guarded the API-24 locale call (see above), and added narrowly-scoped `@Suppress` annotations — with justifying comments — for genuine false positives (`LocalContextGetResourceValueCall` in non-composable string resolvers; `UnrememberedMutableState` for state that is retained in a remembered map). Removed the string resources orphaned by the dead-code deletion.
+
+### Dependency Refresh & SDK 37
+
+- **Toolchain / library updates** – Kotlin `2.3.21 → 2.4.0`, Hilt/Dagger `2.59.2 → 2.60`, hilt-navigation-compose `1.3.0 → 1.4.0`, Compose BOM `2026.05.00 → 2026.06.01`, Compose UI/foundation `1.11.1 → 1.11.4`, lifecycle `2.10.0 → 2.11.0`, Coil `3.4.0 → 3.5.0`, ktor `3.5.0 → 3.5.1`, core-ktx `1.18.0 → 1.19.0`. `compileSdk` / `targetSdk` raised `36 → 37`.
+- **Verified against `minSdk = 23`** – Manifest merging imposes no higher minimum from any updated dependency, and Android Lint reports zero `NewApi` violations, so the refreshed dependency set still supports Android 6.0 (API 23).
+- **Hilt 2.60 compile fix** – Dagger/Hilt 2.60 stopped declaring `error_prone_annotations` transitively, but its generated code still imports `@CanIgnoreReturnValue`, which broke the Hilt Java compile (`package com.google.errorprone.annotations does not exist`). Added `compileOnly(libs.errorprone.annotations)` — a compile-time-only (CLASS-retention) annotation, so it is not shipped in the APK.
+
+### Dead-Code Cleanup & Static Analysis
+
+- **Detekt** – Added the detekt Gradle plugin with a config scoped to dead-code rules (`config/detekt/detekt.yml`); no baseline is committed, so newly-introduced dead code fails the check. The plugin is applied **lazily** — only when a `detekt` task is requested — because detekt 1.23.8 (the latest release) calls a Gradle API deprecated on Gradle 9 at plugin-apply time; deferring it keeps normal builds (`assemble` / `test` / IDE sync) warning-free. Run it with `./gradlew detekt` (it is not wired into `check`).
+- **Removed the dead code it surfaced** – ~30 unused imports across the UI layer; unused private members (`removeCustomSliderMeta`, `calculateActiveFilterCount`, `savedSelection`, `recomposeKey`, `firstVisibleIndex`, `availableSortOptions`); a dead debug-data subsystem (`createDebugData` / `updateDebugProgress` in `CommonComponents`); leftover commented-out blocks in `SeerrApiService`, `MainScreen`, and `components/MediaInfo`; three stray unused imports (`View`, `Build`, `LocaleList`); and the orphaned `mipmap-anydpi-v26/seerrtv_icon_only.xml` adaptive-icon variant.
+
+### Consistent Language / Region Picker Scrolling
+
+- **Fixed the un-scrollable Discovery/App language pickers** – The Settings *Discovery Language* and *Application Language* sub-menus rendered their options in a plain `Column`, so the list never scrolled: every option was crammed into the available height and the last entry (e.g. Hungarian) was squished and clipped as you navigated past the fold. Both now use a `LazyColumn` that scrolls to follow focus, matching the *Default Streaming Region* picker.
+- **Single shared scroll helper** – Introduced `LazyListState.ensureItemFullyVisible(index)`, which scrolls only as far as needed to bring the focused row fully into view, correctly handling a row that is *partially* clipped at the top or bottom edge (the case the previous range-check logic missed). The *Default Streaming Region* picker and the first-run wizard's language step were switched from their own bespoke scroll heuristics to this same helper, so every language/region picker in the app now scrolls identically.
+
+### Files Modified
+
+- `tv/build.gradle.kts` – Version 0.28.06 (versionCode 129); `minSdk` lowered from 25 to 23; removed unused `androidx.webkit` dependency.
+- `gradle/libs.versions.toml` – Removed the now-unused `androidx-webkit` library and `webkit` version entries.
+- `README.md` – Corrected the stated minimum device requirement to Android 6.0 / API 23.
+- `tv/src/main/java/ca/devmesh/seerrtv/util/LanguageCatalog.kt` – **New.** Single source of truth for supported languages (code → display-name resource).
+- `tv/src/main/java/ca/devmesh/seerrtv/data/SeerrApiService.kt` – `getLanguages()` now calls the `/languages` API endpoint (was a static list).
+- `tv/src/main/java/ca/devmesh/seerrtv/viewmodel/MediaDiscoveryViewModel.kt` – Handles the `getLanguages()` `ApiResult`; added client-side `searchLanguages()` / `clearLanguageSearch()` and `languageSearchResults` state.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/components/FiltersDrawer.kt` – Language filter switched to the searchable selector; `FilterSearchSelectionSingle` generalized to a generic id type.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/components/FilterControls.kt` – **Deleted.** Unused, superseded by `FiltersDrawer`.
+- `tv/src/main/java/ca/devmesh/seerrtv/util/CommonUtil.kt` – Added `primarySystemLocale()` (version-safe locale lookup).
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/SettingsScreen.kt` / `ConfigScreen.kt` – Language pickers now derive from `LanguageCatalog`. Added the shared `LazyListState.ensureItemFullyVisible()` helper; the App/Discovery language and Default Streaming Region sub-menus and the first-run language step all use it for consistent, fully-visible focus scrolling (App/Discovery language menus converted from a non-scrolling `Column` to `LazyColumn`).
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/MediaInfoTable.kt` – Uses `CommonUtil.primarySystemLocale()`.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/MainScreen.kt`, `AddCommentModal.kt`, `IssueReportModal.kt`, `components/CommonComponents.kt` – Scoped `@Suppress` lint annotations for verified false positives.
+- `tv/src/main/java/ca/devmesh/seerrtv/util/SharedPreferencesUtil.kt` – `SUPPORTED_APP_LANGUAGES` derived from `LanguageCatalog`; added `hu`; uses `primarySystemLocale()`.
+- `tv/src/main/java/ca/devmesh/seerrtv/model/UserModels.kt` – Added `SafeIntSerializer` and applied it to the `User` model's nullable integer fields.
+- `tv/src/main/res/values/strings.xml` and all `values-*/strings.xml` – New Hungarian resource file (`values-hu`); added Hungarian/Dutch names and completed backfilled names; removed duplicate `settingsMenu_discoverLanguage*` and orphaned `filter_*` / `rating_*` strings.
+- `tv/src/test/java/ca/devmesh/seerrtv/model/UserSerializationTest.kt` – New unit tests covering integer/null/corrupted/numeric-string quota values.
+- `gradle/libs.versions.toml` – Dependency version bumps (see *Dependency Refresh*); added `errorprone-annotations` and `detekt` entries.
+- `tv/build.gradle.kts` – `compileSdk`/`targetSdk` 37; lazily applies the detekt plugin (only when a `detekt` task runs) with dead-code config; added `compileOnly(libs.errorprone.annotations)`.
+- `config/detekt/detekt.yml` – **New.** Detekt configuration scoped to dead-code/unused-declaration rules.
+- Various `tv/src/main/java/.../ui/**` files – Removed unused imports and dead private members/functions flagged by detekt.
+- `tv/src/main/res/mipmap-anydpi-v26/seerrtv_icon_only.xml` – **Deleted.** Unreferenced adaptive-icon variant.
+
+---
+
 ## 0.28.05
 
 ### Browse / genre filters (parity with Seerr web)

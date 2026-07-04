@@ -49,6 +49,7 @@
     <string name="common_no">Não</string>
     <!-- Config Screen Strings -->
     <string name="configScreen_apiKeyHelp">Digite sua chave da API nas configurações do servidor</string>
+    <string name="auth_error_unexpected_response">O servidor retornou uma resposta inesperada. O seu servidor pode estar a executar uma versão incompatível.</string>
     <string name="configScreen_authenticationFailed">Falha na Autenticação</string>
     <string name="configScreen_authFailedMessage">Suas credenciais não são válidas. Isso pode ser devido a uma mudança de senha ou acesso revogado. Por favor, reconfigure com credenciais válidas.</string>
     <string name="configScreen_authMethod">Método de Autenticação</string>
@@ -294,14 +295,6 @@
     <string name="settingsMenu_userProfiles">Perfis de usuário</string>
     <string name="settingsMenu_debugMode">Modo de Depuração</string>
     <string name="settingsMenu_disabled">Desabilitado</string>
-    <string name="settingsMenu_discoverLanguageDE">Alemão</string>
-    <string name="settingsMenu_discoverLanguageEN">Inglês</string>
-    <string name="settingsMenu_discoverLanguageES">Espanhol</string>
-    <string name="settingsMenu_discoverLanguageFR">Francês</string>
-    <string name="settingsMenu_discoverLanguageJA">Japonês</string>
-    <string name="settingsMenu_discoverLanguageNL">Holandês</string>
-    <string name="settingsMenu_discoverLanguagePT">Português</string>
-    <string name="settingsMenu_discoverLanguageZH">Chinês</string>
     <string name="settingsMenu_discoveryMenu">Idioma de Descoberta</string>
     <string name="settingsMenu_defaultStreamingRegion">Região de streaming padrão</string>
     <string name="settingsMenu_edit">EDITAR</string>
@@ -423,35 +416,18 @@
     <!-- Filter Control Strings -->
     <string name="filter_from">De</string>
     <string name="filter_to">Até</string>
-    <string name="filter_min">Mín</string>
-    <string name="filter_max">Máx</string>
-    <string name="filter_anyLanguage">Qualquer idioma</string>
-    <string name="filter_dateFormat">AAAA-MM-DD</string>
-    <string name="filter_minRuntime">0</string>
-    <string name="filter_maxRuntime">400</string>
-    <string name="filter_minScore">1.0</string>
-    <string name="filter_maxScore">10.0</string>
-    <string name="filter_maxVotes">1000</string>
-    
-    <!-- Content Rating Strings -->
-    <string name="rating_nr">NR</string>
-    <string name="rating_g">G</string>
-    <string name="rating_pg">PG</string>
-    <string name="rating_pg13">PG-13</string>
-    <string name="rating_r">R</string>
-    <string name="rating_nc17">NC-17</string>
     
     <!-- Language Names -->
     <string name="language_english">Inglês</string>
     <string name="language_spanish">Espanhol</string>
     <string name="language_french">Francês</string>
     <string name="language_german">Alemão</string>
-    <string name="language_italian">Italiano</string>
     <string name="language_portuguese">Português</string>
-    <string name="language_russian">Russo</string>
     <string name="language_japanese">Japonês</string>
-    <string name="language_korean">Coreano</string>
     <string name="language_chinese">Chinês</string>
+    <string name="language_dutch">Holandês</string>
+    <string name="language_estonian">Estoniano</string>
+    <string name="language_hungarian">Húngaro</string>
     
     <!-- Other Filter Strings -->
     <string name="filter_close">Fechar</string>

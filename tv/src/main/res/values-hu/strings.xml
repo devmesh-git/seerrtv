@@ -1,0 +1,493 @@
+<resources>
+    <!-- App Strings -->
+    <string name="app_name">SeerrTV</string>
+
+    <!-- Carousel Section Strings -->
+    <string name="carouselSection_error_loadingFailed">Hiba a médiatartalom betöltésekor</string>
+    <string name="carouselSection_error_noMediaFound">Nincs találat ebben a kategóriában</string>
+
+    <!-- Category Strings -->
+    <string name="category_movieGenres">Filmműfajok</string>
+    <string name="category_networks">Csatornák</string>
+    <string name="category_popularMovies">Népszerű filmek</string>
+    <string name="category_popularSeries">Népszerű sorozatok</string>
+    <string name="category_recentlyAdded">Nemrég hozzáadva</string>
+    <string name="category_recentRequests">Legutóbbi kérések</string>
+    <string name="category_seriesGenres">Sorozatműfajok</string>
+    <string name="category_studios">Stúdiók</string>
+    <string name="category_trending">Felkapott</string>
+    <string name="category_watchlist">Kívánságlistád</string>
+    <string name="action_add_to_watchlist">Hozzáadás a kívánságlistához</string>
+    <string name="action_remove_from_watchlist">Eltávolítás a kívánságlistáról</string>
+    <string name="watchlist_added_success">Hozzáadva a kívánságlistához</string>
+    <string name="watchlist_removed_success">Eltávolítva a kívánságlistáról</string>
+    <string name="watchlist_update_failed">A kívánságlista frissítése sikertelen</string>
+    <string name="category_upcomingMovies">Hamarosan érkező filmek</string>
+    <string name="category_upcomingSeries">Hamarosan érkező sorozatok</string>
+
+    <!-- Common Strings -->
+    <string name="common_apiKey">API-kulcs</string>
+    <string name="common_areYouSure">Biztos vagy benne?</string>
+    <string name="common_cancel">Mégse</string>
+    <string name="common_collectionLabel">GYŰJTEMÉNY</string>
+    <string name="common_devmeshLogo">DevMesh logó</string>
+    <string name="common_email">E-mail</string>
+    <string name="common_error">Hiba</string>
+    <string name="common_loadingMore">További betöltése…</string>
+    <string name="common_mediaPoster">Médiaplakát</string>
+    <string name="common_movieLabel">FILM</string>
+    <string name="common_notRequested">Nincs kérve</string>
+    <string name="common_personLabel">SZEMÉLY</string>
+    <string name="common_processing">Feldolgozás</string>
+    <string name="common_readLess">Kevesebb</string>
+    <string name="common_readMore">Tovább</string>
+    <string name="common_requested">Kérve</string>
+    <string name="common_search">Keresés</string>
+    <string name="common_seriesLabel">SOROZAT</string>
+    <string name="common_success">Sikeres</string>
+    <string name="common_unknown">Ismeretlen</string>
+    <string name="common_versionPrefix">v</string>
+    <string name="common_yes">Igen</string>
+    <string name="common_no">Nem</string>
+
+    <!-- Config Screen Strings -->
+    <string name="configScreen_apiKeyHelp">Add meg az API-kulcsot a szerver beállításaiból</string>
+    <string name="auth_error_unexpected_response">A szerver váratlan választ adott. Lehet, hogy a szerver nem kompatibilis verziót futtat.</string>
+    <string name="configScreen_authenticationFailed">Sikertelen hitelesítés</string>
+    <string name="configScreen_authFailedMessage">A megadott hitelesítő adatok érvénytelenek. Ezt jelszóváltoztatás vagy visszavont hozzáférés okozhatja. Kérjük, állítsd be újra érvényes adatokkal.</string>
+    <string name="configScreen_authMethod">Hitelesítési mód</string>
+    <string name="configScreen_authMethodHelp">Válaszd ki, hogyan szeretnél hitelesíteni a szerveren</string>
+    <string name="configScreen_authTypeEmby">Emby</string>
+    <string name="configScreen_authTypeJellyfin">Jellyfin</string>
+    <string name="configScreen_authTypeLocalUser">@string/configScreen_localUser</string>
+    <string name="configScreen_authTypePlex">Plex</string>
+    <string name="configScreen_browserBasedConfiguration">Böngészőalapú beállítás</string>
+    <string name="configScreen_cloudflareClientId">Cloudflare Access ügyfél-azonosító</string>
+    <string name="configScreen_cloudflareClientSecret">Cloudflare Access ügyfél-titok</string>
+    <string name="configScreen_cloudflareConfig">Cloudflare beállítás</string>
+    <string name="configScreen_cloudflareHelp">A szervered Cloudflare Access védelem alatt áll. Kérjük, add meg a Cloudflare hitelesítő adataidat.</string>
+    <string name="configScreen_configInstructions">Olvasd be az alábbi QR-kódot a telefonoddal, vagy nyisd meg az alábbi URL-t a SeerrTV beállításához</string>
+    <string name="configScreen_configServiceUnavailable">HIBA: A beállítási szolgáltatás nem érhető el. Kérjük, próbáld újra később.</string>
+    <string name="configScreen_configSuccess">A beállítás sikeres!</string>
+    <string name="configScreen_connecting">Csatlakozás a SeerrTV böngészős beállítási szolgáltatáshoz…</string>
+    <string name="configScreen_connectionFailed">Sikertelen kapcsolódás</string>
+    <string name="configScreen_connectionTimeout">Időtúllépés – A szerver nem érhető el</string>
+    <string name="configScreen_displayName">Megjelenített név</string>
+    <string name="configScreen_embyConfig">Emby beállítás</string>
+    <string name="configScreen_embyHelp">Add meg az Emby hitelesítő adataidat. Ezekkel hitelesítünk a médiaszerveredhez.</string>
+    <string name="configScreen_hostname">Kiszolgálónév</string>
+    <string name="configScreen_hostnameHelp">Add meg itt a Jellyseerr/Overseerr/Seerr szolgáltatásod kiszolgálónevét:</string>
+    <string name="configScreen_jellyfinConfig">Jellyfin beállítás</string>
+    <string name="configScreen_jellyfinHelp">Add meg a Jellyfin szervered adatait és hitelesítő adatait. Ezekkel hitelesítünk a médiaszerveredhez.</string>
+    <string name="configScreen_jellyfinHostname">Jellyfin szerver kiszolgálóneve</string>
+    <string name="configScreen_jellyfinPort">Szerverport</string>
+    <string name="configScreen_jellyfinUseSsl">SSL használata</string>
+    <string name="configScreen_jellyseerrDetected">Jellyseerr szerver észlelve!</string>
+    <string name="configScreen_seerrDetected">Seerr szerver észlelve!</string>
+    <string name="configScreen_localUser">Helyi felhasználó</string>
+    <string name="configScreen_localUserHelp">Add meg az e-mail-címed és jelszavad</string>
+    <string name="configScreen_loginSuccess">Bejelentkezve!</string>
+    <string name="configScreen_manualConfiguration">Kézi beállítás</string>
+    <string name="configScreen_next">Tovább</string>
+    <string name="configScreen_orVisit">Vagy látogasd meg:</string>
+    <string name="configScreen_overseerrDetected">Overseerr szerver észlelve!</string>
+    <string name="configScreen_password">Jelszó</string>
+    <string name="configScreen_permissions">Engedélyek</string>
+    <string name="configScreen_plexGettingPin">Plex PIN lekérése…</string>
+    <string name="configScreen_plexHelp">Jelentkezz be a Plex-fiókodba az Overseerr/Jellyseerr/Seerr eléréséhez.</string>
+    <string name="configScreen_plexInstructions">A Plex-fiókod összekapcsolásához kövesd az alábbi lépéseket:</string>
+    <string name="configScreen_plexPinCode">Add meg ezt a kódot:</string>
+    <string name="configScreen_plexTitle">Plex hitelesítés</string>
+    <string name="configScreen_plexVisitLink">Nyisd meg ezt a linket bármelyik eszközön:</string>
+    <string name="configScreen_protocol">Protokoll</string>
+    <string name="configScreen_protocolHttp">HTTP</string>
+    <string name="configScreen_protocolHttps">HTTPS</string>
+    <string name="configScreen_qrCode">QR-kód a beállításhoz</string>
+    <string name="configScreen_reconfigure">Újrakonfigurálás</string>
+    <string name="configScreen_retry">Újrapróbálkozás</string>
+    <string name="configScreen_seerrIcon">Seerr ikon</string>
+    <string name="configScreen_selectConfigurationMethod">Válassz beállítási módot</string>
+    <string name="configScreen_serverConnection">Szerverkapcsolat</string>
+    <string name="configScreen_serverError">Szerverhiba</string>
+    <string name="configScreen_testAndSave">Beállítás tesztelése és mentése</string>
+    <string name="configScreen_unknownError">Ismeretlen hiba történt</string>
+    <string name="configScreen_username">Felhasználónév</string>
+    <string name="configScreen_waitingAuth">Várakozás a hitelesítésre…</string>
+
+    <!-- Issue Strings -->
+    <string name="issue_add_comment_button">Megjegyzés hozzáadása</string>
+    <string name="issue_add_comment_placeholder">Írd ide a megjegyzésed...</string>
+    <string name="issue_add_comment_title">Megjegyzés hozzáadása a hibajelentéshez</string>
+    <string name="issue_additional_comment_title">További megjegyzés</string>
+    <string name="issue_audio_language">Rossz hangsáv nyelve</string>
+    <string name="issue_audio_missing">Nincs hang</string>
+    <string name="issue_audio_quality">Gyenge hangminőség</string>
+    <string name="issue_audio_stuttering">Akadozó hang</string>
+    <string name="issue_audio_sync">Nincs szinkronban a hang</string>
+    <string name="issue_button_report_issues">Hiba jelentése</string>
+    <string name="issue_button_view_issues">Hibák megtekintése</string>
+    <string name="issue_by_label"> – </string>
+    <string name="issue_common_issues_title">Gyakori hibák (opcionális)</string>
+    <string name="issue_createdSuccessfully">A hibajelentés sikeresen elküldve</string>
+    <string name="issue_describe_placeholder">Írd le a hibát...</string>
+    <string name="issue_details_title">Hibák</string>
+    <string name="issue_episode">Epizód</string>
+    <string name="issue_more_comments">+%1$d további megjegyzés</string>
+    <string name="issue_new_issue_button">Új hibajelentés</string>
+    <string name="issue_no_issues_message">Nincs jelentett hiba ehhez a médiatartalomhoz.</string>
+    <string name="issue_none_option">Nincs (csak egyéni megjegyzés)</string>
+    <string name="issue_opened_label">Megnyitva </string>
+    <string name="issue_other_app_crash">Alkalmazás összeomlása lejátszás közben</string>
+    <string name="issue_other_incorrect_metadata">Hibás metaadatok</string>
+    <string name="issue_other_missing_content">Hiányzó tartalom</string>
+    <string name="issue_other_other">Egyéb hiba</string>
+    <string name="issue_other_wrong_content">Rossz film/epizód</string>
+    <string name="issue_press_back_to_close">Nyomd meg a Vissza gombot a bezáráshoz</string>
+    <string name="issue_report_title">Hiba jelentése</string>
+    <string name="issue_season_episode_title">Évad és epizód</string>
+    <string name="issue_season">Évad</string>
+    <string name="issue_status_label">Állapot</string>
+    <string name="issue_status_open">Nyitott</string>
+    <string name="issue_status_resolved">Megoldva</string>
+    <string name="issue_submit_button">Hibajelentés beküldése</string>
+    <string name="issue_subtitle_display">A felirat nem jelenik meg</string>
+    <string name="issue_subtitle_language">Rossz feliratnyelv</string>
+    <string name="issue_subtitle_missing">Nincs elérhető felirat</string>
+    <string name="issue_subtitle_quality">Gyenge feliratminőség</string>
+    <string name="issue_subtitle_sync">Nincs szinkronban a felirat</string>
+    <string name="issue_type_audio">Hang</string>
+    <string name="issue_type_label">Típus</string>
+    <string name="issue_type_other">Egyéb</string>
+    <string name="issue_type_subtitle">Felirat</string>
+    <string name="issue_type_title">Hiba típusa</string>
+    <string name="issue_type_video">Videó</string>
+    <string name="issue_video_aspect">Rossz képarány</string>
+    <string name="issue_video_playback">A videó nem játszódik le</string>
+    <string name="issue_video_quality">Gyenge videóminőség</string>
+    <string name="issue_video_stuttering">Akadozó/lefagyó videó</string>
+    <string name="issue_video_sync">Nincs szinkronban a videó</string>
+
+    <!-- Main Screen Strings -->
+    <string name="mainScreen_loading_pleaseWait">Kérjük, várj</string>
+    <string name="mainScreen_mediaBackdrop">Médiaháttér</string>
+    <string name="mainScreen_pressBackAgainToExit">Nyomd meg újra a VISSZA gombot a kilépéshez</string>
+    <string name="mainScreen_pressUpToRefresh">Nyomd meg a FEL gombot az összes kategória frissítéséhez</string>
+    <string name="mainScreen_refreshed">Frissítve!</string>
+    <string name="mainScreen_settings">Beállítások</string>
+    <string name="mainScreen_appsRow">Alkalmazások</string>
+    <string name="mainScreen_appOrderSaved">Alkalmazássorrend mentve</string>
+    <string name="mainScreen_reorderModeHint">Átrendezés: Balra/Jobbra a mozgatáshoz, Enter vagy Vissza a mentéshez</string>
+    <string name="mainScreen_appsRowReorderTitle">Alkalmazások (átrendezés)</string>
+
+    <!-- Media Details Strings -->
+    <string name="mediaDetails_cast">Szereplők</string>
+    <string name="mediaDetails_crew">Stáb</string>
+    <string name="mediaDetails_errorSubmittingRequest">Hiba a kérés elküldésekor: %1$s</string>
+    <string name="mediaDetails_information">Információ</string>
+    <string name="mediaDetails_embyNotFound">Az Emby alkalmazás nem található. Kérjük, telepítsd az Embyt a Play Áruházból.</string>
+    <string name="mediaDetails_jellyfinNotFound">A Jellyfin alkalmazás nem található. Kérjük, telepítsd a Jellyfint a Play Áruházból.</string>
+    <string name="mediaDetails_manageRequest">Kérés kezelése</string>
+    <string name="mediaDetails_minutes">Perc</string>
+    <string name="mediaDetails_noMediaPlayerFound">Nem található médialejátszó alkalmazás ezen az eszközön</string>
+    <string name="mediaDetails_ok">OK</string>
+    <string name="mediaDetails_playOnEmby">Lejátszás Embyn</string>
+    <string name="mediaDetails_playOnJellyfin">Lejátszás Jellyfinen</string>
+    <string name="mediaDetails_playOnPlex">Lejátszás PLEX-en</string>
+    <string name="mediaDetails_plexNotFound">A Plex alkalmazás nem található. Kérjük, telepítsd a Plexet a Play Áruházból.</string>
+    <string name="mediaDetails_requestMore">Több kérése</string>
+    <string name="mediaDetails_similarMovies">Hasonló filmek</string>
+    <string name="mediaDetails_similarSeries">Hasonló sorozatok</string>
+    <string name="mediaDetails_tvSeries">Tévésorozat</string>
+    <string name="mediaDetails_unknownDuration">Ismeretlen</string>
+    <string name="mediaDetails_unknownError">Ismeretlen hiba</string>
+    <string name="mediaDetails_unknownTitle">Ismeretlen cím</string>
+    <string name="mediaDetails_unknownType">Ismeretlen médiatípus</string>
+    <string name="mediaDetails_watchTrailer">Előzetes megtekintése</string>
+    <string name="mediaDetails_youTubeNotFound">A YouTube alkalmazás nem található. Kérjük, telepítsd a YouTube-ot a Play Áruházból.</string>
+
+    <!-- Media Discovery Strings -->
+    <string name="mediaDiscovery_movieKeywordSearch">Filmek kulcsszóval</string>
+    <string name="mediaDiscovery_noImage">Nincs kép</string>
+    <string name="mediaDiscovery_noResults">Nincs találat. Módosítsd a keresési feltételeket, és próbáld újra.</string>
+    <string name="mediaDiscovery_personImage">Személy képe</string>
+    <string name="mediaDiscovery_searchPlaceholder">Filmek vagy sorozatok keresése</string>
+    <string name="mediaDiscovery_searchResults">Keresési találatok</string>
+    <string name="mediaDiscovery_tvKeywordSearch">Sorozatok kulcsszóval</string>
+
+    <!-- Media Info Table Strings -->
+    <string name="mediaInfoTable_budget">Költségvetés</string>
+    <string name="mediaInfoTable_currentlyStreamingOn">Jelenleg elérhető itt</string>
+    <string name="mediaInfoTable_firstAirDate">Első adás dátuma</string>
+    <string name="mediaInfoTable_lastAirDate">Utolsó adás dátuma</string>
+    <string name="mediaInfoTable_more">több</string>
+    <string name="mediaInfoTable_network">Csatorna</string>
+    <string name="mediaInfoTable_notApplicable">N/A</string>
+    <string name="mediaInfoTable_numberOfEpisodes">Epizódok száma</string>
+    <string name="mediaInfoTable_numberOfSeasons">Évadok száma</string>
+    <string name="mediaInfoTable_originalTitle">Eredeti cím</string>
+    <string name="mediaInfoTable_productionCountry">Gyártó ország</string>
+    <string name="mediaInfoTable_releaseDate">Megjelenés dátuma</string>
+    <string name="mediaInfoTable_releaseDateTheatrical">Mozi</string>
+    <string name="mediaInfoTable_releaseDateDigital">Digitális</string>
+    <string name="mediaInfoTable_releaseDatePhysical">Fizikai</string>
+    <string name="mediaInfoTable_revenue">Bevétel</string>
+    <string name="mediaInfoTable_rottenTomatoesRating">Rotten Tomatoes értékelés</string>
+    <string name="mediaInfoTable_status">Állapot</string>
+    <string name="mediaInfoTable_studios">Stúdiók</string>
+    <string name="mediaInfoTable_tmdbRating">TMDB értékelés</string>
+
+    <!-- Person Screen Strings -->
+    <string name="personScreen_alsoKnownAs">Más néven</string>
+    <string name="personScreen_born">Született</string>
+    <string name="personScreen_crew">Stáb</string>
+    <string name="personScreen_knownFor">Ismert szerepei</string>
+    <string name="personScreen_personProfile">Személy profilja</string>
+    <string name="personScreen_yearsOld">év</string>
+
+    <!-- Request Action Strings -->
+    <string name="requestAction_approve">Jóváhagyás</string>
+    <string name="requestAction_by">kérte:</string>
+    <string name="requestAction_decline">Elutasítás</string>
+    <string name="requestAction_delete">Törlés</string>
+    <string name="requestAction_mediaStatus">Médiaállapot</string>
+    <string name="requestAction_modified">Módosítva</string>
+    <string name="requestAction_removeFromRadarr">Eltávolítás a Radarrból</string>
+    <string name="requestAction_removeFromSonarr">Eltávolítás a Sonarrból</string>
+    <string name="requestAction_requestStatus">Kérés állapota</string>
+    <string name="requestAction_unknownMediaType">Ismeretlen médiatípus</string>
+    <string name="requestAction_unknownProfile">Ismeretlen profil</string>
+
+    <!-- Request Modal Strings -->
+    <string name="requestModal_episodes">Epizódok</string>
+    <string name="requestModal_errorLookingUpSeries">Hiba a sorozat keresésekor: %1$s</string>
+    <string name="requestModal_errorSubmittingRequest">Hiba a kérés elküldésekor</string>
+    <string name="requestModal_folderMenu">Gyökérmappa</string>
+    <string name="requestModal_lookupError">Hiba a sorozat keresésekor</string>
+    <string name="requestModal_lookupLoading">Sorozat keresése...</string>
+    <string name="requestModal_noSeriesFound">Nem található sorozat</string>
+    <string name="requestModal_notSelected">Nincs kiválasztva</string>
+    <string name="requestModal_qualityMenu">Minőségi profil</string>
+    <string name="requestModal_requestedSuccessfully">A kérés sikeresen elküldve!</string>
+    <string name="requestModal_requestSeriesTitle">Sorozat kérése</string>
+    <string name="requestModal_season">Évad</string>
+    <string name="requestModal_seasonsMenu">Évadok</string>
+    <string name="requestModal_selected">Kiválasztva</string>
+    <string name="requestModal_selectQualityProfile">Válassz minőségi profilt</string>
+    <string name="requestModal_selectRootFolder">Válassz gyökérmappát</string>
+    <string name="requestModal_selectSeasonError">Válassz ki legalább egy évadot</string>
+    <string name="requestModal_selectServer">Válassz szervert</string>
+    <string name="requestModal_selectTags">Válassz címkéket</string>
+    <string name="requestModal_serverMenu">Szerver</string>
+    <string name="requestModal_submit">Kérés</string>
+    <string name="requestModal_success">@string/common_success</string>
+    <string name="requestModal_tag">Címke</string>
+    <string name="requestModal_tagsMenu">Címkék</string>
+    <string name="requestModal_title">Médiatartalom kérése</string>
+    <string name="requestModal_unableToMatch">Nem sikerült automatikusan azonosítani ezt a sorozatot. Válaszd ki lent a megfelelő találatot.</string>
+
+    <!-- Request Status Strings -->
+    <string name="requestStatus_approved">Jóváhagyva</string>
+    <string name="requestStatus_available">Elérhető</string>
+    <string name="requestStatus_blacklisted">Feketelistán</string>
+    <string name="requestStatus_completed">Befejezve</string>
+    <string name="requestStatus_declined">Elutasítva</string>
+    <string name="requestStatus_deleted">Törölve</string>
+    <string name="requestStatus_failed">Sikertelen</string>
+    <string name="requestStatus_notRequested">Nincs kérve</string>
+    <string name="requestStatus_partiallyAvailable">Részben elérhető</string>
+    <string name="requestStatus_pending">Függőben</string>
+
+    <!-- Settings Menu Strings -->
+    <string name="settingsMenu_12Hour">12 órás</string>
+    <string name="settingsMenu_24Hour">24 órás</string>
+    <string name="settingsMenu_aboutMenu">Névjegy</string>
+    <string name="settingsMenu_appLanguage">Alkalmazás nyelve</string>
+    <string name="settingsMenu_authType">Hitelesítés típusa</string>
+    <string name="settingsMenu_clockFormat">Óraformátum</string>
+    <string name="settingsMenu_configMenu">API beállítása</string>
+    <string name="settingsMenu_userProfiles">Felhasználói profilok</string>
+    <string name="settingsMenu_debugMode">Hibakeresési mód</string>
+    <string name="settingsMenu_disabled">Letiltva</string>
+    <string name="settingsMenu_discoveryMenu">Felfedezés nyelve</string>
+    <string name="settingsMenu_defaultStreamingRegion">Alapértelmezett streaming régió</string>
+    <string name="settingsMenu_edit">SZERKESZTÉS</string>
+    <string name="settingsMenu_enabled">Engedélyezve</string>
+    <string name="settingsMenu_folderSelection">Mappaválasztás</string>
+    <string name="settingsMenu_hostname">Kiszolgálónév</string>
+    <string name="settingsMenu_mediaServerType">Médiaszerver</string>
+    <string name="settingsMenu_mediaServerTypeEmby">Emby</string>
+    <string name="settingsMenu_mediaServerTypeJellyfin">Jellyfin</string>
+    <string name="settingsMenu_mediaServerTypeNotConfigured">Nincs beállítva</string>
+    <string name="settingsMenu_mediaServerTypePlex">Plex</string>
+    <string name="settingsMenu_serverType">Szervertípus</string>
+    <string name="settingsMenu_thankYou">Köszönjük, hogy támogatod a termékünket.</string>
+    <string name="settingsMenu_aboutIntro">Hálásak vagyunk mindenkinek, aki hozzájárult a SeerrTV-hez és a Seerr ökoszisztémához.</string>
+    <string name="settingsMenu_aboutOriginalAuthorLabel">Eredeti szerző</string>
+    <string name="settingsMenu_aboutOriginalAuthorUrl">devmesh.ca</string>
+    <string name="settingsMenu_aboutCommunityLabel">Seerr közösség</string>
+    <string name="settingsMenu_aboutCommunityUrl">https://seerr.dev</string>
+    <string name="settingsMenu_aboutDescription">A SeerrTV mostantól közösségvezérelt, és a világ minden tájáról érkező közreműködők építik szeretettel.</string>
+    <string name="settingsMenu_noUpdateAvailable">Nincs elérhető frissítés</string>
+    <string name="settingsMenu_appLanguageDescription">Az alkalmazás jelenlegi nyelve.</string>
+    <string name="settingsMenu_discoveryLanguageDescription">A felfedezési tartalomhoz használt nyelv.</string>
+    <string name="settingsMenu_defaultRegionDescription">A streaming szolgáltatásokhoz alapértelmezettként használt régió.</string>
+    <string name="settingsMenu_folderSelectionDescription">Válaszd ki, hogy kérés indításakor kell-e mappát választani.</string>
+    <string name="settingsMenu_clockFormatDescription">Az idő megjelenítése 12 vagy 24 órás formátumban.</string>
+    <string name="settingsMenu_trailerPlayerDescription">Előzetesek lejátszása az alkalmazásban vagy a YouTube alkalmazásban.</string>
+    <string name="settingsMenu_toggleHint">Nyomd meg az Entert vagy a Jobbra gombot a váltáshoz.</string>
+    <string name="settingsMenu_checkForUpdateTitle">Frissítés keresése</string>
+    <string name="settingsMenu_checkForUpdateDescription">Ellenőrizd, hogy elérhető-e új verzió az alkalmazásból.</string>
+    <string name="settingsMenu_checkForUpdateHint">Nyomd meg az Entert vagy a Jobbra gombot az ellenőrzéshez.</string>
+    <string name="settingsMenu_rightPanelPlaceholder">Válassz egy elemet a beállításai megtekintéséhez vagy módosításához.</string>
+    <string name="settingsMenu_loadingRegions">Régiók betöltése...</string>
+    <string name="settingsMenu_trailerPlayer">Előzetes-lejátszó</string>
+    <string name="settingsMenu_trailerPlayer_youtubeApp">YouTube alkalmazás</string>
+    <string name="settingsMenu_trailerPlayer_inApp">Beépített lejátszó</string>
+    <string name="settingsMenu_title">Beállítások</string>
+    <string name="settingsMenu_username">Fiók</string>
+
+    <!-- User Profiles Strings -->
+    <string name="userProfiles_loadProfileInfoError">A profiladatok nem tölthetők be</string>
+    <string name="userProfiles_settingsSummary_title">Felhasználói profilok kezelése</string>
+    <string name="userProfiles_settingsSummary_noActiveProfile">Nincs aktív profil.</string>
+    <string name="userProfiles_settingsSummary_currentProfile">Jelenlegi profil</string>
+    <string name="userProfiles_settingsSummary_manageHint">Nyomd meg a Select/Enter gombot a profilok megtekintéséhez és kezeléséhez.</string>
+    <string name="userProfiles_pinProtected">PIN-kóddal védve</string>
+    <string name="userProfiles_loadingProfileInfo">Profiladatok betöltése...</string>
+    <string name="userProfiles_totalRequests">Összes kérés: %1$d</string>
+    <string name="userProfiles_movieRequests">Filmkérések: %1$s</string>
+    <string name="userProfiles_seriesRequests">Sorozatkérések: %1$s</string>
+    <string name="userProfiles_quotaUnlimited">Korlátlan</string>
+    <string name="userProfiles_quotaPerDays">%1$d / %2$d nap</string>
+    <string name="userProfiles_selectProfile">Válassz profilt</string>
+    <string name="userProfiles_enterPin">Add meg a PIN-kódot</string>
+    <string name="userProfiles_noProfilesConfigureServer">Még nincsenek profilok. Állítsd be a szervered.</string>
+    <string name="userProfiles_incorrectPin">Hibás PIN-kód</string>
+    <string name="userProfiles_keyDelete">TÖRL</string>
+    <string name="userProfiles_keyOk">OK</string>
+    <string name="userProfiles_actionConfigureApi">API beállítása</string>
+    <string name="userProfiles_actionAvatarColor">Avatár színe</string>
+    <string name="userProfiles_actionClearPin">PIN-kód törlése</string>
+    <string name="userProfiles_actionSetPin">PIN-kód beállítása</string>
+    <string name="userProfiles_actionDeleteProfile">Profil törlése</string>
+    <string name="userProfiles_pinMinimumLengthError">A PIN-kódnak legalább 4 számjegyűnek kell lennie</string>
+    <string name="userProfiles_titleList">Felhasználói profilok</string>
+    <string name="userProfiles_titleManageProfile">Profil kezelése</string>
+    <string name="userProfiles_titleSetProfilePin">Profil PIN-kódjának beállítása</string>
+    <string name="userProfiles_titleDeleteProfile">Törlöd a profilt?</string>
+    <string name="userProfiles_noProfilesYet">Még nincsenek profilok.</string>
+    <string name="userProfiles_noActiveProfileFound">Nincs aktív profil.</string>
+    <string name="userProfiles_deleteConfirmMessage">Törlöd az aktív profilod? Ez nem vonható vissza.</string>
+    <string name="userProfiles_pinLabel">PIN</string>
+    <string name="userProfiles_active">Aktív</string>
+    <string name="userProfiles_addProfile">Profil hozzáadása</string>
+
+    <!-- Splash Screen Strings -->
+    <string name="splashScreen_authenticating">Hitelesítés…</string>
+    <string name="splashScreen_checkingConnection">Kapcsolat ellenőrzése…</string>
+    <string name="splashScreen_checkingForUpdates">Frissítések keresése…</string>
+    <string name="splashScreen_errorAuthFailed">Hitelesítési hiba: Hozzáférés megtagadva – Érvénytelen hitelesítő adatok</string>
+    <string name="splashScreen_errorCloudflareRequired">Cloudflare-védelem észlelve</string>
+    <string name="splashScreen_errorConnectionFailed">Kapcsolódási hiba: Sikertelen kapcsolódás</string>
+    <string name="splashScreen_loadingConfiguration">Beállítások betöltése…</string>
+    <string name="splashScreen_loadingRadarrConfig">Radarr beállítások betöltése…</string>
+    <string name="splashScreen_loadingSonarrConfig">Sonarr beállítások betöltése…</string>
+    <string name="splashScreen_noRadarrServersInfo">Radarr: Nincs beállítva</string>
+    <string name="splashScreen_noServersInfo">Nincs háttérszerver beállítva – Csak Overseerr/Jellyseerr/Seerr mód</string>
+    <string name="splashScreen_noSonarrServersInfo">Sonarr: Nincs beállítva</string>
+    <string name="splashScreen_mediaServerDetected_plex">Plex médiaszerver észlelve</string>
+    <string name="splashScreen_mediaServerDetected_jellyfin">Jellyfin médiaszerver észlelve</string>
+    <string name="splashScreen_mediaServerDetected_emby">Emby médiaszerver észlelve</string>
+    <string name="splashScreen_mediaServerNotConfigured">Nincs médiaszerver beállítva</string>
+    <string name="splashScreen_radarrConfigComplete">Radarr: %1$d szerver – HD (%2$d) 4K (%3$d)</string>
+    <string name="splashScreen_ready">Kész!</string>
+    <string name="splashScreen_sonarrConfigComplete">Sonarr: %1$d szerver – HD (%2$d) 4K (%3$d)</string>
+    <plurals name="splashScreen_sonarrConfigComplete_basic">
+        <item quantity="one">Sonarr: %1$d szerver</item>
+        <item quantity="other">Sonarr: %1$d szerver</item>
+    </plurals>
+    <plurals name="splashScreen_radarrConfigComplete_basic">
+        <item quantity="one">Radarr: %1$d szerver</item>
+        <item quantity="other">Radarr: %1$d szerver</item>
+    </plurals>
+
+    <!-- Time Strings -->
+    <string name="time_dayAgo">1 napja</string>
+    <string name="time_days">%1$d nap</string>
+    <string name="time_daysAgo">%1$d napja</string>
+    <string name="time_estimatedIn">Várható</string>
+    <string name="time_hourAgo">1 órája</string>
+    <string name="time_hours">%1$d óra</string>
+    <string name="time_hoursAgo">%1$d órája</string>
+    <string name="time_justNow">épp most</string>
+    <string name="time_minuteAgo">1 perce</string>
+    <string name="time_minutes">%1$d perc</string>
+    <string name="time_minutesAgo">%1$d perce</string>
+    <string name="time_monthAgo">1 hónapja</string>
+    <string name="time_monthsAgo">%1$d hónapja</string>
+    <string name="time_secondAgo">1 másodperce</string>
+    <string name="time_seconds">%1$d másodperc</string>
+    <string name="time_secondsAgo">%1$d másodperce</string>
+    <string name="time_yearAgo">1 éve</string>
+    <string name="time_yearsAgo">%1$d éve</string>
+
+    <!-- Browse Screen Strings -->
+    <string name="browse_movies">Filmek</string>
+    <string name="browse_series">Sorozatok</string>
+    <string name="browse_noResults">Nincs találat</string>
+
+    <!-- Sort Menu Strings -->
+    <string name="sort_title">Rendezés</string>
+    <string name="sort_popularity">Népszerűség</string>
+    <string name="sort_releaseDate">Megjelenés dátuma</string>
+    <string name="sort_firstAirDate">Első adás dátuma</string>
+    <string name="sort_tmdbRating">TMDB értékelés</string>
+    <string name="sort_title_az">Cím A→Z</string>
+
+    <!-- Filter Strings -->
+    <string name="filter_title">Szűrők</string>
+    <string name="filter_clearAll">Összes szűrő törlése</string>
+
+    <!-- Filter Section Strings -->
+    <string name="filter_releaseDate">Megjelenés dátuma</string>
+    <string name="filter_genres">Műfajok</string>
+    <string name="filter_keywords">Kulcsszavak</string>
+    <string name="filter_originalLanguage">Eredeti nyelv</string>
+    <string name="filter_contentRating">Korhatár-besorolás</string>
+    <string name="filter_runtime">Játékidő (perc)</string>
+    <string name="filter_userScore">Nézői pontszám</string>
+    <string name="filter_voteCount">Szavazatok száma</string>
+    <string name="filter_studios">Stúdiók</string>
+    <string name="filter_networks">Csatornák</string>
+    <string name="filter_region">Régió</string>
+    <string name="filter_firstAirDate">Első adás dátuma</string>
+    <string name="filter_streamingServices">Streaming szolgáltatások</string>
+    <string name="filter_comingSoon">Hamarosan</string>
+
+    <!-- Filter Control Strings -->
+    <string name="filter_from">Ettől</string>
+    <string name="filter_to">Eddig</string>
+
+    <!-- Content Rating Strings -->
+
+    <!-- Language Names -->
+    <string name="language_english">Angol</string>
+    <string name="language_spanish">Spanyol</string>
+    <string name="language_french">Francia</string>
+    <string name="language_german">Német</string>
+    <string name="language_portuguese">Portugál</string>
+    <string name="language_japanese">Japán</string>
+    <string name="language_chinese">Kínai</string>
+    <string name="language_dutch">Holland</string>
+    <string name="language_estonian">Észt</string>
+    <string name="language_hungarian">Magyar</string>
+
+    <!-- Other Filter Strings -->
+    <string name="filter_close">Bezárás</string>
+    <string name="filter_regionChangeConfirm">Módosítod az alapértelmezett streaming régiót erre: %1$s?</string>
+    <string name="filter_notSet">Nincs beállítva</string>
+    <string name="filter_clearSelection">Kijelölés törlése</string>
+    <string name="filter_applyRange">Tartomány alkalmazása</string>
+    <string name="filter_clearFilter">Szűrő törlése</string>
+    <string name="filter_clearAllDates">Összes dátumszűrő törlése</string>
+</resources>

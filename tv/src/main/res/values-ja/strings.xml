@@ -49,6 +49,7 @@
     <string name="common_no">いいえ</string>
     <!-- Config Screen Strings -->
     <string name="configScreen_apiKeyHelp">サーバー設定からAPIキーを入力してください</string>
+    <string name="auth_error_unexpected_response">サーバーから予期しない応答が返されました。サーバーが互換性のないバージョンで動作している可能性があります。</string>
     <string name="configScreen_authenticationFailed">認証失敗</string>
     <string name="configScreen_authFailedMessage">認証情報が無効です。パスワードの変更やアクセス権の取り消しが原因の可能性があります。有効な認証情報で再設定してください。</string>
     <string name="configScreen_authMethod">認証方法</string>
@@ -294,14 +295,6 @@
     <string name="settingsMenu_userProfiles">ユーザープロファイル</string>
     <string name="settingsMenu_debugMode">デバッグモード</string>
     <string name="settingsMenu_disabled">無効</string>
-    <string name="settingsMenu_discoverLanguageDE">ドイツ語</string>
-    <string name="settingsMenu_discoverLanguageEN">英語</string>
-    <string name="settingsMenu_discoverLanguageES">スペイン語</string>
-    <string name="settingsMenu_discoverLanguageFR">フランス語</string>
-    <string name="settingsMenu_discoverLanguageJA">日本語</string>
-    <string name="settingsMenu_discoverLanguageNL">オランダ語</string>
-    <string name="settingsMenu_discoverLanguagePT">ポルトガル語</string>
-    <string name="settingsMenu_discoverLanguageZH">中国語</string>
     <string name="settingsMenu_discoveryMenu">ディスカバリー言語</string>
     <string name="settingsMenu_defaultStreamingRegion">デフォルトストリーミング地域</string>
     <string name="settingsMenu_edit">編集</string>
@@ -423,35 +416,18 @@
     <!-- Filter Control Strings -->
     <string name="filter_from">開始</string>
     <string name="filter_to">終了</string>
-    <string name="filter_min">最小</string>
-    <string name="filter_max">最大</string>
-    <string name="filter_anyLanguage">任意の言語</string>
-    <string name="filter_dateFormat">YYYY-MM-DD</string>
-    <string name="filter_minRuntime">0</string>
-    <string name="filter_maxRuntime">400</string>
-    <string name="filter_minScore">1.0</string>
-    <string name="filter_maxScore">10.0</string>
-    <string name="filter_maxVotes">1000</string>
-    
-    <!-- Content Rating Strings -->
-    <string name="rating_nr">NR</string>
-    <string name="rating_g">G</string>
-    <string name="rating_pg">PG</string>
-    <string name="rating_pg13">PG-13</string>
-    <string name="rating_r">R</string>
-    <string name="rating_nc17">NC-17</string>
     
     <!-- Language Names -->
     <string name="language_english">英語</string>
     <string name="language_spanish">スペイン語</string>
     <string name="language_french">フランス語</string>
     <string name="language_german">ドイツ語</string>
-    <string name="language_italian">イタリア語</string>
     <string name="language_portuguese">ポルトガル語</string>
-    <string name="language_russian">ロシア語</string>
     <string name="language_japanese">日本語</string>
-    <string name="language_korean">韓国語</string>
     <string name="language_chinese">中国語</string>
+    <string name="language_dutch">オランダ語</string>
+    <string name="language_estonian">エストニア語</string>
+    <string name="language_hungarian">ハンガリー語</string>
     
     <!-- Other Filter Strings -->
     <string name="filter_close">閉じる</string>

@@ -612,17 +612,23 @@ private fun RenderFilterSubScreen(
             )
         }
         FilterScreen.Language -> {
-            val languages by viewModel.availableLanguages.collectAsState()
-            FilterListSelection(
-                items = languages,
-                selectedItem = languages.find { it.iso_639_1 == filters.originalLanguage },
+            val results by viewModel.languageSearchResults.collectAsState()
+            val allLanguages by viewModel.availableLanguages.collectAsState()
+            val currentLabel = allLanguages.find { it.iso_639_1 == filters.originalLanguage }?.english_name
+            FilterSearchSelectionSingle(
+                searchResults = results,
+                selectedItemId = filters.originalLanguage,
+                currentSelectionLabel = currentLabel,
+                itemId = { it.iso_639_1 },
                 itemLabel = { it.english_name },
+                onSearch = { query -> viewModel.searchLanguages(query) },
+                searchPlaceholder = "Search languages...",
                 onItemSelected = { language ->
-                    onFiltersChange(filters.copy(originalLanguage = language.iso_639_1))
+                    val newLang = if (filters.originalLanguage == language.iso_639_1) null else language.iso_639_1
+                    onFiltersChange(filters.copy(originalLanguage = newLang))
                 },
-                onClear = {
-                    onFiltersChange(filters.copy(originalLanguage = null))
-                },
+                onClearSelection = { onFiltersChange(filters.copy(originalLanguage = null)) },
+                onClearSearch = { viewModel.clearLanguageSearch() },
                 onBack = onBackToCategories
             )
         }
@@ -699,6 +705,7 @@ private fun RenderFilterSubScreen(
                 itemId = { it.id },
                 itemLabel = { it.name },
                 onSearch = { query -> viewModel.searchStudios(query) },
+                searchPlaceholder = "Search studios...",
                 onItemSelected = { studio ->
                     // Single selection: set or clear
                     val newStudio = if (filters.studio == studio.id) {
@@ -1926,16 +1933,17 @@ private fun FilterSliderItem(
  * Similar to FilterSearchSelection but only allows one item to be selected
  */
 @Composable
-private fun <T> FilterSearchSelectionSingle(
+private fun <T, ID> FilterSearchSelectionSingle(
     searchResults: List<T>,
-    selectedItemId: Int?,
+    selectedItemId: ID?,
     currentSelectionLabel: String?,
-    itemId: (T) -> Int,
+    itemId: (T) -> ID,
     itemLabel: (T) -> String,
     onSearch: (String) -> Unit,
     onItemSelected: (T) -> Unit,
     onClearSelection: () -> Unit,
     onClearSearch: () -> Unit,
+    searchPlaceholder: String = "Search...",
     onBack: (() -> Unit)? = null
 ) {
     var searchQuery by remember { mutableStateOf("") }
@@ -2053,7 +2061,7 @@ private fun <T> FilterSearchSelectionSingle(
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                placeholder = { Text("Search studios...", color = Color.Gray) },
+                placeholder = { Text(searchPlaceholder, color = Color.Gray) },
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = Color.White,
                     unfocusedTextColor = Color.White,

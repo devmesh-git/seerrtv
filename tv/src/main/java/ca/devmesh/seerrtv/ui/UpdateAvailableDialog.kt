@@ -16,7 +16,6 @@ import ca.devmesh.seerrtv.util.UpdateDownloadCallback
 import ca.devmesh.seerrtv.util.UpdateInfo
 import ca.devmesh.seerrtv.util.UpdateManager
 import ca.devmesh.seerrtv.ui.components.CustomButton
-import ca.devmesh.seerrtv.ui.KeyUtils
 import java.io.File
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester

@@ -141,8 +141,9 @@ object SharedPreferencesUtil {
     private const val KEY_PROFILE_SELECTION_COMPLETED = "profile_selection_completed"
     private const val KEY_FORCE_SPLASH_RESET_ON_NEXT = "force_splash_reset_on_next"
     private const val KEY_PENDING_NEW_PROFILE_CREATION = "pending_new_profile_creation"
-    // Supported app languages
-    val SUPPORTED_APP_LANGUAGES = listOf("en", "de", "es", "fr", "ja", "nl", "pt", "zh", "et")
+    // Supported app languages — the languages the app is translated into. Single source of
+    // truth is LanguageCatalog (which must mirror the res/values-* folders).
+    val SUPPORTED_APP_LANGUAGES = LanguageCatalog.codes
 
     fun getAppLanguage(context: Context): String? {
         val activeProfile = getActiveProfile(context)
@@ -197,7 +198,7 @@ object SharedPreferencesUtil {
 
         // 2. No preference yet - use system language for this session only (do not persist).
         // Language is only persisted when the user selects one on the language screen.
-        val systemLocale = context.resources.configuration.locales[0]
+        val systemLocale = CommonUtil.primarySystemLocale(context)
         val systemLanguage = systemLocale.language.lowercase()
         return if (systemLanguage == "zh" || SUPPORTED_APP_LANGUAGES.contains(systemLanguage)) {
             systemLanguage
@@ -1281,14 +1282,6 @@ object SharedPreferencesUtil {
         val typeValue = parts[1].toIntOrNull() ?: return null
         val data = parts[2].takeIf { it.isNotBlank() }
         return Triple(title, typeValue, data)
-    }
-
-    private fun removeCustomSliderMeta(context: Context, categoryId: String) {
-        val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        with(sharedPrefs.edit()) {
-            remove(KEY_CUSTOM_SLIDER_META_PREFIX + categoryId)
-            commit()
-        }
     }
 
 }

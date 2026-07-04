@@ -291,7 +291,7 @@ fun MediaDetails(
     }
 
     // Consolidated error handling utility
-    class ErrorHandler() {
+    class ErrorHandler {
         fun handleActivityNotFoundError(
             packageName: String,
             appType: String,

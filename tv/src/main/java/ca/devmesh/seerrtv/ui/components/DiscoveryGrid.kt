@@ -7,7 +7,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -23,7 +22,6 @@ import ca.devmesh.seerrtv.R
 import ca.devmesh.seerrtv.model.SearchResult
 import ca.devmesh.seerrtv.ui.MediaItem
 import ca.devmesh.seerrtv.ui.FocusedItem
-import ca.devmesh.seerrtv.ui.position.GridPositionManager
 import coil3.ImageLoader
 import kotlinx.coroutines.flow.collect
 
@@ -61,7 +59,6 @@ fun DiscoveryGrid(
         snapshotFlow { 
             val layoutInfo = gridState.layoutInfo
             val lastVisibleIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
-            val firstVisibleIndex = layoutInfo.visibleItemsInfo.firstOrNull()?.index ?: -1
             val totalItems = layoutInfo.totalItemsCount
             Pair(lastVisibleIndex, totalItems)
         }

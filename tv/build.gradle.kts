@@ -2,8 +2,8 @@ import java.io.File
 import java.util.Properties
 
 // Single source for app version; used in defaultConfig and for direct-release APK naming
-val appVersionName = "0.28.05"
-val appVersionCode = 128
+val appVersionName = "0.28.06"
+val appVersionCode = 129
 
 plugins {
     // https://developer.android.com/jetpack/androidx/releases/hilt
@@ -13,12 +13,28 @@ plugins {
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
     alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.detekt) apply false
     id("org.jetbrains.kotlin.plugin.serialization")
+}
+
+// Static analysis for dead/unused code (config/detekt/detekt.yml). detekt 1.23.8 (the latest
+// release) calls a Gradle API deprecated on Gradle 9 at plugin-apply time, which would warn on
+// every build. Applying it lazily — only when a detekt task is actually requested — keeps normal
+// builds warning-free. Run with: ./gradlew detekt
+val detektRequested = gradle.startParameter.taskNames.any {
+    it.substringAfterLast(':').startsWith("detekt", ignoreCase = true)
+}
+if (detektRequested) {
+    apply(plugin = "io.gitlab.arturbosch.detekt")
+    configure<io.gitlab.arturbosch.detekt.extensions.DetektExtension> {
+        buildUponDefaultConfig = true
+        config.setFrom("$rootDir/config/detekt/detekt.yml")
+    }
 }
 
 android {
     namespace = "ca.devmesh.seerrtv"
-    compileSdk = 36
+    compileSdk = 37
     buildFeatures {
         buildConfig = true
     }
@@ -62,8 +78,8 @@ android {
 
     defaultConfig {
         applicationId = "ca.devmesh.seerrtv"
-        minSdk = 25
-        targetSdk = 36
+        minSdk = 23
+        targetSdk = 37
         versionCode = appVersionCode
         versionName = appVersionName
         buildConfigField("String", "VERSION_NAME", "\"${defaultConfig.versionName}\"")
@@ -139,7 +155,6 @@ dependencies {
     // Core Android Dependencies
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
-    implementation(libs.androidx.webkit)
 
     // Add desugaring library
     coreLibraryDesugaring(libs.desugar.jdk.libs)
@@ -171,6 +186,8 @@ dependencies {
     implementation(libs.hilt.android)
     implementation(libs.androidx.hilt.navigation.compose)
     ksp(libs.hilt.compiler)
+    // Hilt/Dagger 2.60 no longer pulls this transitively, but generated code needs it at compile time.
+    compileOnly(libs.errorprone.annotations)
 
     // Networking
     implementation(libs.ktor.client.okhttp)

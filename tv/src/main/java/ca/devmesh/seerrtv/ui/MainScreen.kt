@@ -426,21 +426,6 @@ fun MainScreen(
     // Custom slider state
     val discoverSliders by viewModel.discoverSliders.collectAsState()
     val customSliderData by viewModel.customSliderData.collectAsState()
-    
-//    // Debug StateFlow observation (only in debug builds)
-//    if (BuildConfig.DEBUG) {
-//        LaunchedEffect(Unit) {
-//            viewModel.categoryData.collect { data ->
-//                data.forEach { (category, result) ->
-//                    when (result) {
-//                        is ApiResult.Success -> { /* Debug logging can be added here if needed */ }
-//                        is ApiResult.Loading -> { /* Debug logging can be added here if needed */ }
-//                        is ApiResult.Error -> { /* Debug logging can be added here if needed */ }
-//                    }
-//                }
-//            }
-//        }
-//    }
 
     // Collect the current selected media (for category cards)
     val currentCategoryMedia by viewModel.currentSelectedMedia.collectAsState()
@@ -2098,11 +2083,15 @@ fun ScrollableCategoriesSection(
                         if (shouldShowPlaceholder) {
                             CategoryPlaceholder(category = category, context = context)
                         } else {
+                            // State is retained in the remembered selectedMediaIndices map via getOrPut,
+                            // so it survives recomposition despite not being wrapped in remember directly.
+                            @Suppress("UnrememberedMutableState")
+                            val mediaIndexState = selectedMediaIndices.getOrPut(category) { mutableIntStateOf(0) }
                             CarouselSection(
                                 category = category,
                                 isSelected = isSelected,
                                 apiResult = apiResult,
-                                selectedMediaIndex = selectedMediaIndices.getOrPut(category) { mutableIntStateOf(0) },
+                                selectedMediaIndex = mediaIndexState,
                                 context = context,
                                 viewModel = viewModel,
                                 imageLoader = imageLoader,

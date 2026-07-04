@@ -251,29 +251,6 @@ fun CertificationBox(certification: String) {
     Text(text = "|")
 }
 
-//@Composable
-//fun MediaInfoTable(
-//    modifier: Modifier = Modifier
-//) {
-//    Column(
-//        modifier = modifier
-//            .fillMaxWidth()
-//            .border(
-//                1.dp,
-//                Color(0xFF3370FF),
-//                RoundedCornerShape(8.dp)
-//            )
-//            .padding(8.dp)
-//    ) {
-//        // Add media info table content here
-//        Text(
-//            text = "Media Info",
-//            style = MaterialTheme.typography.bodyMedium,
-//            color = Color.White
-//        )
-//    }
-//}
-
 private fun getMovieCertification(mediaDetails: MediaDetails): String {
     var certification = mediaDetails.releases?.results?.find { it.iso_3166_1 == "US" }
         ?.releaseDates?.firstOrNull()?.certification ?: "N/A"

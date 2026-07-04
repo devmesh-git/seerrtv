@@ -73,6 +73,8 @@ import ca.devmesh.seerrtv.model.otherIssues
 import ca.devmesh.seerrtv.viewmodel.IssueViewModel
 
 @Composable
+// resolveString bridges string resources into non-composable modal content.
+@Suppress("LocalContextGetResourceValueCall")
 fun AddCommentModal(
     isVisible: Boolean,
     issue: Issue,

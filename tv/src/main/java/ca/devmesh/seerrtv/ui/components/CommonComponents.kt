@@ -31,10 +31,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import ca.devmesh.seerrtv.BuildConfig
-import ca.devmesh.seerrtv.data.ApiResult
 import ca.devmesh.seerrtv.model.DownloadStatus
-import ca.devmesh.seerrtv.model.MediaDetails
-import ca.devmesh.seerrtv.model.MediaInfo
 import ca.devmesh.seerrtv.R
 import java.time.Instant
 import kotlinx.coroutines.delay
@@ -107,6 +104,9 @@ fun DevMeshBranding(
 }
 
 @Composable
+// Relative-date strings are resolved with context.getString inside a non-composable
+// derivedStateOf; the derivedState is keyed on context so it re-derives on locale change.
+@Suppress("LocalContextGetResourceValueCall")
 fun AutoUpdatingHumanizedDate(
     date: String?,
     modifier: Modifier = Modifier,
@@ -195,94 +195,12 @@ object TimeHelper {
     }
 }
 
-/**
- * Creates initial debug data for download status display
- */
-private fun createDebugData(result: ApiResult.Success<MediaDetails>, mediaId: String): ApiResult.Success<MediaDetails> {
-    val originalData = result.data
-    val modifiedMediaInfo = originalData.mediaInfo?.copy(
-        status = 3, // Processing status
-        downloadStatus = listOf(
-            DownloadStatus(
-                externalId = 6,
-                estimatedCompletionTime = "2025-03-21T18:13:42.000Z",
-                mediaType = "movie",
-                size = 18595329901,
-                sizeLeft = 5792495468,
-                status = "downloading",
-                timeLeft = "01:19:31",
-                title = "Kung Fu Panda 4 2024 2160p Blu ray x265 10bit SDR Org Hindi DDP5 1 English DDP7 1 Atmos NmCT"
-            )
-        )
-    ) ?: MediaInfo(
-        // Create new MediaInfo if it was null
-        id = 1,
-        mediaType = "movie",
-        tmdbId = mediaId.toIntOrNull() ?: 0,
-        status = 3, // Processing status
-        status4k = 0, // Default value for status4k
-        createdAt = "", // Empty string for createdAt
-        updatedAt = "", // Empty string for updatedAt
-        lastSeasonChange = "", // Empty string for lastSeasonChange
-        downloadStatus = listOf(
-            DownloadStatus(
-                externalId = 6,
-                estimatedCompletionTime = "2025-03-21T18:13:42.000Z",
-                mediaType = "movie",
-                size = 18595329901,
-                sizeLeft = 5792495468,
-                status = "downloading",
-                timeLeft = "01:19:31",
-                title = "Kung Fu Panda 4 2024 2160p Blu ray x265 10bit SDR Org Hindi DDP5 1 English DDP7 1 Atmos NmCT"
-            )
-        )
-    )
-    val modifiedData = originalData.copy(mediaInfo = modifiedMediaInfo)
-    return ApiResult.Success(modifiedData)
-}
-
-/**
- * Updates existing debug data to simulate download progress
- */
-private fun updateDebugProgress(
-    newResult: ApiResult.Success<MediaDetails>, 
-    currentDetails: ApiResult<MediaDetails>
-): ApiResult.Success<MediaDetails> {
-    val originalData = newResult.data
-    val currentMediaInfo = currentDetails.let {
-        if (it is ApiResult.Success) it.data.mediaInfo else null
-    }
-    
-    // If we already have debug media info, update it to simulate progress
-    if (currentMediaInfo?.downloadStatus?.isNotEmpty() == true) {
-        val currentDownload = currentMediaInfo.downloadStatus.first()
-        val newSizeLeft = (currentDownload.sizeLeft ?: 0L) - 200000000 // Decrease by ~200MB
-        val updatedDownload = currentDownload.copy(
-            sizeLeft = if (newSizeLeft > 0) newSizeLeft else 0,
-            timeLeft = if (newSizeLeft > 0) "00:59:31" else "00:00:00"
-        )
-        
-        Log.d("updateDebugProgress", "📊 Progress update: ${currentDownload.sizeLeft} -> $newSizeLeft bytes left (${(newSizeLeft * 100 / currentDownload.size).toInt()}%)")
-        
-        val updatedMediaInfo = currentMediaInfo.copy(
-            downloadStatus = listOf(updatedDownload)
-        )
-        return ApiResult.Success(originalData.copy(mediaInfo = updatedMediaInfo))
-    } else {
-        // If we don't have debug media info, create it
-        return createDebugData(newResult, originalData.id.toString())
-    }
-}
-
 @Composable
 fun DownloadStatusItem(
     downloadStatus: DownloadStatus,
     modifier: Modifier = Modifier,
     is4K: Boolean = false
 ) {
-    // Force recomposition for any updates to ensure progress changes are visible
-    val recomposeKey = remember(downloadStatus) { Any() }
-    
     Column(
         modifier = modifier
             .fillMaxWidth()

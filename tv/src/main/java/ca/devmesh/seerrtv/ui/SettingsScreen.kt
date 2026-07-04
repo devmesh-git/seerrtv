@@ -5,8 +5,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -24,11 +26,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.shape.CircleShape
 import ca.devmesh.seerrtv.BuildConfig
 import ca.devmesh.seerrtv.model.AuthType
 import ca.devmesh.seerrtv.R
 import ca.devmesh.seerrtv.ui.components.AppLogo
+import ca.devmesh.seerrtv.util.LanguageCatalog
 import ca.devmesh.seerrtv.util.SharedPreferencesUtil
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -841,8 +843,43 @@ fun MenuItem(item: MenuItem, isSelected: Boolean, isDimmed: Boolean = false) {
     }
 }
 
+/**
+ * Scrolls the list just enough to bring [index] fully into view. Unlike a plain
+ * range check, this also handles an item that is only *partially* visible (clipped
+ * at the top or bottom edge) — the case that left the last language squished and
+ * un-scrollable. Shared by every settings picker so they scroll identically.
+ */
+suspend fun LazyListState.ensureItemFullyVisible(index: Int) {
+    val layoutInfo = this.layoutInfo
+    val itemInfo = layoutInfo.visibleItemsInfo.find { it.index == index }
+    if (itemInfo == null) {
+        // Not rendered at all — jump to it.
+        animateScrollToItem(index)
+        return
+    }
+    val itemStart = itemInfo.offset
+    val itemEnd = itemInfo.offset + itemInfo.size
+    when {
+        itemStart < layoutInfo.viewportStartOffset ->
+            animateScrollBy((itemStart - layoutInfo.viewportStartOffset).toFloat())
+        itemEnd > layoutInfo.viewportEndOffset ->
+            animateScrollBy((itemEnd - layoutInfo.viewportEndOffset).toFloat())
+    }
+}
+
 @Composable
 fun AppLanguageSubMenu(controller: SettingsScreenController) {
+    val listState = rememberLazyListState()
+
+    // Keep the focused item fully visible as the user navigates
+    LaunchedEffect(controller.subMenuSelectedIndex) {
+        val index = controller.subMenuSelectedIndex
+        if (index >= 0 && index < controller.appLanguageOptions.size) {
+            delay(50)
+            listState.ensureItemFullyVisible(index)
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxHeight()
@@ -857,38 +894,45 @@ fun AppLanguageSubMenu(controller: SettingsScreenController) {
             modifier = Modifier.padding(bottom = 16.dp)
         )
         // Re-use discovery language options as they are sufficient standard codes
-        controller.appLanguageOptions.forEachIndexed { index, (code, res) ->
-            val isFocused = index == controller.subMenuSelectedIndex
-            val isSelected = controller.appLanguage == code
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp)
-                    .background(
-                        when {
-                            isFocused -> Color(0xFF374151) // focused
-                            isSelected -> Color(0xFF23293A) // selected but not focused
-                            else -> Color.Transparent
-                        }
+        LazyColumn(
+            state = listState,
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+        ) {
+            itemsIndexed(controller.appLanguageOptions) { index, (code, res) ->
+                val isFocused = index == controller.subMenuSelectedIndex
+                val isSelected = controller.appLanguage == code
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .background(
+                            when {
+                                isFocused -> Color(0xFF374151) // focused
+                                isSelected -> Color(0xFF23293A) // selected but not focused
+                                else -> Color.Transparent
+                            }
+                        )
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    androidx.compose.material3.RadioButton(
+                        selected = isSelected,
+                        onClick = {
+                            controller.selectAppLanguage(index)
+                        },
+                        colors = androidx.compose.material3.RadioButtonDefaults.colors(
+                            selectedColor = Color(0xFFBB86FC),
+                            unselectedColor = Color.White
+                        )
                     )
-                    .padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                androidx.compose.material3.RadioButton(
-                    selected = isSelected,
-                    onClick = {
-                        controller.selectAppLanguage(index)
-                    },
-                    colors = androidx.compose.material3.RadioButtonDefaults.colors(
-                        selectedColor = Color(0xFFBB86FC),
-                        unselectedColor = Color.White
+                    Text(
+                        text = stringResource(res),
+                        color = Color.White,
+                        style = MaterialTheme.typography.bodyLarge
                     )
-                )
-                Text(
-                    text = stringResource(res),
-                    color = Color.White,
-                    style = MaterialTheme.typography.bodyLarge
-                )
+                }
             }
         }
     }
@@ -896,6 +940,17 @@ fun AppLanguageSubMenu(controller: SettingsScreenController) {
 
 @Composable
 fun DiscoveryLanguageSubMenu(controller: SettingsScreenController) {
+    val listState = rememberLazyListState()
+
+    // Keep the focused item fully visible as the user navigates
+    LaunchedEffect(controller.subMenuSelectedIndex) {
+        val index = controller.subMenuSelectedIndex
+        if (index >= 0 && index < controller.discoveryLanguageOptions.size) {
+            delay(50)
+            listState.ensureItemFullyVisible(index)
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxHeight()
@@ -909,38 +964,45 @@ fun DiscoveryLanguageSubMenu(controller: SettingsScreenController) {
             color = Color.White,
             modifier = Modifier.padding(bottom = 16.dp)
         )
-        controller.discoveryLanguageOptions.forEachIndexed { index, (code, res) ->
-            val isFocused = index == controller.subMenuSelectedIndex
-            val isSelected = controller.discoveryLanguage == code
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp)
-                    .background(
-                        when {
-                            isFocused -> Color(0xFF374151) // focused
-                            isSelected -> Color(0xFF23293A) // selected but not focused
-                            else -> Color.Transparent
-                        }
+        LazyColumn(
+            state = listState,
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+        ) {
+            itemsIndexed(controller.discoveryLanguageOptions) { index, (code, res) ->
+                val isFocused = index == controller.subMenuSelectedIndex
+                val isSelected = controller.discoveryLanguage == code
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp)
+                        .background(
+                            when {
+                                isFocused -> Color(0xFF374151) // focused
+                                isSelected -> Color(0xFF23293A) // selected but not focused
+                                else -> Color.Transparent
+                            }
+                        )
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    androidx.compose.material3.RadioButton(
+                        selected = isSelected,
+                        onClick = {
+                            controller.selectDiscoveryLanguage(index)
+                        },
+                        colors = androidx.compose.material3.RadioButtonDefaults.colors(
+                            selectedColor = Color(0xFFBB86FC),
+                            unselectedColor = Color.White
+                        )
                     )
-                    .padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                androidx.compose.material3.RadioButton(
-                    selected = isSelected,
-                    onClick = {
-                        controller.selectDiscoveryLanguage(index)
-                    },
-                    colors = androidx.compose.material3.RadioButtonDefaults.colors(
-                        selectedColor = Color(0xFFBB86FC),
-                        unselectedColor = Color.White
+                    Text(
+                        text = stringResource(res),
+                        color = Color.White,
+                        style = MaterialTheme.typography.bodyLarge
                     )
-                )
-                Text(
-                    text = stringResource(res),
-                    color = Color.White,
-                    style = MaterialTheme.typography.bodyLarge
-                )
+                }
             }
         }
     }
@@ -1106,34 +1168,15 @@ fun DefaultStreamingRegionSubMenu(
         }
     }
     
-    // Auto-scroll when selected index changes - only if item is not visible
+    // Auto-scroll when selected index changes - keep the focused item fully visible
     LaunchedEffect(controller.subMenuSelectedIndex) {
         if (controller.subMenuSelectedIndex >= 0 && controller.subMenuSelectedIndex < regions.size && !isLoading) {
             // Small delay to ensure UI has updated
             delay(50)
-            
-            val layoutInfo = listState.layoutInfo
-            if (layoutInfo.visibleItemsInfo.isNotEmpty()) {
-                val firstVisible = listState.firstVisibleItemIndex
-                val lastVisible = firstVisible + layoutInfo.visibleItemsInfo.size - 1
-                
-                // Only scroll if the selected item is outside the visible area
-                when {
-                    controller.subMenuSelectedIndex < firstVisible -> {
-                        listState.animateScrollToItem(controller.subMenuSelectedIndex)
-                    }
-                    controller.subMenuSelectedIndex > lastVisible -> {
-                        listState.animateScrollToItem(controller.subMenuSelectedIndex)
-                    }
-                    // Item is already visible, no need to scroll
-                }
-            } else {
-                // Fallback: scroll if layout info not available
-                listState.animateScrollToItem(controller.subMenuSelectedIndex)
-            }
+            listState.ensureItemFullyVisible(controller.subMenuSelectedIndex)
         }
     }
-    
+
     Column(
         modifier = Modifier
             .fillMaxHeight()
@@ -1255,29 +1298,13 @@ class SettingsScreenController(
         }
     }
 
-    // Language options and their string resource keys
-    val discoveryLanguageOptions = listOf(
-        "en" to R.string.settingsMenu_discoverLanguageEN,
-        "de" to R.string.settingsMenu_discoverLanguageDE,
-        "es" to R.string.settingsMenu_discoverLanguageES,
-        "fr" to R.string.settingsMenu_discoverLanguageFR,
-        "ja" to R.string.settingsMenu_discoverLanguageJA,
-        "nl" to R.string.settingsMenu_discoverLanguageNL,
-        "pt" to R.string.settingsMenu_discoverLanguagePT,
-        "zh" to R.string.settingsMenu_discoverLanguageZH,
-        "et" to R.string.settingsMenu_discoverLanguageET,
-    )
+    // Language options (code to display-name string res). Single source of truth: LanguageCatalog.
+    val discoveryLanguageOptions = LanguageCatalog.languages
+    val appLanguageOptions = LanguageCatalog.languages
 
-    // App Language options (same as discovery for now)
-    val appLanguageOptions = discoveryLanguageOptions
+    fun getAppLanguageLabelRes(code: String): Int = LanguageCatalog.nameRes(code)
 
-    fun getAppLanguageLabelRes(code: String): Int {
-        return appLanguageOptions.find { it.first == code }?.second ?: R.string.settingsMenu_discoverLanguageEN
-    }
-
-    fun getDiscoveryLanguageLabelRes(code: String): Int {
-        return discoveryLanguageOptions.find { it.first == code }?.second ?: R.string.settingsMenu_discoverLanguageEN
-    }
+    fun getDiscoveryLanguageLabelRes(code: String): Int = LanguageCatalog.nameRes(code)
 
     fun handleBack() {
         if (BuildConfig.DEBUG) {

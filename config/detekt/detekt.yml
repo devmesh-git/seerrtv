@@ -1,0 +1,63 @@
+# Detekt config scoped to DEAD / UNUSED code detection.
+# Applied on top of detekt's default config (buildUponDefaultConfig = true in tv/build.gradle.kts).
+# Broad style/formatting rulesets are switched off so the signal stays focused on dead code.
+# Run: ./gradlew detekt
+
+build:
+  maxIssues: 0        # fail the build on any finding (a baseline absorbs pre-existing ones)
+
+# --- Rulesets we care about for dead code ---
+
+empty-blocks:
+  active: true
+  EmptyFunctionBlock:
+    active: true
+    ignoreOverridden: true   # SSL TrustManager stubs etc. are legitimate empty overrides
+
+potential-bugs:
+  active: true
+  UnreachableCode:
+    active: true
+  RedundantElseInWhen:
+    active: true
+
+style:
+  # Keep the ruleset on but only for the unused-declaration rules; silence the stylistic noise.
+  active: true
+  UnusedImports:
+    active: true
+  UnusedPrivateMember:
+    active: true
+  UnusedPrivateProperty:
+    active: true
+  UnusedPrivateClass:
+    active: true
+  # UnusedParameter is intentionally OFF: parameters are risky to drop (overrides / call sites)
+  # and are out of scope for this dead-declaration pass.
+  UnusedParameter: { active: false }
+  # --- stylistic / complexity rules we do NOT want firing in a dead-code pass ---
+  LoopWithTooManyJumpStatements: { active: false }
+  MagicNumber: { active: false }
+  ReturnCount: { active: false }
+  WildcardImport: { active: false }
+  MaxLineLength: { active: false }
+  NewLineAtEndOfFile: { active: false }
+  ForbiddenComment: { active: false }
+  FunctionOnlyReturningConstant: { active: false }
+  DataClassContainsFunctions: { active: false }
+  UseCheckOrError: { active: false }      # style preference, not dead code
+  ThrowsCount: { active: false }          # complexity heuristic, not dead code
+
+# --- Rulesets not relevant to dead code: disabled to reduce noise ---
+comments:
+  active: false
+complexity:
+  active: false
+coroutines:
+  active: false
+exceptions:
+  active: false
+naming:
+  active: false
+performance:
+  active: false

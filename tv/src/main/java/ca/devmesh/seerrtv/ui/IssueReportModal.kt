@@ -66,6 +66,8 @@ import androidx.compose.ui.text.input.ImeAction
 import android.widget.Toast
 
 @Composable
+// resolveString and an onKeyEvent Toast resolve resources outside composable scope.
+@Suppress("LocalContextGetResourceValueCall")
 fun IssueReportModal(
     isVisible: Boolean,
     mediaId: Int,

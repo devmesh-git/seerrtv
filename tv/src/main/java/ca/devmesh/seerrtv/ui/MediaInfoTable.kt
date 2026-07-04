@@ -166,7 +166,7 @@ fun MediaInfoTable(
         }
 
         val appLang = SharedPreferencesUtil.getAppLanguage(context)
-        val locale = if (!appLang.isNullOrBlank()) Locale.forLanguageTag(appLang) else (if (!context.resources.configuration.locales.isEmpty) context.resources.configuration.locales[0] else Locale.getDefault())
+        val locale = if (!appLang.isNullOrBlank()) Locale.forLanguageTag(appLang) else CommonUtil.primarySystemLocale(context)
         when (mediaDetails.mediaType) {
             MediaType.TV -> TvInfoRows(mediaDetails, locale)
             MediaType.MOVIE -> MovieInfoRows(

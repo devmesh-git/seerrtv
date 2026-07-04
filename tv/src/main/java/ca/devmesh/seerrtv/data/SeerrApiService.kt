@@ -5,6 +5,7 @@ import android.content.Context
 import android.util.Log
 import androidx.compose.ui.text.intl.Locale
 import ca.devmesh.seerrtv.BuildConfig
+import ca.devmesh.seerrtv.R
 import ca.devmesh.seerrtv.util.AvatarUrlResolver
 import ca.devmesh.seerrtv.model.AuthType
 import ca.devmesh.seerrtv.model.BrowseModels
@@ -668,6 +669,15 @@ class SeerrApiService @Inject constructor(
                 requestTimeoutMillis = 30000
                 socketTimeoutMillis = 30000
             }
+            // Follow redirects for write methods (POST/PUT/DELETE) too, not just GET/HEAD.
+            // Cloudflare-fronted servers (e.g. "Always Use HTTPS") answer http:// requests
+            // with a 301 to https://; without this, GET calls upgrade silently but a POST
+            // (e.g. submitting a request) surfaces the raw 301 as an error. Ktor's
+            // HttpRedirect re-sends the original method AND body to the Location, so the
+            // POST payload is preserved (unlike OkHttp's default 301->GET downgrade).
+            install(io.ktor.client.plugins.HttpRedirect) {
+                checkHttpMethod = false
+            }
             defaultRequest {
                 header("User-Agent", "SeerrTV v${BuildConfig.VERSION_NAME}")
                 
@@ -806,7 +816,20 @@ class SeerrApiService @Inject constructor(
                     when (T::class) {
                         Boolean::class -> ApiResult.Success(true as T)
                         Unit::class -> ApiResult.Success(Unit as T)
-                        else -> ApiResult.Success(response.body())
+                        else -> {
+                            // Read the body as text first so that, on a parse failure, we can log
+                            // the raw JSON for diagnosis (backend-shape drift between Overseerr/Seerr
+                            // variants). Gated to debug builds to avoid leaking tokens/PII in release logs.
+                            val bodyText = response.bodyAsText()
+                            try {
+                                ApiResult.Success(json.decodeFromString<T>(bodyText))
+                            } catch (e: kotlinx.serialization.SerializationException) {
+                                if (BuildConfig.DEBUG) {
+                                    Log.e("SeerrApiService", "JSON parse failure for $requestUrl. Raw body: $bodyText", e)
+                                }
+                                ApiResult.Error(e)
+                            }
+                        }
                     }
                 }
                 else -> {
@@ -944,7 +967,20 @@ class SeerrApiService @Inject constructor(
                     when (T::class) {
                         Boolean::class -> ApiResult.Success(true as T)
                         Unit::class -> ApiResult.Success(Unit as T)
-                        else -> ApiResult.Success(response.body())
+                        else -> {
+                            // Read the body as text first so that, on a parse failure, we can log
+                            // the raw JSON for diagnosis (backend-shape drift between Overseerr/Seerr
+                            // variants). Gated to debug builds to avoid leaking tokens/PII in release logs.
+                            val bodyText = response.bodyAsText()
+                            try {
+                                ApiResult.Success(json.decodeFromString<T>(bodyText))
+                            } catch (e: kotlinx.serialization.SerializationException) {
+                                if (BuildConfig.DEBUG) {
+                                    Log.e("SeerrApiService", "JSON parse failure for $requestUrl. Raw body: $bodyText", e)
+                                }
+                                ApiResult.Error(e)
+                            }
+                        }
                     }
                 }
                 else -> {
@@ -1466,14 +1502,10 @@ class SeerrApiService @Inject constructor(
     }
 
     suspend fun getSonarrs(): ApiResult<List<SonarrResult>> {
-        // val testResponse = """ """
-        // return executeApiCall("service/sonarr", testResponse = testResponse)
         return executeApiCall("service/sonarr")
     }
 
     suspend fun getSonarr(id: Int): ApiResult<Sonarr> {
-        // var testResponse = ""
-        // return executeApiCall("service/sonarr/$id", testResponse = testResponse)
         return executeApiCall("service/sonarr/$id")
     }
 
@@ -1861,7 +1893,15 @@ class SeerrApiService @Inject constructor(
                             }
                             is ApiResult.Error -> {
                                 Log.e("SeerrApiService", "❌ Token validation failed: ${tokenTestResponse.exception.message}")
-                                return@withContext ApiValidationResult.Error("Token validation failed: ${tokenTestResponse.exception.message}")
+                                // A deserialization failure means the backend returned a response
+                                // shape we can't parse (e.g. an incompatible Overseerr/Seerr version).
+                                // Surface a friendly message instead of the raw kotlinx error text.
+                                val message = if (tokenTestResponse.exception is kotlinx.serialization.SerializationException) {
+                                    context.getString(R.string.auth_error_unexpected_response)
+                                } else {
+                                    "Token validation failed: ${tokenTestResponse.exception.message}"
+                                }
+                                return@withContext ApiValidationResult.Error(message)
                             }
                             is ApiResult.Loading -> {
                                 Log.e("SeerrApiService", "❌ Unexpected loading state during token validation")
@@ -2230,8 +2270,7 @@ class SeerrApiService @Inject constructor(
             "X-Plex-Platform" to "Android",
             "X-Plex-Platform-Version" to "15"
         )
-        
-        // val requestBody = """{"strong": true}"""
+
         val requestBody = null
 
         Log.d("SeerrApiService", "Requesting Plex PIN with:")
@@ -2450,19 +2489,7 @@ class SeerrApiService @Inject constructor(
         val pagedGenres = allGenres.subList(startIndex, endIndex)
         
         val hasMorePages = endIndex < allGenres.size
-        
-        // REMOVE INCORRECT PAGE INCREMENT: We already increment at the start of the method
-        // if (loadMore && hasMorePages && pagedGenres.isNotEmpty()) {
-        //     if (BuildConfig.DEBUG) {
-        //         Log.d("SeerrApiService", "Successfully loaded movie genres page ${pageState.currentPage}, incrementing to next page")
-        //     }
-        //     pageState.currentPage++
-        // } else if (loadMore) {
-        //     if (BuildConfig.DEBUG) {
-        //         Log.d("SeerrApiService", "Not incrementing movie genres page: hasMore=$hasMorePages, results=${pagedGenres.size}")
-        //     }
-        // }
-        
+
         // Log the current page info
         if (BuildConfig.DEBUG) {
             Log.d("SeerrApiService", "🔢 Returning movie genres: page=${pageState.currentPage}, " +
@@ -2568,19 +2595,7 @@ class SeerrApiService @Inject constructor(
         val pagedGenres = allGenres.subList(startIndex, endIndex)
         
         val hasMorePages = endIndex < allGenres.size
-        
-        // REMOVE INCORRECT PAGE INCREMENT: We already increment at the start of the method
-        // if (loadMore && hasMorePages && pagedGenres.isNotEmpty()) {
-        //     if (BuildConfig.DEBUG) {
-        //         Log.d("SeerrApiService", "Successfully loaded TV genres page ${pageState.currentPage}, incrementing to next page")
-        //     }
-        //     pageState.currentPage++
-        // } else if (loadMore) {
-        //     if (BuildConfig.DEBUG) {
-        //         Log.d("SeerrApiService", "Not incrementing TV genres page: hasMore=$hasMorePages, results=${pagedGenres.size}")
-        //     }
-        // }
-        
+
         // Log the current page info
         if (BuildConfig.DEBUG) {
             Log.d("SeerrApiService", "🔢 Returning TV genres: page=${pageState.currentPage}, " +
@@ -3411,38 +3426,13 @@ class SeerrApiService @Inject constructor(
     }
 
     /**
-     * Get available languages.
-     * Currently returns a static list of common languages as there is no direct API endpoint.
+     * Languages supported by TMDB, fetched from the Seerr API (`GET /api/v1/languages`),
+     * sorted by English name. Mirrors [getRegions]; the caller treats a failure as an empty list.
      */
-    fun getLanguages(): List<ca.devmesh.seerrtv.model.FilterLanguage> {
-        return listOf(
-            ca.devmesh.seerrtv.model.FilterLanguage("en", "English", "English"),
-            ca.devmesh.seerrtv.model.FilterLanguage("fr", "French", "Français"),
-            ca.devmesh.seerrtv.model.FilterLanguage("es", "Spanish", "Español"),
-            ca.devmesh.seerrtv.model.FilterLanguage("de", "German", "Deutsch"),
-            ca.devmesh.seerrtv.model.FilterLanguage("it", "Italian", "Italiano"),
-            ca.devmesh.seerrtv.model.FilterLanguage("pt", "Portuguese", "Português"),
-            ca.devmesh.seerrtv.model.FilterLanguage("ru", "Russian", "Pусский"),
-            ca.devmesh.seerrtv.model.FilterLanguage("ja", "Japanese", "日本語"),
-            ca.devmesh.seerrtv.model.FilterLanguage("ko", "Korean", "한국어"),
-            ca.devmesh.seerrtv.model.FilterLanguage("zh", "Chinese", "中文"),
-            ca.devmesh.seerrtv.model.FilterLanguage("hi", "Hindi", "हिन्दी"),
-            ca.devmesh.seerrtv.model.FilterLanguage("ar", "Arabic", "العربية"),
-            ca.devmesh.seerrtv.model.FilterLanguage("tr", "Turkish", "Türkçe"),
-            ca.devmesh.seerrtv.model.FilterLanguage("nl", "Dutch", "Nederlands"),
-            ca.devmesh.seerrtv.model.FilterLanguage("sv", "Swedish", "Svenska"),
-            ca.devmesh.seerrtv.model.FilterLanguage("da", "Danish", "Dansk"),
-            ca.devmesh.seerrtv.model.FilterLanguage("no", "Norwegian", "Norsk"),
-            ca.devmesh.seerrtv.model.FilterLanguage("fi", "Finnish", "Suomi"),
-            ca.devmesh.seerrtv.model.FilterLanguage("pl", "Polish", "Polski"),
-            ca.devmesh.seerrtv.model.FilterLanguage("cs", "Czech", "Čeština"),
-            ca.devmesh.seerrtv.model.FilterLanguage("hu", "Hungarian", "Magyar"),
-            ca.devmesh.seerrtv.model.FilterLanguage("el", "Greek", "Ελληνικά"),
-            ca.devmesh.seerrtv.model.FilterLanguage("he", "Hebrew", "עִבְרִית"),
-            ca.devmesh.seerrtv.model.FilterLanguage("th", "Thai", "ภาษาไทย"),
-            ca.devmesh.seerrtv.model.FilterLanguage("vi", "Vietnamese", "Tiếng Việt"),
-            ca.devmesh.seerrtv.model.FilterLanguage("id", "Indonesian", "Bahasa Indonesia")
-        ).sortedBy { it.english_name }
+    suspend fun getLanguages(): ApiResult<List<ca.devmesh.seerrtv.model.FilterLanguage>> {
+        return executeApiCall<List<ca.devmesh.seerrtv.model.FilterLanguage>>("languages").mapData { languages ->
+            languages.sortedBy { it.english_name }
+        }
     }
 
     /**

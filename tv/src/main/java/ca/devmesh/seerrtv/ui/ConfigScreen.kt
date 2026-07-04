@@ -26,7 +26,6 @@ import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.asImageBitmap
@@ -56,6 +55,7 @@ import ca.devmesh.seerrtv.R
 import ca.devmesh.seerrtv.ui.components.AppLogo
 import ca.devmesh.seerrtv.ui.components.VersionNumber
 import ca.devmesh.seerrtv.util.CommonUtil
+import ca.devmesh.seerrtv.util.LanguageCatalog
 import ca.devmesh.seerrtv.util.SharedPreferencesUtil
 import ca.devmesh.seerrtv.viewmodel.ConfigViewModel
 import io.ktor.client.plugins.*
@@ -175,16 +175,7 @@ fun ConfigScreen(
                     LanguageSelectionStep(
                         context = context,
                         pendingNewProfileCreation = isPendingNewProfileCreation,
-                        languageOptions = listOf(
-                            "en" to R.string.settingsMenu_discoverLanguageEN,
-                            "de" to R.string.settingsMenu_discoverLanguageDE,
-                            "es" to R.string.settingsMenu_discoverLanguageES,
-                            "fr" to R.string.settingsMenu_discoverLanguageFR,
-                            "ja" to R.string.settingsMenu_discoverLanguageJA,
-                            "nl" to R.string.settingsMenu_discoverLanguageNL,
-                            "pt" to R.string.settingsMenu_discoverLanguagePT,
-                            "zh" to R.string.settingsMenu_discoverLanguageZH,
-                        ),
+                        languageOptions = LanguageCatalog.languages,
                         onNext = {
                             showLanguageSelection = false
                             showConfigSelection = true
@@ -1938,35 +1929,11 @@ fun LanguageSelectionStep(
         }
     }
     
-    // Auto-scroll when selected index changes
+    // Auto-scroll when selected index changes - keep the focused item fully visible
+    // (shares the same helper as the Settings language/region pickers for consistent UX)
     LaunchedEffect(controller.selectedIndex) {
         if (controller.selectedIndex >= 0 && controller.selectedIndex < languageOptions.size) {
-            val layoutInfo = listState.layoutInfo
-            val visibleItems = layoutInfo.visibleItemsInfo
-            if (visibleItems.isNotEmpty()) {
-                val firstVisibleIndex = listState.firstVisibleItemIndex
-                val lastVisibleIndex = visibleItems.last().index
-                
-                when {
-                    controller.selectedIndex >= lastVisibleIndex - 1 -> {
-                        val targetIndex = (firstVisibleIndex + 1).coerceAtMost(layoutInfo.totalItemsCount - 1)
-                        if (targetIndex != firstVisibleIndex && targetIndex >= 0) {
-                            listState.animateScrollToItem(targetIndex)
-                        }
-                    }
-                    controller.selectedIndex <= firstVisibleIndex + 1 -> {
-                        val targetIndex = (firstVisibleIndex - 1).coerceAtLeast(0)
-                        if (targetIndex != firstVisibleIndex && targetIndex >= 0) {
-                            listState.animateScrollToItem(targetIndex)
-                        }
-                    }
-                    controller.selectedIndex < firstVisibleIndex || controller.selectedIndex > lastVisibleIndex -> {
-                        listState.animateScrollToItem(controller.selectedIndex)
-                    }
-                }
-            } else {
-                listState.animateScrollToItem(controller.selectedIndex)
-            }
+            listState.ensureItemFullyVisible(controller.selectedIndex)
         }
     }
     

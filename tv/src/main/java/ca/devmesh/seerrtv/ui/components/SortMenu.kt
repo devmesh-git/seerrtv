@@ -247,9 +247,6 @@ fun SortMenu(
                     state = listState,
                     modifier = Modifier.weight(1f)
                 ) {
-                    // Get sort options based on media type
-                    val availableSortOptions = BrowseModels.SortOption.forMediaType(mediaType)
-
                     // Group sort options by base type (without direction)
                     val baseSortOptions = when (mediaType) {
                         MediaType.MOVIE -> listOf(

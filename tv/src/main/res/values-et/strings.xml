@@ -52,6 +52,7 @@
     
     <!-- Config Screen Strings -->
     <string name="configScreen_apiKeyHelp">Sisestage oma API-võti serveri seadetest</string>
+    <string name="auth_error_unexpected_response">Server tagastas ootamatu vastuse. Teie server võib töötada ühildumatu versiooniga.</string>
     <string name="configScreen_authenticationFailed">Autentimine ebaõnnestus</string>
     <string name="configScreen_authFailedMessage">Teie mandaadid ei kehti. See võib olla tingitud parooli muutusest või tühistatud juurdepääsust. Palun seadistage uuesti kehtivate mandaatidega.</string>
     <string name="configScreen_authMethod">Autentimismeetod</string>
@@ -307,15 +308,6 @@
     <string name="settingsMenu_userProfiles">Kasutajaprofiilid</string>
     <string name="settingsMenu_debugMode">Silumisrežiim</string>
     <string name="settingsMenu_disabled">Väljas</string>
-    <string name="settingsMenu_discoverLanguageDE">Saksa</string>
-    <string name="settingsMenu_discoverLanguageEN">Inglise</string>
-    <string name="settingsMenu_discoverLanguageES">Hispaania</string>
-    <string name="settingsMenu_discoverLanguageFR">Prantsuse</string>
-    <string name="settingsMenu_discoverLanguageJA">Jaapani</string>
-    <string name="settingsMenu_discoverLanguageNL">Hollandi</string>
-    <string name="settingsMenu_discoverLanguagePT">Portugali</string>
-    <string name="settingsMenu_discoverLanguageZH">Hiina</string>
-    <string name="settingsMenu_discoverLanguageET">Eesti</string>
     <string name="settingsMenu_discoveryMenu">Avastamiskeel</string>
     <string name="settingsMenu_defaultStreamingRegion">Vaikimisi voogedastuspiirkond</string>
     <string name="settingsMenu_edit">MUUDA</string>
@@ -475,36 +467,18 @@
     <!-- Filter Control Strings -->
     <string name="filter_from">Alates</string>
     <string name="filter_to">Kuni</string>
-    <string name="filter_min">Min</string>
-    <string name="filter_max">Max</string>
-    <string name="filter_anyLanguage">Mis tahes keel</string>
-    <string name="filter_dateFormat">AAAA-KK-PP</string>
-    <string name="filter_minRuntime">0</string>
-    <string name="filter_maxRuntime">400</string>
-    <string name="filter_minScore">1.0</string>
-    <string name="filter_maxScore">10.0</string>
-    <string name="filter_maxVotes">1000</string>
-    
-    <!-- Content Rating Strings -->
-    <string name="rating_nr">NR</string>
-    <string name="rating_g">G</string>
-    <string name="rating_pg">PG</string>
-    <string name="rating_pg13">PG-13</string>
-    <string name="rating_r">R</string>
-    <string name="rating_nc17">NC-17</string>
     
     <!-- Language Names -->
     <string name="language_english">Inglise</string>
     <string name="language_spanish">Hispaania</string>
     <string name="language_french">Prantsuse</string>
     <string name="language_german">Saksa</string>
-    <string name="language_italian">Itaalia</string>
     <string name="language_portuguese">Portugali</string>
-    <string name="language_russian">Vene</string>
     <string name="language_japanese">Jaapani</string>
-    <string name="language_korean">Korea</string>
     <string name="language_chinese">Hiina</string>
+    <string name="language_dutch">Hollandi</string>
     <string name="language_estonian">Eesti</string>
+    <string name="language_hungarian">Ungari</string>
     
     <!-- Other Filter Strings -->
     <string name="filter_close">Sulge</string>

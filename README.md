@@ -194,7 +194,7 @@ For detailed configuration guides, see:
 ## Requirements
 
 ### For Users
-- Android TV device (Android 5.0 / API 21 or higher recommended)
+- Android TV device (Android 6.0 / API 23 or higher)
 - Seerr, Overseerr, or Jellyseerr server instance
 - Network access to your media server
 

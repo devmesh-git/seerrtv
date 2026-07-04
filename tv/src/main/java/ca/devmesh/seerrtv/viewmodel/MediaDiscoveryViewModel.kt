@@ -54,6 +54,10 @@ class MediaDiscoveryViewModel @Inject constructor(
     private val _availableLanguages = MutableStateFlow<List<FilterLanguage>>(emptyList())
     val availableLanguages: StateFlow<List<FilterLanguage>> = _availableLanguages
 
+    // Client-side filtered view of availableLanguages for the searchable language selector.
+    private val _languageSearchResults = MutableStateFlow<List<FilterLanguage>>(emptyList())
+    val languageSearchResults: StateFlow<List<FilterLanguage>> = _languageSearchResults
+
     private val _contentRatings = MutableStateFlow<List<ca.devmesh.seerrtv.model.ContentRating>>(emptyList())
     val contentRatings: StateFlow<List<ca.devmesh.seerrtv.model.ContentRating>> = _contentRatings
 
@@ -908,8 +912,15 @@ class MediaDiscoveryViewModel @Inject constructor(
                 else -> {}
             }
             
-            // Load languages (static list for now)
-            _availableLanguages.value = apiService.getLanguages()
+            // Load languages from the Seerr API (full TMDB set)
+            when (val result = apiService.getLanguages()) {
+                is ApiResult.Success -> {
+                    _availableLanguages.value = result.data
+                    _languageSearchResults.value = result.data
+                }
+                is ApiResult.Error -> Log.e("MediaDiscoveryViewModel", "Failed to load languages", result.exception)
+                else -> {}
+            }
             
             // Load content ratings (static list)
             _contentRatings.value = apiService.getContentRatings()
@@ -1040,6 +1051,24 @@ class MediaDiscoveryViewModel @Inject constructor(
     fun clearStudioSearch() {
         _studioSearchResults.value = emptyList()
     }
+
+    /** Client-side filter over the already-loaded language list (no server round-trip). */
+    fun searchLanguages(query: String) {
+        val q = query.trim()
+        _languageSearchResults.value = if (q.isEmpty()) {
+            _availableLanguages.value
+        } else {
+            _availableLanguages.value.filter { lang ->
+                lang.english_name.contains(q, ignoreCase = true) ||
+                    lang.name?.contains(q, ignoreCase = true) == true ||
+                    lang.iso_639_1.equals(q, ignoreCase = true)
+            }
+        }
+    }
+
+    fun clearLanguageSearch() {
+        _languageSearchResults.value = _availableLanguages.value
+    }
     
     fun setSelectedStudioName(name: String) {
         _selectedStudioName.value = name
@@ -1080,14 +1109,6 @@ class MediaDiscoveryViewModel @Inject constructor(
             val defaultFilters = BrowseModels.MediaFilters.default(currentFilters.mediaType)
             applyFilters(defaultFilters)
         }
-    }
-
-    /**
-     * Calculate and update active filter count
-     */
-    private fun calculateActiveFilterCount() {
-        val filters = _currentFilters.value
-        _activeFilterCount.value = filters?.activeCount() ?: 0
     }
 
     private suspend fun loadMoviesWithBrowse(filters: BrowseModels.MediaFilters, sort: BrowseModels.SortOption, loadMore: Boolean = false) {
