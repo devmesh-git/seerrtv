@@ -2,8 +2,8 @@ import java.io.File
 import java.util.Properties
 
 // Single source for app version; used in defaultConfig and for direct-release APK naming
-val appVersionName = "0.28.06"
-val appVersionCode = 129
+val appVersionName = "0.28.07"
+val appVersionCode = 130
 
 plugins {
     // https://developer.android.com/jetpack/androidx/releases/hilt
@@ -194,7 +194,18 @@ dependencies {
     implementation(libs.ktor.client.content.negotiation)
 
     // Image Loading
-    implementation(libs.coil3.coil.compose)
+    // Coil 3's coil-compose is a Kotlin-Multiplatform artifact whose Android variant can resolve to
+    // JetBrains Compose Multiplatform (org.jetbrains.compose.*) instead of redirecting to AndroidX.
+    // Those artifacts ship duplicate copies of the androidx.compose.* classes; having both them and
+    // the real AndroidX Compose artifacts on the classpath causes runtime ClassCastExceptions (e.g.
+    // ScrollState.animateScrollTo in MediaDetails). Exclude them so only the BOM-managed AndroidX
+    // Compose artifacts remain — they provide the same classes Coil compiles against.
+    implementation(libs.coil3.coil.compose) {
+        exclude(group = "org.jetbrains.compose.runtime")
+        exclude(group = "org.jetbrains.compose.foundation")
+        exclude(group = "org.jetbrains.compose.animation")
+        exclude(group = "org.jetbrains.compose.ui")
+    }
     implementation(libs.coil.network.okhttp)
 
     // Serialization

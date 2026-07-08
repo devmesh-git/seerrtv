@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.28.07
+
+### Fixed a widespread `ClassCastException` crash (regression in 0.28.06)
+
+- **Duplicate Compose classes on the classpath** – The 0.28.06 bump to Coil `3.5.0` pulled `io.coil-kt.coil3:coil-compose`, a Kotlin-Multiplatform artifact whose Android variant resolved to JetBrains **Compose Multiplatform** (`org.jetbrains.compose.*:1.11.1`) rather than redirecting to AndroidX — Gradle selected the plain-JVM variant (`platform.type: jvm` provided vs `androidJvm` requested). Those artifacts ship their own copies of the `androidx.compose.*` classes, so the app shipped **two definitions** of core Compose types (`ScrollState`, animation, runtime) alongside the real AndroidX `1.11.4` ones. When the scroll-animation coroutine resumed and a value produced by one copy of a class was cast to the other, the runtime threw a `ClassCastException` — surfacing on an innocent `scrollState.animateScrollTo(...)` call in `MediaDetails` and firing non-deterministically across devices. Fixed by excluding the four leaking `org.jetbrains.compose.*` groups from the Coil dependency; the BOM-managed AndroidX Compose artifacts provide the identical classes Coil compiles against. Verified that no `org.jetbrains.compose` artifact remains on either the runtime or compile classpath.
+- **Let the Compose BOM manage `foundation`/`ui`** – Removed the explicit `androidx.compose.foundation`/`androidx.compose.ui` version pins from the version catalog so all Compose artifacts move in lockstep with the BOM (they already resolved to `1.11.4`, so behavior is unchanged — this prevents a future version skew).
+
+### Files Modified
+
+- `tv/build.gradle.kts` – Version 0.28.07 (versionCode 130); excluded the `org.jetbrains.compose.{runtime,foundation,animation,ui}` groups from `coil-compose`.
+- `gradle/libs.versions.toml` – Dropped the explicit `foundation`/`ui` version entries and their `version.ref` pins so the Compose BOM governs them.
+
+---
+
 ## 0.28.06
 
 ### Hungarian (HU) Language Support

@@ -16,13 +16,11 @@ appcompat = "1.7.1"
 composeBom = "2026.06.01"
 kotlinxSerializationJson = "1.11.0"
 tvFoundation = "1.0.0"
-foundation = "1.11.4"
 lifecycleRuntimeKtx = "2.11.0"
 activityCompose = "1.13.0"
 # App dependenceies
 lifecycleViewmodelKtx = "2.11.0"
 navigationCompose = "2.9.8"
-ui = "1.11.4"
 lifecycleRuntimeComposeAndroid = "2.11.0"
 ktor = "3.5.1"
 desugarJdkLibs = "2.1.5"
@@ -34,14 +32,14 @@ androidx-activity-compose = { group = "androidx.activity", name = "activity-comp
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
-androidx-foundation = { module = "androidx.compose.foundation:foundation", version.ref = "foundation" }
+androidx-foundation = { module = "androidx.compose.foundation:foundation" }
 androidx-hilt-navigation-compose = { module = "androidx.hilt:hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
 androidx-material-icons-core = { module = "androidx.compose.material:material-icons-core" }
 androidx-material-icons-extended = { module = "androidx.compose.material:material-icons-extended" }
 androidx-material3 = { module = "androidx.compose.material3:material3" }
 androidx-tv-foundation = { group = "androidx.tv", name = "tv-foundation", version.ref = "tvFoundation" }
-androidx-ui = { module = "androidx.compose.ui:ui", version.ref = "ui" }
+androidx-ui = { module = "androidx.compose.ui:ui" }
 androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest" }
 androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
