@@ -173,6 +173,14 @@ private fun getEmbyPlayUrl(mediaInfo: MediaInfo): String? {
     return null
 }
 
+/**
+ * Computes a scroll offset [percent]% of the way through a scrollable range of [maxValue] pixels,
+ * clamped to `0..maxValue`. Shared by the auto-scroll branches in the media-details focus effect;
+ * integer/Long math avoids Float rounding and overflow.
+ */
+private fun scrollTargetPercent(maxValue: Int, percent: Int): Int =
+    (maxValue.toLong() * percent / 100L).toInt().coerceIn(0, maxValue)
+
 @Composable
 fun MediaDetails(
     context: Context,
@@ -2341,7 +2349,7 @@ fun MediaDetails(
                         FocusArea.OVERVIEW,
                         FocusArea.READ_MORE,
                         FocusArea.ISSUE -> {
-                            scrollState.animateScrollTo(0)
+                            scrollState.animateScrollToCompat(0)
                         }
 
                         // Action buttons: center vertically within reasonable bounds based on button index
@@ -2384,12 +2392,11 @@ fun MediaDetails(
                                 .coerceAtLeast(0)
                             if (idx == 0) {
                                 // Keep top-most button at top so title and issue button remain visible
-                                scrollState.animateScrollTo(0)
+                                scrollState.animateScrollToCompat(0)
                             } else {
                                 // Scroll to a more conservative position to keep action buttons visible
-                                val target = (scrollState.maxValue * 0.2f).toInt()
-                                    .coerceIn(0, scrollState.maxValue)
-                                scrollState.animateScrollTo(target)
+                                val target = scrollTargetPercent(scrollState.maxValue, 20)
+                                scrollState.animateScrollToCompat(target)
                             }
                         }
 
@@ -2413,7 +2420,7 @@ fun MediaDetails(
                                 // Calculate the viewport height based on actual screen dimensions
                                 // Android TV typically has 1080p resolution, minus top bar (50dp) and padding
                                 // This gives us approximately 900-950 pixels of visible content height
-                                val viewportHeight = 900f // Fixed viewport height for consistent scrolling behavior
+                                val viewportHeight = 900 // Fixed viewport height for consistent scrolling behavior
                                 val currentScroll = scrollState.value
                                 val viewportTop = currentScroll
                                 val viewportBottom = currentScroll + viewportHeight
@@ -2431,7 +2438,7 @@ fun MediaDetails(
                                     // Tag is below viewport - scroll down to show it
                                     tagBottom > viewportBottom -> {
                                         // Position tag near bottom of viewport with some padding
-                                        (tagBottom - viewportHeight + 120).coerceAtMost(scrollState.maxValue.toFloat()).toInt() // Increased padding from 100 to 120
+                                        (tagBottom - viewportHeight + 120).coerceAtMost(scrollState.maxValue) // Increased padding from 100 to 120
                                     }
                                     // Tag is already visible - no need to scroll
                                     else -> currentScroll
@@ -2445,7 +2452,7 @@ fun MediaDetails(
                                             "🏷️ Scrolling to tag ${stateManager.selectedTagIndex}: current=$currentScroll, target=$targetScroll, tagY=$selectedY->$adjustedTagY, viewport=$viewportTop-$viewportBottom"
                                         )
                                     }
-                                    scrollState.animateScrollTo(targetScroll)
+                                    scrollState.animateScrollToCompat(targetScroll)
                                 } else {
                                     if (BuildConfig.DEBUG) {
                                         Log.d(
@@ -2457,30 +2464,27 @@ fun MediaDetails(
                             } else {
                                 // Fallback: if we can't find the tag position, scroll to show tags section
                                 // This is approximately where tags start (after action buttons and overview)
-                                val tagsSectionStart = (scrollState.maxValue * 0.3f).toInt()
-                                    .coerceIn(0, scrollState.maxValue)
+                                val tagsSectionStart = scrollTargetPercent(scrollState.maxValue, 30)
                                 if (BuildConfig.DEBUG) {
                                     Log.d(
                                         "MediaDetails",
                                         "🏷️ Tag position not found for index ${stateManager.selectedTagIndex}, scrolling to tags section at $tagsSectionStart"
                                     )
                                 }
-                                scrollState.animateScrollTo(tagsSectionStart)
+                                scrollState.animateScrollToCompat(tagsSectionStart)
                             }
                         }
 
                         // Cast and Crew live below; scroll to approximate sections
                         FocusArea.CAST -> {
-                            val target = (scrollState.maxValue * 0.65f).toInt()
-                                .coerceIn(0, scrollState.maxValue)
-                            scrollState.animateScrollTo(target)
+                            val target = scrollTargetPercent(scrollState.maxValue, 65)
+                            scrollState.animateScrollToCompat(target)
                         }
 
                             FocusArea.CREW -> {
                                 if (stateManager.hasSimilarMedia) {
-                                    val target = (scrollState.maxValue * 0.75f).toInt()
-                                        .coerceIn(0, scrollState.maxValue)
-                                    scrollState.animateScrollTo(target)
+                                    val target = scrollTargetPercent(scrollState.maxValue, 75)
+                                    scrollState.animateScrollToCompat(target)
                                     // Save the scroll position after auto-scroll completes
                                     if (!returnState.isPending) {
                                         returnState = returnState.copy(
@@ -2490,7 +2494,7 @@ fun MediaDetails(
                                     }
                                 } else {
                                     // If Similar section is not visible, crew is the last section
-                                    scrollState.animateScrollTo(scrollState.maxValue)
+                                    scrollState.animateScrollToCompat(scrollState.maxValue)
                                     // Save the scroll position after auto-scroll completes
                                     if (!returnState.isPending) {
                                         returnState = returnState.copy(
@@ -2503,7 +2507,7 @@ fun MediaDetails(
 
                         // Similar media is at the bottom
                         FocusArea.SIMILAR_MEDIA -> {
-                            scrollState.animateScrollTo(scrollState.maxValue)
+                            scrollState.animateScrollToCompat(scrollState.maxValue)
                             // Save the scroll position after auto-scroll completes
                             if (!returnState.isPending) {
                                 returnState = returnState.copy(

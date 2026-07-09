@@ -126,7 +126,7 @@ fun SplashScreen(
                 coroutineScope.launch {
                     // Small delay to ensure content is rendered before scrolling
                     kotlinx.coroutines.delay(50)
-                    scrollState.animateScrollTo(scrollState.maxValue)
+                    scrollState.animateScrollToCompat(scrollState.maxValue)
                 }
             }
             

@@ -182,7 +182,7 @@ fun RequestActionModal(
             // First row buttons or media card - scroll to top
             FocusState.MainMenu(-1), FocusState.CancelButton, FocusState.DetailsButton -> {
                 coroutineScope.launch {
-                    scrollState.animateScrollTo(0)
+                    scrollState.animateScrollToCompat(0)
                 }
             }
             // Second row buttons - scroll to middle
@@ -190,13 +190,13 @@ fun RequestActionModal(
                 coroutineScope.launch {
                     // Scroll to a position that ensures these buttons are visible
                     val middlePosition = (scrollState.maxValue * 0.6f).toInt().coerceAtMost(scrollState.maxValue)
-                    scrollState.animateScrollTo(middlePosition)
+                    scrollState.animateScrollToCompat(middlePosition)
                 }
             }
             // Third row buttons - scroll to bottom
             FocusState.DeleteButton, FocusState.AdminDeleteButton -> {
                 coroutineScope.launch {
-                    scrollState.animateScrollTo(scrollState.maxValue)
+                    scrollState.animateScrollToCompat(scrollState.maxValue)
                 }
             }
             else -> {} // Do nothing for other states

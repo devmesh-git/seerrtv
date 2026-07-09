@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.28.08
+
+### Actually fixed the media-details `ClassCastException` crash
+
+- **`java.lang.Float cannot be cast to kotlin.Unit`** – The crash 0.28.07 tried to fix. The real cause sits at the boundary between the Kotlin 2.4.0 compiler (new in 0.28.06) and Compose Foundation: `ScrollState.animateScrollTo` is declared to return `Unit` but is compiled as a **tail call** to `animateScrollBy` (which returns `Float`) — it has no coroutine state machine of its own, so whenever the scroll actually suspends, the *caller* is resumed with `animateScrollBy`'s boxed `Float` instead of `Unit` (verified by disassembling foundation 1.11.1 and 1.11.4 — identical bytecode, so this was always true). That is legal under the long-standing coroutines codegen convention that callers ignore the resumed value of `Unit`-returning suspend calls. **Kotlin 2.4.0 broke that convention**: at some resume sites it emits `checkcast kotlin/Unit` on the resumed value, which crashes when the value is the `Float`. In this app the compiler emitted the cast at two of the nine `animateScrollTo` resume points inside `MediaDetails`' auto-scroll `LaunchedEffect` — including the Cast-section branch users hit constantly.
+- **Fix** – New `ScrollState.animateScrollToCompat()` (in `ScrollStateCompat.kt`) that calls `animateScrollBy((target - value).toFloat())` directly — the exact delta math `animateScrollTo` performs internally. Because `animateScrollBy`'s declared return type (`Float`) matches the value it actually resumes with, the compiler can never emit a `Unit` cast at any call site. All 13 `ScrollState.animateScrollTo` call sites app-wide (`MediaDetails`, `RequestActionModal`, `SplashScreen`) were switched to the compat helper. Scroll behavior is unchanged.
+- **Verified at the bytecode level** – The exact continuation class from the crash report (`MediaDetails$18$11$1`) now contains **zero** `checkcast kotlin/Unit` instructions (previously two), every resume path either discards the result or unboxes the expected `Float`, and no reference to `animateScrollTo` remains in any compiled class.
+- **App-wide audit for the same bug class** – Scanned the bytecode of all compiled suspend methods for resume-path `kotlin/Unit` casts and audited every suspend callee feeding them (`LazyListState.animateScrollToItem`, `SeerrViewModel.loadCategory` / `loadCategoryCards` / `updateRequestStatus`). All have their own coroutine state machines and genuinely resume with `Unit` — `ScrollState.animateScrollTo` was the only tail-call-elided, dishonestly-typed callee in the app.
+- Also folded in from the 0.28.08 work-in-progress: the auto-scroll percentage targets now use a shared integer helper (`scrollTargetPercent`) instead of four inline `Float` computations (cleanup; same offsets).
+
+### Files Modified
+
+- `tv/build.gradle.kts` – Version 0.28.08 (versionCode 131).
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/ScrollStateCompat.kt` – **New.** `animateScrollToCompat()`, the crash-proof replacement for `ScrollState.animateScrollTo` (documented in detail; do not revert to `animateScrollTo` while building with Kotlin 2.4.x).
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/MediaDetails.kt` – All 9 auto-scroll call sites switched to `animateScrollToCompat`; added the `scrollTargetPercent()` integer helper.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/RequestActionModal.kt`, `SplashScreen.kt` – Remaining `animateScrollTo` call sites switched to `animateScrollToCompat`.
+
+---
+
 ## 0.28.07
 
 ### Fixed a widespread `ClassCastException` crash (regression in 0.28.06)
