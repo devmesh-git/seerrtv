@@ -472,4 +472,22 @@
     <string name="userProfiles_pinLabel">PIN</string>
     <string name="userProfiles_active">Actief</string>
     <string name="userProfiles_addProfile">Profiel toevoegen</string>
+    <string name="settingsMenu_diagnostics">Diagnostiek</string>
+    <string name="settingsMenu_diagnosticsDescription">Problemen die de app tijdens gebruik heeft vastgelegd. Handig bij het melden van een probleem.</string>
+    <string name="diagnostics_none">Geen problemen vastgelegd</string>
+    <string name="diagnostics_count">%1$d vastgelegd</string>
+    <string name="diagnostics_clear">Alles wissen</string>
+    <string name="diagnostics_clearConfirmPrompt">Alle vastgelegde problemen wissen?</string>
+    <string name="diagnostics_clearConfirm">Ja, wissen</string>
+    <string name="diagnostics_clearCancel">Annuleren</string>
+    <string name="diagnostics_emptyHint">Er is niets misgegaan sinds de vorige keer wissen.</string>
+    <string name="diagnostics_categoryImageLoad">Afbeelding laden</string>
+    <string name="diagnostics_categoryServerRequest">Serververzoek</string>
+    <string name="diagnostics_categoryServerResponse">Serverantwoord</string>
+    <string name="diagnostics_categorySignIn">Aanmelden</string>
+    <string name="diagnostics_openHint">Druk op OK voor volledige details</string>
+    <string name="diagnostics_detailTitle">Diagnostische details</string>
+    <string name="diagnostics_repeated">%1$d keer herhaald</string>
+    <string name="diagnostics_appVersion">App-versie %1$s</string>
+    <string name="diagnostics_backHint">Druk op Terug om terug te gaan naar de lijst</string>
 </resources>

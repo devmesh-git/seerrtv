@@ -6,6 +6,8 @@ import androidx.compose.foundation.focusable
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -60,7 +62,7 @@ enum class SettingsMenuItem {
     CONFIG_API, USER_PROFILES, APP_LANGUAGE, DISCOVERY_LANGUAGE,
     DEFAULT_STREAMING_REGION,
     FOLDER_SELECTION, CLOCK_FORMAT, TRAILER_PLAYER,
-    CHECK_FOR_UPDATE, ABOUT
+    CHECK_FOR_UPDATE, DIAGNOSTICS, ABOUT
 }
 
 /**
@@ -111,7 +113,7 @@ fun SettingsScreen(
     // Only handle submenu back here since that's screen-internal state.
     BackHandler {
         if (controller.isSubMenuOpen) {
-            controller.handleBack()
+            controller.handleBackFromSystem()
         }
     }
 
@@ -193,7 +195,8 @@ fun SettingsScreen(
                     val isSubMenuItem = menuItem in setOf(
                         SettingsMenuItem.CONFIG_API, SettingsMenuItem.APP_LANGUAGE,
                         SettingsMenuItem.DISCOVERY_LANGUAGE, SettingsMenuItem.DEFAULT_STREAMING_REGION,
-                        SettingsMenuItem.TRAILER_PLAYER, SettingsMenuItem.ABOUT
+                        SettingsMenuItem.TRAILER_PLAYER, SettingsMenuItem.DIAGNOSTICS,
+                        SettingsMenuItem.ABOUT
                     )
                     val isDimmed = isSelected && (isSubMenuItem && controller.isSubMenuOpen)
                     MenuItem(item, isSelected = isSelected, isDimmed = isDimmed)
@@ -225,7 +228,8 @@ fun SettingsScreen(
             val subMenuItems = setOf(
                 SettingsMenuItem.CONFIG_API, SettingsMenuItem.APP_LANGUAGE,
                 SettingsMenuItem.DISCOVERY_LANGUAGE, SettingsMenuItem.DEFAULT_STREAMING_REGION,
-                SettingsMenuItem.TRAILER_PLAYER, SettingsMenuItem.ABOUT
+                SettingsMenuItem.TRAILER_PLAYER, SettingsMenuItem.DIAGNOSTICS,
+                SettingsMenuItem.ABOUT
             )
             val isRightPanelFocused = controller.selectedItem in subMenuItems && controller.isSubMenuOpen
             when {
@@ -266,6 +270,7 @@ fun SettingsScreen(
                     description = stringResource(R.string.settingsMenu_trailerPlayerDescription)
                 )
                 controller.selectedItem == SettingsMenuItem.CHECK_FOR_UPDATE -> CheckForUpdateDetailView()
+                controller.selectedItem == SettingsMenuItem.DIAGNOSTICS -> DiagnosticsSubMenu(controller)
                 controller.selectedItem == SettingsMenuItem.ABOUT -> AboutSubMenu()
                 else -> SettingsRightPanelPlaceholder()
             }
@@ -602,6 +607,13 @@ private fun buildMenuItems(controller: SettingsScreenController): List<MenuItem>
                 if (controller.useTrailerWebView) stringResource(R.string.settingsMenu_trailerPlayer_inApp) else stringResource(R.string.settingsMenu_trailerPlayer_youtubeApp)
             )
             SettingsMenuItem.CHECK_FOR_UPDATE -> MenuItem(stringResource(R.string.settingsMenu_checkForUpdateTitle), "")
+            SettingsMenuItem.DIAGNOSTICS -> MenuItem(
+                stringResource(R.string.settingsMenu_diagnostics),
+                controller.diagnosticsEntries.size.let { count ->
+                    if (count == 0) stringResource(R.string.diagnostics_none)
+                    else stringResource(R.string.diagnostics_count, count)
+                }
+            )
             SettingsMenuItem.ABOUT -> MenuItem(stringResource(R.string.settingsMenu_aboutMenu), "")
         }
     }
@@ -615,6 +627,7 @@ fun SubMenu(controller: SettingsScreenController, viewModel: ca.devmesh.seerrtv.
         stringResource(R.string.settingsMenu_discoveryMenu) -> DiscoveryLanguageSubMenu(controller)
         stringResource(R.string.settingsMenu_defaultStreamingRegion) -> DefaultStreamingRegionSubMenu(controller, viewModel)
         stringResource(R.string.settingsMenu_trailerPlayer) -> TrailerPlayerSubMenu(controller)
+        stringResource(R.string.settingsMenu_diagnostics) -> DiagnosticsSubMenu(controller)
         stringResource(R.string.settingsMenu_aboutMenu) -> AboutSubMenu()
         else -> {}
     }
@@ -1258,6 +1271,7 @@ class SettingsScreenController(
         add(SettingsMenuItem.CLOCK_FORMAT)
         add(SettingsMenuItem.TRAILER_PLAYER)
         if (BuildConfig.IS_DIRECT_FLAVOR) add(SettingsMenuItem.CHECK_FOR_UPDATE)
+        add(SettingsMenuItem.DIAGNOSTICS)
         add(SettingsMenuItem.ABOUT)
     }
 
@@ -1268,6 +1282,14 @@ class SettingsScreenController(
     var subMenuSelectedIndex by mutableIntStateOf(0)
     var currentSubMenu: SubMenu? by mutableStateOf(null)
     var folderSelectionEnabled by mutableStateOf(SharedPreferencesUtil.isFolderSelectionEnabled(context))
+    var diagnosticsEntries by mutableStateOf(ca.devmesh.seerrtv.util.DiagnosticsLog.entries(context))
+    var diagnosticsConfirmingClear by mutableStateOf(false)
+    /** Index into [diagnosticsEntries] when a single record is open, or null while listing. */
+    var diagnosticsOpenIndex: Int? by mutableStateOf(null)
+    /** Scroll target for the open record, driven by Up/Down. */
+    var diagnosticsDetailScroll by mutableIntStateOf(0)
+    /** Set when handleKeyEvent consumes a Back KeyDown, so the BackHandler echo can be ignored. */
+    private var backAlreadyHandledForThisPress = false
     var use24HourClock by mutableStateOf(SharedPreferencesUtil.use24HourClock(context))
     var useTrailerWebView by mutableStateOf(SharedPreferencesUtil.useTrailerWebView(context))
     val authType = SharedPreferencesUtil.getConfig(context)?.authType ?: "unknown"
@@ -1306,19 +1328,52 @@ class SettingsScreenController(
 
     fun getDiscoveryLanguageLabelRes(code: String): Int = LanguageCatalog.nameRes(code)
 
+    /**
+     * Entry point for the screen's BackHandler.
+     *
+     * One physical press arrives twice: [handleKeyEvent] consumes the KeyDown, then the
+     * un-consumed KeyUp reaches the activity and fires the BackHandler. That was harmless while
+     * handleBack only flipped one flag, but it silently skips a level now that an open diagnostic
+     * record is closed first. Swallow exactly the echo of a press we already handled.
+     */
+    fun handleBackFromSystem() {
+        if (backAlreadyHandledForThisPress) {
+            backAlreadyHandledForThisPress = false
+            return
+        }
+        handleBack()
+    }
+
     fun handleBack() {
         if (BuildConfig.DEBUG) {
             Log.d("SettingsScreenController", "handleBack called - isSubMenuOpen: $isSubMenuOpen")
         }
+        if (closeDiagnosticsDetail()) {
+            return
+        }
         if (isSubMenuOpen) {
             isSubMenuOpen = false
             currentSubMenu = null
+            diagnosticsConfirmingClear = false
         } else {
             onDismiss()
         }
     }
 
     fun handleKeyEvent(event: KeyEvent): Boolean {
+        // An open diagnostic record owns Up/Down (scrolling) and Left (close) while it is showing.
+        // Back is left to the shared branch below, which routes through handleBack() and closes
+        // the record before the submenu.
+        if (isSubMenuOpen && diagnosticsOpenIndex != null) {
+            if (handleDiagnosticsDetailKey(event)) return true
+            if (event.key == Key.DirectionLeft && event.type == KeyEventType.KeyDown) {
+                closeDiagnosticsDetail()
+                return true
+            }
+            if (KeyUtils.isEnterKey(event.nativeKeyEvent.keyCode) && event.type == KeyEventType.KeyDown) {
+                return true
+            }
+        }
         return when {
             event.key == Key.DirectionUp && event.type == KeyEventType.KeyDown -> {
                 if (isSubMenuOpen) {
@@ -1398,6 +1453,10 @@ class SettingsScreenController(
                         toggleClockFormat()
                         true
                     }
+                    isSubMenuOpen && currentSubMenu?.title == context.getString(R.string.settingsMenu_diagnostics) -> {
+                        handleDiagnosticsEnter()
+                        true
+                    }
                     isSubMenuOpen && currentSubMenu?.title == context.getString(R.string.settingsMenu_trailerPlayer) -> {
                         setTrailerWebView(subMenuSelectedIndex == 0)
                         isSubMenuOpen = false
@@ -1417,6 +1476,7 @@ class SettingsScreenController(
             }
 
             event.key == Key.Back && event.type == KeyEventType.KeyDown -> {
+                backAlreadyHandledForThisPress = true
                 handleBack()
                 true
             }
@@ -1456,6 +1516,14 @@ class SettingsScreenController(
                         MenuItem(context.getString(R.string.settingsMenu_trailerPlayer_youtubeApp), "youtubeApp")
                     )
                 )
+                SettingsMenuItem.DIAGNOSTICS -> {
+                    refreshDiagnostics()
+                    diagnosticsConfirmingClear = false
+                    SubMenu(
+                        context.getString(R.string.settingsMenu_diagnostics),
+                        diagnosticsSubMenuItems()
+                    )
+                }
                 SettingsMenuItem.ABOUT -> SubMenu(
                     context.getString(R.string.settingsMenu_aboutMenu),
                     emptyList()
@@ -1477,6 +1545,89 @@ class SettingsScreenController(
             return true
         }
         return false
+    }
+
+    fun refreshDiagnostics() {
+        diagnosticsEntries = ca.devmesh.seerrtv.util.DiagnosticsLog.entries(context)
+    }
+
+    /**
+     * Rows for the Diagnostics panel: one per recorded problem, then the Clear action.
+     * The confirmation replaces the Clear row so it cannot be triggered by a stray second Enter.
+     */
+    fun diagnosticsSubMenuItems(): List<MenuItem> = buildList {
+        diagnosticsEntries.forEachIndexed { index, entry ->
+            add(MenuItem(entry.summary, "entry:$index"))
+        }
+        if (diagnosticsEntries.isNotEmpty()) {
+            if (diagnosticsConfirmingClear) {
+                add(MenuItem(context.getString(R.string.diagnostics_clearCancel), "cancel"))
+                add(MenuItem(context.getString(R.string.diagnostics_clearConfirm), "confirm"))
+            } else {
+                add(MenuItem(context.getString(R.string.diagnostics_clear), "clear"))
+            }
+        }
+    }
+
+    private fun rebuildDiagnosticsSubMenu() {
+        currentSubMenu = SubMenu(
+            context.getString(R.string.settingsMenu_diagnostics),
+            diagnosticsSubMenuItems()
+        )
+    }
+
+    /** Enter on the Diagnostics panel: open a record, arm the clear, or act on the confirmation. */
+    private fun handleDiagnosticsEnter() {
+        if (diagnosticsOpenIndex != null) return
+        when (val action = currentSubMenu?.items?.getOrNull(subMenuSelectedIndex)?.value) {
+            null -> return
+            "clear" -> {
+                diagnosticsConfirmingClear = true
+                rebuildDiagnosticsSubMenu()
+                // Land on Cancel so an extra Enter cannot wipe the log by accident.
+                subMenuSelectedIndex = diagnosticsEntries.size
+            }
+            "cancel" -> {
+                diagnosticsConfirmingClear = false
+                rebuildDiagnosticsSubMenu()
+                subMenuSelectedIndex = diagnosticsEntries.size
+            }
+            "confirm" -> {
+                ca.devmesh.seerrtv.util.DiagnosticsLog.clear(context)
+                diagnosticsConfirmingClear = false
+                refreshDiagnostics()
+                rebuildDiagnosticsSubMenu()
+                subMenuSelectedIndex = 0
+            }
+            else -> if (action.startsWith("entry:")) {
+                diagnosticsOpenIndex = action.removePrefix("entry:").toIntOrNull()
+                diagnosticsDetailScroll = 0
+            }
+        }
+    }
+
+    /** True if the key was consumed by an open diagnostic record. */
+    private fun handleDiagnosticsDetailKey(event: KeyEvent): Boolean {
+        if (diagnosticsOpenIndex == null) return false
+        return when {
+            event.key == Key.DirectionUp && event.type == KeyEventType.KeyDown -> {
+                diagnosticsDetailScroll = (diagnosticsDetailScroll - 160).coerceAtLeast(0)
+                true
+            }
+            event.key == Key.DirectionDown && event.type == KeyEventType.KeyDown -> {
+                diagnosticsDetailScroll += 160
+                true
+            }
+            else -> false
+        }
+    }
+
+    /** Closes an open record. Returns true if there was one to close. */
+    fun closeDiagnosticsDetail(): Boolean {
+        if (diagnosticsOpenIndex == null) return false
+        diagnosticsOpenIndex = null
+        diagnosticsDetailScroll = 0
+        return true
     }
 
     fun toggleFolderSelection() {
@@ -1533,6 +1684,209 @@ class SettingsScreenController(
         updateAppLanguage(selected)
         isSubMenuOpen = false
         currentSubMenu = null
+    }
+}
+
+/**
+ * Settings > Diagnostics: problems the app recorded instead of crashing.
+ *
+ * Shows a scrollable list of records; pressing OK opens one full-screen so the user can screenshot
+ * it for support. A Clear action at the end of the list wipes the log behind a confirmation.
+ */
+@Composable
+fun DiagnosticsSubMenu(controller: SettingsScreenController) {
+    val openIndex = controller.diagnosticsOpenIndex
+    val entry = openIndex?.let { controller.diagnosticsEntries.getOrNull(it) }
+    if (entry != null) {
+        DiagnosticsDetailView(controller, entry)
+    } else {
+        DiagnosticsListView(controller)
+    }
+}
+
+@Composable
+private fun DiagnosticsListView(controller: SettingsScreenController) {
+    val entries = controller.diagnosticsEntries
+    val rows = controller.diagnosticsSubMenuItems()
+    val rowsFocusable = controller.isSubMenuOpen
+    val formatter = remember {
+        java.text.SimpleDateFormat("MMM d, HH:mm", java.util.Locale.getDefault())
+    }
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(controller.subMenuSelectedIndex, rowsFocusable) {
+        if (rowsFocusable && controller.subMenuSelectedIndex in rows.indices) {
+            listState.animateScrollToItem(controller.subMenuSelectedIndex)
+        }
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxHeight()
+            .fillMaxWidth()
+            .background(Color(0xFF1F2937))
+            .padding(24.dp)
+    ) {
+        Text(
+            text = stringResource(R.string.settingsMenu_diagnostics),
+            style = MaterialTheme.typography.titleLarge,
+            color = Color.White,
+            modifier = Modifier.padding(bottom = 4.dp)
+        )
+        Text(
+            text = stringResource(
+                if (entries.isEmpty()) R.string.settingsMenu_diagnosticsDescription
+                else R.string.diagnostics_openHint
+            ),
+            style = MaterialTheme.typography.bodySmall,
+            color = Color.White.copy(alpha = 0.6f),
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        if (entries.isEmpty()) {
+            Text(
+                text = stringResource(R.string.diagnostics_emptyHint),
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.White.copy(alpha = 0.8f)
+            )
+            return@Column
+        }
+
+        if (controller.diagnosticsConfirmingClear) {
+            Text(
+                text = stringResource(R.string.diagnostics_clearConfirmPrompt),
+                style = MaterialTheme.typography.titleMedium,
+                color = Color(0xFFF59E0B),
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+        }
+
+        LazyColumn(state = listState, modifier = Modifier.weight(1f)) {
+            itemsIndexed(rows) { index, row ->
+                val isFocused = rowsFocusable && index == controller.subMenuSelectedIndex
+                val recorded = entries.getOrNull(index)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(if (isFocused) Color(0xFF374151) else Color.Transparent)
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (recorded != null) {
+                        Column {
+                            Text(
+                                text = buildString {
+                                    append(formatter.format(java.util.Date(recorded.timestamp)))
+                                    append("  ·  ")
+                                    append(recorded.category)
+                                    if (recorded.repeatCount > 1) {
+                                        append("  ·  ×")
+                                        append(recorded.repeatCount)
+                                    }
+                                },
+                                style = MaterialTheme.typography.labelMedium,
+                                color = Color(0xFFBB86FC)
+                            )
+                            Text(
+                                text = recorded.summary,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.White.copy(alpha = 0.9f),
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = row.title,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = if (row.value == "confirm") Color(0xFFF87171) else Color.White
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * A single record, laid out to be readable in a photo of the TV screen — the intended way for a
+ * user to get this to us on Discord.
+ */
+@Composable
+private fun DiagnosticsDetailView(
+    controller: SettingsScreenController,
+    entry: ca.devmesh.seerrtv.util.DiagnosticEntry
+) {
+    val scrollState = rememberScrollState()
+    val formatter = remember {
+        java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault())
+    }
+
+    LaunchedEffect(controller.diagnosticsDetailScroll) {
+        scrollState.animateScrollToCompat(
+            controller.diagnosticsDetailScroll.coerceAtMost(scrollState.maxValue)
+        )
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxHeight()
+            .fillMaxWidth()
+            .background(Color(0xFF1F2937))
+            .padding(24.dp)
+    ) {
+        Text(
+            text = stringResource(R.string.diagnostics_detailTitle),
+            style = MaterialTheme.typography.titleLarge,
+            color = Color.White
+        )
+        Text(
+            text = stringResource(R.string.diagnostics_backHint),
+            style = MaterialTheme.typography.bodySmall,
+            color = Color.White.copy(alpha = 0.6f),
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        Column(modifier = Modifier.verticalScroll(scrollState)) {
+            Text(
+                text = entry.category,
+                style = MaterialTheme.typography.titleMedium,
+                color = Color(0xFFBB86FC)
+            )
+            Text(
+                text = formatter.format(java.util.Date(entry.timestamp)),
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.White.copy(alpha = 0.7f)
+            )
+            Text(
+                text = stringResource(R.string.diagnostics_appVersion, entry.appVersion),
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.White.copy(alpha = 0.7f)
+            )
+            if (entry.repeatCount > 1) {
+                Text(
+                    text = stringResource(R.string.diagnostics_repeated, entry.repeatCount),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFFF59E0B)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = entry.summary,
+                style = MaterialTheme.typography.bodyLarge,
+                color = Color.White
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                text = entry.detail,
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.White.copy(alpha = 0.85f)
+            )
+        }
     }
 }
 

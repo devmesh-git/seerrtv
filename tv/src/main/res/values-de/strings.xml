@@ -472,4 +472,22 @@
     <string name="userProfiles_pinLabel">PIN</string>
     <string name="userProfiles_active">Aktiv</string>
     <string name="userProfiles_addProfile">Profil hinzufügen</string>
+    <string name="settingsMenu_diagnostics">Diagnose</string>
+    <string name="settingsMenu_diagnosticsDescription">Probleme, die die App während der Ausführung aufgezeichnet hat. Hilfreich beim Melden eines Fehlers.</string>
+    <string name="diagnostics_none">Keine Probleme aufgezeichnet</string>
+    <string name="diagnostics_count">%1$d aufgezeichnet</string>
+    <string name="diagnostics_clear">Alle löschen</string>
+    <string name="diagnostics_clearConfirmPrompt">Alle aufgezeichneten Probleme löschen?</string>
+    <string name="diagnostics_clearConfirm">Ja, löschen</string>
+    <string name="diagnostics_clearCancel">Abbrechen</string>
+    <string name="diagnostics_emptyHint">Seit dem letzten Löschen ist nichts schiefgelaufen.</string>
+    <string name="diagnostics_categoryImageLoad">Bild laden</string>
+    <string name="diagnostics_categoryServerRequest">Serveranfrage</string>
+    <string name="diagnostics_categoryServerResponse">Serverantwort</string>
+    <string name="diagnostics_categorySignIn">Anmeldung</string>
+    <string name="diagnostics_openHint">Für vollständige Details OK drücken</string>
+    <string name="diagnostics_detailTitle">Diagnosedetails</string>
+    <string name="diagnostics_repeated">%1$d Mal wiederholt</string>
+    <string name="diagnostics_appVersion">App-Version %1$s</string>
+    <string name="diagnostics_backHint">Zum Zurückkehren zur Liste Zurück drücken</string>
 </resources>

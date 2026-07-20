@@ -488,4 +488,22 @@
     <string name="filter_applyRange">Rakenda vahemik</string>
     <string name="filter_clearFilter">Eemalda filter</string>
     <string name="filter_clearAllDates">Eemalda kõik kuupäevafiltrid</string>
+    <string name="settingsMenu_diagnostics">Diagnostika</string>
+    <string name="settingsMenu_diagnosticsDescription">Probleemid, mille rakendus töö käigus salvestas. Kasulik probleemist teatamisel.</string>
+    <string name="diagnostics_none">Probleeme pole salvestatud</string>
+    <string name="diagnostics_count">%1$d salvestatud</string>
+    <string name="diagnostics_clear">Kustuta kõik</string>
+    <string name="diagnostics_clearConfirmPrompt">Kas kustutada kõik salvestatud probleemid?</string>
+    <string name="diagnostics_clearConfirm">Jah, kustuta</string>
+    <string name="diagnostics_clearCancel">Loobu</string>
+    <string name="diagnostics_emptyHint">Pärast viimast kustutamist pole midagi valesti läinud.</string>
+    <string name="diagnostics_categoryImageLoad">Pildi laadimine</string>
+    <string name="diagnostics_categoryServerRequest">Serveri päring</string>
+    <string name="diagnostics_categoryServerResponse">Serveri vastus</string>
+    <string name="diagnostics_categorySignIn">Sisselogimine</string>
+    <string name="diagnostics_openHint">Täielike üksikasjade nägemiseks vajuta OK</string>
+    <string name="diagnostics_detailTitle">Diagnostika üksikasjad</string>
+    <string name="diagnostics_repeated">Korratud %1$d korda</string>
+    <string name="diagnostics_appVersion">Rakenduse versioon %1$s</string>
+    <string name="diagnostics_backHint">Loendisse naasmiseks vajuta Tagasi</string>
 </resources>

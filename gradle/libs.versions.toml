@@ -1,5 +1,5 @@
 [versions]
-agp = "9.2.1"
+agp = "9.3.0"
 coilKtCoilCompose = "3.5.0"
 coilNetworkOkhttp = "3.5.0"
 core = "3.5.4"

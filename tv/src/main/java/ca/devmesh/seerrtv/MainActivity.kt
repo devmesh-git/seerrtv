@@ -133,7 +133,7 @@ class SeerrTV : Application() {
             .build()
         val optimizedOkHttpClient = okHttpClient.newBuilder()
             .dispatcher(
-                okhttp3.Dispatcher().apply {
+                okhttp3.Dispatcher(imageDispatchExecutor()).apply {
                     maxRequests = 8
                     maxRequestsPerHost = 4
                 }
@@ -145,6 +145,45 @@ class SeerrTV : Application() {
             }
             .build()
     }
+
+    /**
+     * Executor for Coil's OkHttp dispatcher whose threads never take the process down.
+     *
+     * OkHttp's `AsyncCall.run` delivers `onFailure` to the caller and then **rethrows** any
+     * non-IOException, which reaches Android's default handler and kills the app. That is how a
+     * single bad image URL becomes a crash: e.g. an `IllegalArgumentException` out of
+     * `HttpUrl.Builder.host` during connection setup. By then the load has already failed cleanly
+     * and Coil has shown its error state, so the rethrow buys us nothing — swallowing it here
+     * costs no diagnostics (the throwable is logged) and keeps a broken image from being fatal.
+     *
+     * Mirrors OkHttp's own dispatcher executor (unbounded, 60s keep-alive, SynchronousQueue);
+     * only the thread factory differs. OkHttp does not shut down an executor it was handed, which
+     * is correct here — the image loader lives for the life of the process.
+     */
+    private fun imageDispatchExecutor(): java.util.concurrent.ExecutorService =
+        java.util.concurrent.ThreadPoolExecutor(
+            0,
+            Int.MAX_VALUE,
+            60L,
+            java.util.concurrent.TimeUnit.SECONDS,
+            java.util.concurrent.SynchronousQueue()
+        ) { runnable ->
+            Thread(runnable, "SeerrTV Image Dispatcher").apply {
+                isDaemon = false
+                setUncaughtExceptionHandler { thread, throwable ->
+                    Log.e("SeerrTV", "Image request thread ${thread.name} died; ignoring", throwable)
+                    // Swallowing this keeps the app alive but also hides it from Play Console,
+                    // which only sees fatal crashes. Record it so it is still reachable from
+                    // Settings > Diagnostics.
+                    ca.devmesh.seerrtv.util.DiagnosticsLog.recordThrowable(
+                        context = applicationContext,
+                        category = getString(R.string.diagnostics_categoryImageLoad),
+                        context_ = "An image request failed on ${thread.name}. The image was skipped; the app kept running.",
+                        throwable = throwable
+                    )
+                }
+            }
+        }
 
     /**
      * Clears Coil caches off the main thread to avoid ANRs (disk eviction can block).

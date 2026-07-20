@@ -1426,13 +1426,18 @@ private fun <T> FilterMultiListSelection(
                     onIndexChange = { selectedIndex = it },
                     onBack = onBack,
                     onEnter = { index ->
-                        val item = items[index]
-                        val newSelection = if (selectedItems.contains(item)) {
-                            selectedItems - item
-                        } else {
-                            selectedItems + item
+                        // `items` can be empty when the list failed to load (network error, or a
+                        // server that returns nothing). maxIndex is then -1 while selectedIndex is
+                        // still 0, so Enter arrives with an out-of-range index — guard before
+                        // indexing rather than crashing on EmptyList.get(0).
+                        items.getOrNull(index)?.let { item ->
+                            val newSelection = if (selectedItems.contains(item)) {
+                                selectedItems - item
+                            } else {
+                                selectedItems + item
+                            }
+                            onItemsSelected(newSelection)
                         }
-                        onItemsSelected(newSelection)
                     }
                 )
             }

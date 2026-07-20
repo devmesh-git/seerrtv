@@ -41,6 +41,7 @@ import ca.devmesh.seerrtv.model.Region
 import ca.devmesh.seerrtv.model.Keyword
 import ca.devmesh.seerrtv.model.ContentRating
 import ca.devmesh.seerrtv.model.Provider
+import ca.devmesh.seerrtv.util.DiagnosticsLog
 import ca.devmesh.seerrtv.util.SharedPreferencesUtil
 import io.ktor.client.call.body
 import io.ktor.client.engine.okhttp.OkHttp
@@ -320,6 +321,15 @@ class SeerrApiService @Inject constructor(
         )
     }
 
+    /**
+     * Builds the `/api/v1` base URL from a config.
+     *
+     * Deliberately does NOT reject a blank hostname: this runs from a field initializer, and on a
+     * fresh install Hilt constructs the service with `hostname = ""` (see AppModule) — throwing
+     * here would crash first launch. Note the blank case produces `http:///api/v1`, which OkHttp
+     * "repairs" into a request against a host literally named `api` rather than failing, so the
+     * "no server configured" case is caught at request time in [executeApiCall] instead.
+     */
     private fun buildApiUrl(config: SeerrConfig): String {
         // Use sanitized host/protocol so even stored or legacy configs get cleaned
         val protocol = SharedPreferencesUtil.sanitizeProtocolForApi(config.protocol)
@@ -739,6 +749,15 @@ class SeerrApiService @Inject constructor(
             }
         }
 
+        // No server configured yet (fresh install, or a profile saved with an empty hostname).
+        // Fail fast rather than issuing the request: buildApiUrl stays lenient by necessity (see
+        // the note there), and its `http:///api/v1` output is silently repaired by OkHttp into a
+        // request against a host literally named "api". `raw` calls are exempt — they use absolute
+        // URLs (Plex auth, browser-based setup) and must work before a server is configured.
+        if (!raw && SharedPreferencesUtil.sanitizeHostnameForApi(config.hostname).isBlank()) {
+            return@withContext ApiResult.Error(Exception("No Seerr server is configured."))
+        }
+
         try {
             // Check if we need to refresh the token for all session-based auth types
             if (isSessionBasedAuth(config.getAuthType()) && currentAuthToken != null) {
@@ -751,6 +770,15 @@ class SeerrApiService @Inject constructor(
                         }
                         is ApiResult.Error -> {
                             Log.e("SeerrApiService", "Failed to refresh token: ${loginResult.exception.message}")
+                            DiagnosticsLog.record(
+                                context = context,
+                                category = context.getString(R.string.diagnostics_categorySignIn),
+                                summary = "Session expired and could not sign in again",
+                                detail = "The saved session expired and the app's attempt to sign in " +
+                                    "again was rejected. This is what being signed out unexpectedly " +
+                                    "looks like.\n\nAuth type: ${config.getAuthType()}\n" +
+                                    "Error: ${loginResult.exception.message}"
+                            )
                             return@withContext loginResult
                         }
                         is ApiResult.Loading -> {
@@ -832,6 +860,15 @@ class SeerrApiService @Inject constructor(
                                 if (BuildConfig.DEBUG) {
                                     Log.e("SeerrApiService", "JSON parse failure for $requestUrl. Raw body: $bodyText", e)
                                 }
+                                DiagnosticsLog.record(
+                                    context = context,
+                                    category = context.getString(R.string.diagnostics_categoryServerResponse),
+                                    summary = "Could not read the server's response for ${redactForDiagnostics(requestUrl)}",
+                                    detail = "The server replied successfully but in a shape the app did not expect. " +
+                                        "This usually means an Overseerr/Jellyseerr version difference.\n\n" +
+                                        "Request: $method ${redactForDiagnostics(requestUrl)}\n" +
+                                        "Error: ${e.message}"
+                                )
                                 ApiResult.Error(e)
                             }
                         }
@@ -874,6 +911,14 @@ class SeerrApiService @Inject constructor(
                             }
                             is ApiResult.Error -> {
                                 Log.e("SeerrApiService", "Failed to refresh token during retry: ${loginResult.exception.message}")
+                                DiagnosticsLog.record(
+                                    context = context,
+                                    category = context.getString(R.string.diagnostics_categorySignIn),
+                                    summary = "Server rejected the session and re-sign-in failed",
+                                    detail = "The server rejected the request as unauthenticated, and " +
+                                        "signing in again also failed.\n\nAuth type: ${config.getAuthType()}\n" +
+                                        "Error: ${loginResult.exception.message}"
+                                )
                                 return@withContext loginResult
                             }
                             is ApiResult.Loading -> {
@@ -883,6 +928,19 @@ class SeerrApiService @Inject constructor(
                         }
                     }
                     
+                    // Recorded here rather than in handleApiException: an error *status* is a normal
+                    // response, so it never throws and never reaches that handler. This is the most
+                    // common real-world failure (server down, wrong API key, endpoint missing on an
+                    // older Overseerr/Jellyseerr) and previously left no trace outside logcat.
+                    DiagnosticsLog.record(
+                        context = context,
+                        category = context.getString(R.string.diagnostics_categoryServerRequest),
+                        summary = "${response.status.value} ${response.status.description} from ${redactForDiagnostics(requestUrl)}",
+                        detail = "The server rejected the request.\n\n" +
+                            "Request: $method ${redactForDiagnostics(requestUrl)}\n" +
+                            "Status: ${response.status}\n" +
+                            "Response: ${errorBody.take(600)}"
+                    )
                     ApiResult.Error(Exception("HTTP Error: ${response.status} - $errorBody"), response.status.value)
                 }
             }
@@ -915,6 +973,11 @@ class SeerrApiService @Inject constructor(
                 Log.e("SeerrApiService", "Error parsing test response", e)
                 return@withContext ApiResult.Error(e)
             }
+        }
+
+        // Mirrors the guard in executeApiCall — see the note there.
+        if (!raw && SharedPreferencesUtil.sanitizeHostnameForApi(config.hostname).isBlank()) {
+            return@withContext ApiResult.Error(Exception("No Seerr server is configured."))
         }
 
         try {
@@ -987,6 +1050,15 @@ class SeerrApiService @Inject constructor(
                                 if (BuildConfig.DEBUG) {
                                     Log.e("SeerrApiService", "JSON parse failure for $requestUrl. Raw body: $bodyText", e)
                                 }
+                                DiagnosticsLog.record(
+                                    context = context,
+                                    category = context.getString(R.string.diagnostics_categoryServerResponse),
+                                    summary = "Could not read the server's response for ${redactForDiagnostics(requestUrl)}",
+                                    detail = "The server replied successfully but in a shape the app did not expect. " +
+                                        "This usually means an Overseerr/Jellyseerr version difference.\n\n" +
+                                        "Request: $method ${redactForDiagnostics(requestUrl)}\n" +
+                                        "Error: ${e.message}"
+                                )
                                 ApiResult.Error(e)
                             }
                         }
@@ -1001,6 +1073,19 @@ class SeerrApiService @Inject constructor(
                     Log.e("SeerrApiService", "Request failed with status ${response.status.value} (retry $retryCount)")
                     Log.e("SeerrApiService", "Error response body: $errorBody")
                     
+                    // Recorded here rather than in handleApiException: an error *status* is a normal
+                    // response, so it never throws and never reaches that handler. This is the most
+                    // common real-world failure (server down, wrong API key, endpoint missing on an
+                    // older Overseerr/Jellyseerr) and previously left no trace outside logcat.
+                    DiagnosticsLog.record(
+                        context = context,
+                        category = context.getString(R.string.diagnostics_categoryServerRequest),
+                        summary = "${response.status.value} ${response.status.description} from ${redactForDiagnostics(requestUrl)}",
+                        detail = "The server rejected the request.\n\n" +
+                            "Request: $method ${redactForDiagnostics(requestUrl)}\n" +
+                            "Status: ${response.status}\n" +
+                            "Response: ${errorBody.take(600)}"
+                    )
                     ApiResult.Error(Exception("HTTP Error: ${response.status} - $errorBody"), response.status.value)
                 }
             }
@@ -1224,6 +1309,12 @@ class SeerrApiService @Inject constructor(
         method: HttpMethod
     ): ApiResult<T> {
         Log.e("SeerrApiService", "API Error for $method $fullUrl", e)
+        DiagnosticsLog.recordThrowable(
+            context = context,
+            category = context.getString(R.string.diagnostics_categoryServerRequest),
+            context_ = "$method ${redactForDiagnostics(fullUrl)}",
+            throwable = e
+        )
         return when (e) {
             is ConnectTimeoutException, is java.net.SocketTimeoutException -> {
                 val timeoutMs = 30000 // Match the configured timeout value
@@ -1714,6 +1805,20 @@ class SeerrApiService @Inject constructor(
             is ApiResult.Error -> this
             is ApiResult.Loading -> this
         }
+    }
+
+    /**
+     * Strips anything user-identifying from a URL before it goes into the diagnostics log.
+     *
+     * Diagnostics records are meant to be screenshotted and posted publicly for support, so the
+     * user's own server address must not appear, and neither may any credential that travels in
+     * the query string. Only the API path and shape are kept — which is all that is useful for
+     * diagnosing a request anyway.
+     */
+    private fun redactForDiagnostics(url: String): String {
+        val withoutOrigin = Regex("^[a-zA-Z][a-zA-Z0-9+.\\-]*://[^/]*").replace(url, "<server>")
+        return Regex("([?&](?:apiKey|api_key|token|authToken|password|secret)=)[^&]*", RegexOption.IGNORE_CASE)
+            .replace(withoutOrigin, "$1<redacted>")
     }
 
     private fun String.encodeForOverseerr(): String {

@@ -472,4 +472,22 @@
     <string name="userProfiles_pinLabel">PIN</string>
     <string name="userProfiles_active">活动</string>
     <string name="userProfiles_addProfile">添加配置文件</string>
+    <string name="settingsMenu_diagnostics">诊断</string>
+    <string name="settingsMenu_diagnosticsDescription">应用运行期间记录的问题。报告问题时很有用。</string>
+    <string name="diagnostics_none">未记录任何问题</string>
+    <string name="diagnostics_count">已记录 %1$d 条</string>
+    <string name="diagnostics_clear">全部清除</string>
+    <string name="diagnostics_clearConfirmPrompt">要清除所有已记录的问题吗？</string>
+    <string name="diagnostics_clearConfirm">是，清除</string>
+    <string name="diagnostics_clearCancel">取消</string>
+    <string name="diagnostics_emptyHint">自上次清除以来没有出现问题。</string>
+    <string name="diagnostics_categoryImageLoad">图片加载</string>
+    <string name="diagnostics_categoryServerRequest">服务器请求</string>
+    <string name="diagnostics_categoryServerResponse">服务器响应</string>
+    <string name="diagnostics_categorySignIn">登录</string>
+    <string name="diagnostics_openHint">按 OK 键查看完整详情</string>
+    <string name="diagnostics_detailTitle">诊断详情</string>
+    <string name="diagnostics_repeated">重复 %1$d 次</string>
+    <string name="diagnostics_appVersion">应用版本 %1$s</string>
+    <string name="diagnostics_backHint">按返回键回到列表</string>
 </resources>

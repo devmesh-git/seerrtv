@@ -472,4 +472,22 @@
     <string name="userProfiles_pinLabel">PIN</string>
     <string name="userProfiles_active">アクティブ</string>
     <string name="userProfiles_addProfile">プロフィールを追加</string>
+    <string name="settingsMenu_diagnostics">診断</string>
+    <string name="settingsMenu_diagnosticsDescription">アプリの実行中に記録された問題です。不具合の報告時に役立ちます。</string>
+    <string name="diagnostics_none">記録された問題はありません</string>
+    <string name="diagnostics_count">%1$d 件記録</string>
+    <string name="diagnostics_clear">すべて消去</string>
+    <string name="diagnostics_clearConfirmPrompt">記録された問題をすべて消去しますか？</string>
+    <string name="diagnostics_clearConfirm">はい、消去します</string>
+    <string name="diagnostics_clearCancel">キャンセル</string>
+    <string name="diagnostics_emptyHint">前回消去してから問題は発生していません。</string>
+    <string name="diagnostics_categoryImageLoad">画像の読み込み</string>
+    <string name="diagnostics_categoryServerRequest">サーバーへのリクエスト</string>
+    <string name="diagnostics_categoryServerResponse">サーバーの応答</string>
+    <string name="diagnostics_categorySignIn">サインイン</string>
+    <string name="diagnostics_openHint">項目で OK を押すと詳細が表示されます</string>
+    <string name="diagnostics_detailTitle">診断の詳細</string>
+    <string name="diagnostics_repeated">%1$d 回繰り返し</string>
+    <string name="diagnostics_appVersion">アプリバージョン %1$s</string>
+    <string name="diagnostics_backHint">戻るを押すと一覧に戻ります</string>
 </resources>

@@ -1,5 +1,48 @@
 # Changelog
 
+## 0.28.10
+
+### Fixed two crashes reported against 0.28.08
+
+- **`IndexOutOfBoundsException: Empty list doesn't contain element at index 0` in the filters drawer** – `FilterMultiListSelection` indexed `items[index]` in its Enter handler without a bounds check. When the list is empty, `maxIndex` is `-1` while `selectedIndex` is still `0`, so pressing Enter indexed into an empty list and crashed. The dominant trigger was the genre-filter list, which 0.28.06–0.28.08 left **permanently empty** via the `HttpResponse` decode regression fixed in 0.28.09 — so a user opening Browse → Filters → Genres and pressing OK crashed every time. 0.28.09 removed that trigger but not the defect: the same component also backs **Content Ratings** and **Networks**, and any network failure re-opens the same hole. Now guarded with `items.getOrNull(index)`.
+- **`IllegalArgumentException` from `okhttp3.HttpUrl$Builder.host`** – `AvatarUrlResolver` handed avatar URLs to Coil with no host validation. Proven by unit test against the old code: `http://exa mple.com/a.png` (space in host) passed through verbatim, a blank configured hostname produced the hostless `http:/avatarproxy/abc` (because `"http://".trimEnd('/')` collapses to `"http:"`), and bare `http://` passed through as-is. Coil loads via `OkHttpNetworkFetcherFactory` on OkHttp's async dispatcher, and OkHttp **rethrows** non-`IOException` throwables out of `AsyncCall.run` — so an invalid host at connection time killed the process and Coil could not catch it. `AvatarUrlResolver` now validates before returning: http(s) scheme only, explicit authority required, and the host re-run through `HttpUrl.Builder.host` — the exact call `okhttp3.Address` makes at connection time. Anything invalid resolves to `null`, which callers already treat as "no remote avatar".
+  - Note the explicit-authority check is load-bearing beyond the crash: OkHttp's parser is lenient and *repairs* `http:/avatarproxy/abc` into host `avatarproxy`, so parsing alone would have silently connected to a host the user never configured.
+  - **Attribution caveat.** A systematic probe of 17 host shapes (spaces, tabs, `%20`, `%2F`, empty labels, IPv6 zone IDs, over-long hosts) found **no** input where `toHttpUrlOrNull` succeeds but `HttpUrl.Builder.host` then throws — OkHttp rejects malformed hosts at *parse* time, synchronously, where Coil catches them. So while the resolver hardening is a genuine fix, it is **not** confirmed to be the source of the reported crash. The mitigation below is what actually defuses that crash class.
+
+- **A failed image load can no longer kill the app** – Coil's OkHttp dispatcher now runs on threads with an `UncaughtExceptionHandler`. `AsyncCall.run` delivers `onFailure` to the caller and then *rethrows* any non-`IOException`, which reaches Android's default handler and terminates the process — that is how one bad image URL became a crash. By the time it rethrows, the load has already failed cleanly and Coil has shown its error state, so the rethrow buys nothing; it is now logged and swallowed. This defuses the whole crash class without needing to identify the offending URL, which matters because the exact input could not be reproduced. The executor otherwise mirrors OkHttp's own (unbounded, 60s keep-alive, `SynchronousQueue`); only the thread factory differs.
+
+- **API requests are no longer issued when no server is configured** – `buildApiUrl` produces `http:///api/v1` for a blank hostname, and OkHttp silently *repairs* that into a request against a host literally named `api` rather than failing. `executeApiCall` and `executeApiCallWithRetry` now short-circuit with a clear error when the configured hostname is blank. `raw` calls are exempt, since Plex auth and browser-based setup use absolute URLs and must work before a server exists. The check deliberately lives at request time rather than in `buildApiUrl`: that runs from a field initializer, and Hilt constructs the service with an empty hostname on every fresh install, so rejecting blanks there would crash first launch.
+
+### New: Settings > Diagnostics
+
+- **The app now records problems it survives, and shows them to the user** – Several failures are deliberately non-fatal, which also means they never reach Play Console (it only reports fatal crashes). A new **Settings > Diagnostics** screen lists what went wrong, newest first; pressing OK on an entry opens the full record — category, exact timestamp, app version, repeat count, and the underlying error/stack — laid out to be photographed off the TV and posted for support. A Clear action wipes the log behind a confirmation that defaults to *Cancel*.
+- **Recorded automatically from the paths that actually fail**: image requests that would previously have killed the process; network exceptions (`handleApiException`); HTTP error responses, which are the most common real failure and never reached the exception handler at all because an error *status* is a normal response; response bodies the app cannot parse (Overseerr/Jellyseerr version drift); and failed session re-sign-in, which users experience as being signed out for no reason. Benign 404s are excluded — they short-circuit earlier.
+- **Records are redacted before they are stored**, because they are meant to be shared publicly: the user's own server origin is replaced with `<server>`, and credential-bearing query parameters are masked. Repeats of the same problem within a minute collapse into one entry with a count, so a flapping server cannot flush the log; capped at 50 entries.
+- Fully localised: all 18 new strings are translated into every supported language (de, es, et, fr, hu, ja, nl, pt, zh), verified in the compiled APK with format specifiers preserved.
+- Also fixed while building this: a single Back press invoked `handleBack()` **twice** on the Settings screen — `handleKeyEvent` consumed the KeyDown while the un-consumed KeyUp still reached the activity and fired the `BackHandler`. Harmless when back only toggled one flag, but it skipped a level once there was a record to close first. The BackHandler now goes through `handleBackFromSystem()`, which swallows the echo of a press already handled.
+
+### Tests
+
+- `AvatarUrlResolverTest` (9 cases) covers pass-through, origin joining, protocol-relative URLs, and every invalid-host shape above. Written against the pre-fix code first, where 4 cases failed — confirming the defect rather than assuming it.
+
+### Dependencies
+
+- **AGP `9.2.1` → `9.3.0`**, **Gradle `9.4.1` → `9.5.0`**, and `org.gradle.tooling.parallel=true` for Gradle 9.4+ parallel sync. Build-tooling only — no app code or runtime behaviour depends on these. Verified with clean debug and release builds plus the full unit-test suite.
+
+### Files Modified
+
+- `tv/build.gradle.kts` – Version 0.28.10 (versionCode 133).
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/components/FiltersDrawer.kt` – Bounds-guard the `FilterMultiListSelection` Enter handler.
+- `tv/src/main/java/ca/devmesh/seerrtv/util/AvatarUrlResolver.kt` – Validate resolved URLs; reject non-http(s) schemes, missing authority, and hosts OkHttp cannot connect to.
+- `tv/src/main/java/ca/devmesh/seerrtv/MainActivity.kt` – Coil's OkHttp dispatcher runs on threads with an `UncaughtExceptionHandler` so a failed image request cannot terminate the process.
+- `tv/src/main/java/ca/devmesh/seerrtv/data/SeerrApiService.kt` – Short-circuit API calls when no server is configured; document why `buildApiUrl` stays lenient.
+- `tv/src/main/java/ca/devmesh/seerrtv/util/DiagnosticsLog.kt` – **New.** Persisted, capped, deduped log of recorded problems.
+- `tv/src/main/res/values/strings.xml` and all nine `values-*/strings.xml` – Diagnostics strings, translated.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/SettingsScreen.kt` – Diagnostics menu entry, list and detail views, clear-with-confirmation; `handleBackFromSystem()` to collapse the duplicate Back dispatch.
+- `tv/src/test/java/ca/devmesh/seerrtv/util/AvatarUrlResolverTest.kt` – **New.**
+
+---
+
 ## 0.28.09
 
 ### Fixed the "Error loading media" on the home-screen Genres rows (regression in 0.28.06)
