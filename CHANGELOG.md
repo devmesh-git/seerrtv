@@ -1,5 +1,44 @@
 # Changelog
 
+## 0.28.09
+
+### Fixed the "Error loading media" on the home-screen Genres rows (regression in 0.28.06)
+
+- **Root cause** – 0.28.06 rewrote the success branch of the generic `executeApiCall` to read the body as text and `json.decodeFromString<T>(...)` it. That silently broke the four genre endpoints, which request `executeApiCall<HttpResponse>`: Ktor special-cases `HttpResponse` in `body()`, but `decodeFromString<HttpResponse>` cannot — `HttpResponse` is an interface with no serializer — so the reified serializer lookup threw `SerializationException` at runtime, which the new `catch` swallowed into `ApiResult.Error`. It compiled because `T` is a reified type parameter. Of the nine `executeApiCall<HttpResponse>` call sites, the five `raw = true` ones return early and were unaffected; the only four non-raw ones are all genre endpoints (`discover/genreslider/movie|tv` for the home carousel, `genres/movie|tv` for the browse filter drawer), so the failure presented as exactly "the Genres rows are broken and nothing else." The browse genre-filter list was silently empty from the same cause.
+- **Fix** – Added an `HttpResponse::class -> ApiResult.Success(response as T)` branch to the success path (restoring the pre-0.28.06 `response.body()` behavior), in **both** `executeApiCall` and its retry twin `executeApiCallWithRetry` — the retry copy carries the identical bug and runs after a session token refresh, so fixing only the first would have left the rows broken for session-auth users whose token expired mid-session. The four genre callers were then refactored to decode `List<GenreResponse>` directly instead of the `HttpResponse` + manual `bodyAsText()` + duplicate parse handling.
+
+### Fixed `language=` query-parameter misuse on `discover/movies` / `discover/tv` (non-English users)
+
+- **Root cause** – On the `discover/movies` and `discover/tv` routes the Seerr server binds `language` to the **original-language filter** (`originalLanguage: query.language` → TMDB `with_original_language`), *not* the display locale — display on those two routes comes from the account setting (`req.locale`) and cannot be overridden per-request. Every other discover/detail route uses the opposite precedence (`req.query.language ?? req.locale`), so `language=` there is the display locale. The app assumed the display-locale meaning everywhere. For non-English users this silently filtered core rows — **Popular Movies, Popular Series, Upcoming Movies, Upcoming Series**, plus genre browse, keyword browse, and matching custom sliders — down to titles whose *original* language matched the user's discovery language. Verified against jellyseerr/overseerr `server/routes/discover.ts`.
+- **Fix** – New `appendDisplayLocale(endpoint, locale)` helper encodes the per-route rule in one place: no-op for English, refuse the two collision routes, otherwise append `language=<locale>` with the correct `?`/`&` separator (also removing the previous hand-picked-separator fragility). All 19 localized discover/detail call sites route through it. URLs for every previously-working route are byte-identical; only the collision routes changed.
+
+### Removed the bogus `server|` prefix on the original-language browse filter
+
+- The browse "Original Language" filter sent `language=server%7C<code>` (e.g. `language=server%7Cja`). `server` is a sentinel in the Seerr **web UI's** language dropdown meaning "use account default"; a frontend bug lets it leak into the query string, and the app hardcoded it. The API has no such token and forwarded it to TMDB verbatim, matching nothing — so the filter never worked. Now sends a bare `language=ja`.
+
+### Unified media-content endpoints onto the Discovery Language setting
+
+- The app has two language settings: **App Language** ("Current app language", the UI) and **Discovery Language** ("Language used for discovery content"). Movie/TV details, similar, search, and person-credits calls were using the App/UI language while browse used Discovery Language, so a user with different values saw browse rows and detail pages in different languages. These four endpoint groups now use `getDiscoveryLanguage()` like the rest of the discovery content, matching the setting's stated purpose. Removed the now-unused `getCurrentLanguage()` and its `Locale` import. *(Behavioral change: detail/search/person screens now follow Discovery Language rather than the app UI language.)*
+- **Inherent remaining split (Seerr API limitation, not a bug):** on `discover/movies` / `discover/tv` (Popular, Upcoming, genre/keyword browse) the display language is fixed to the user's **Seerr account locale** server-side and cannot be set by the app, since that parameter slot is the original-language filter. All other content follows Discovery Language.
+
+### Tests
+
+- `AppendDisplayLocaleTest` (12 cases) pins both sides of the per-route language rule, locking the exact URL for each endpoint shape so the collision cannot be reintroduced.
+- `GenreResponseSerializationTest` (4 cases) pins the two genre response shapes (`genreslider` with backdrops, `genres/*` without) through the shared decode path.
+
+### Files Modified
+
+- `tv/build.gradle.kts` – Version 0.28.09 (versionCode 132).
+- `tv/src/main/java/ca/devmesh/seerrtv/data/SeerrApiService.kt` – `HttpResponse` branch in `executeApiCall` + `executeApiCallWithRetry`; four genre callers decode `List<GenreResponse>` directly; new `appendDisplayLocale()` helper with all 19 localized call sites routed through it; `browseMedia` no longer sends the discovery locale on `discover/movies|tv` and sends a bare original-language filter code; detail/search/person switched to Discovery Language; removed `getCurrentLanguage()` and the `androidx.compose.ui.text.intl.Locale` import.
+- `tv/src/test/java/ca/devmesh/seerrtv/data/AppendDisplayLocaleTest.kt` – **New.** Per-route `language=` rule.
+- `tv/src/test/java/ca/devmesh/seerrtv/data/GenreResponseSerializationTest.kt` – **New.** Genre response decode.
+
+### Dependencies
+
+- **Kotlin `2.4.0` → `2.4.10`** (Compose compiler plugin tracks it in lockstep). Patch release over the 2.4.0 compiler that caused the 0.28.06–0.28.08 codegen crashes; the `animateScrollToCompat` workaround remains in place regardless. **Hilt `2.60` → `2.60.1`** (patch bugfix). **error_prone_annotations `2.47.0` → `2.50.0`** (compile-time-only, `CLASS` retention — no runtime impact). KSP unchanged (`2.3.2`). Verified: clean debug **and** release builds pass (compile → R8/lintVital → sign), all unit tests green, versions resolve with no conflicts or downgrades.
+
+---
+
 ## 0.28.08
 
 ### Actually fixed the media-details `ClassCastException` crash

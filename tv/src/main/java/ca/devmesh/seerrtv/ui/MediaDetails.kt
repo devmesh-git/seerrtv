@@ -2048,7 +2048,7 @@ fun MediaDetails(
                                 }
                             }
 
-                            else -> false
+                            else -> {}
                         }
                     },
                     onBack = {

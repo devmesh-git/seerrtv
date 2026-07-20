@@ -3,7 +3,6 @@ package ca.devmesh.seerrtv.data
 import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Log
-import androidx.compose.ui.text.intl.Locale
 import ca.devmesh.seerrtv.BuildConfig
 import ca.devmesh.seerrtv.R
 import ca.devmesh.seerrtv.util.AvatarUrlResolver
@@ -816,6 +815,12 @@ class SeerrApiService @Inject constructor(
                     when (T::class) {
                         Boolean::class -> ApiResult.Success(true as T)
                         Unit::class -> ApiResult.Success(Unit as T)
+                        // HttpResponse is an interface with no serializer, so it must never reach
+                        // decodeFromString below — that throws SerializationException at runtime and
+                        // gets swallowed into ApiResult.Error (this broke every genre endpoint in
+                        // 0.28.06). Return the response itself, matching the raw = true branch above
+                        // and the pre-0.28.06 `response.body()` behavior.
+                        HttpResponse::class -> ApiResult.Success(response as T)
                         else -> {
                             // Read the body as text first so that, on a parse failure, we can log
                             // the raw JSON for diagnosis (backend-shape drift between Overseerr/Seerr
@@ -840,9 +845,9 @@ class SeerrApiService @Inject constructor(
                     }
                     Log.e("SeerrApiService", "Request failed with status ${response.status.value}")
                     Log.e("SeerrApiService", "Error response body: $errorBody")
-                    
+
                     // Check if this is an authentication error and we should retry
-                    if (isAuthenticationError(response.status.value, errorBody) && 
+                    if (isAuthenticationError(response.status.value, errorBody) &&
                         isSessionBasedAuth(config.getAuthType()) && 
                         retryCount == 0) {
                         
@@ -967,6 +972,10 @@ class SeerrApiService @Inject constructor(
                     when (T::class) {
                         Boolean::class -> ApiResult.Success(true as T)
                         Unit::class -> ApiResult.Success(Unit as T)
+                        // Must mirror executeApiCall exactly — see the note there. This copy runs
+                        // after a token refresh, so omitting it would break the same endpoints only
+                        // for session-auth users whose token expired mid-session.
+                        HttpResponse::class -> ApiResult.Success(response as T)
                         else -> {
                             // Read the body as text first so that, on a parse failure, we can log
                             // the raw JSON for diagnosis (backend-shape drift between Overseerr/Seerr
@@ -1234,10 +1243,6 @@ class SeerrApiService @Inject constructor(
         }
     }
 
-    fun getCurrentLanguage(): String {
-        return Locale.current.language.lowercase()
-    }
-
     suspend fun getTrending(reset: Boolean = false): ApiResult<List<Media>> {
         val endpoint = "discover/trending"
         if (reset) resetPaginationState(endpoint)
@@ -1370,34 +1375,34 @@ class SeerrApiService @Inject constructor(
     }
 
     suspend fun getMovieDetails(id: String): ApiResult<MediaDetails> {
-        val locale = getCurrentLanguage()
+        val locale = SharedPreferencesUtil.getDiscoveryLanguage(context)
         val pageEndpoint = "movie/$id"
         // append locale if not english
-        val localizedEndpoint = if (locale != "en") "$pageEndpoint?language=$locale" else pageEndpoint
+        val localizedEndpoint = appendDisplayLocale(pageEndpoint, locale)
         return executeApiCall(localizedEndpoint)
     }
 
     suspend fun getTVDetails(id: String): ApiResult<MediaDetails> {
-        val locale = getCurrentLanguage()
+        val locale = SharedPreferencesUtil.getDiscoveryLanguage(context)
         val pageEndpoint = "tv/$id"
         // append locale if not english
-        val localizedEndpoint = if (locale != "en") "$pageEndpoint?language=$locale" else pageEndpoint
+        val localizedEndpoint = appendDisplayLocale(pageEndpoint, locale)
         return executeApiCall(localizedEndpoint)
     }
 
     suspend fun getSimilarMovies(movieId: Int, page: Int = 1): ApiResult<SimilarMediaResponse> {
-        val locale = getCurrentLanguage()
+        val locale = SharedPreferencesUtil.getDiscoveryLanguage(context)
         val pageEndpoint = "movie/$movieId/similar?page=$page"
         // append locale if not english
-        val localizedEndpoint = if (locale != "en") "$pageEndpoint&language=$locale" else pageEndpoint
+        val localizedEndpoint = appendDisplayLocale(pageEndpoint, locale)
         return executeApiCall(localizedEndpoint)
     }
 
     suspend fun getSimilarTVShows(tvId: Int, page: Int = 1): ApiResult<SimilarMediaResponse> {
-        val locale = getCurrentLanguage()
+        val locale = SharedPreferencesUtil.getDiscoveryLanguage(context)
         val pageEndpoint = "tv/$tvId/similar?page=$page"
         // append locale if not english
-        val localizedEndpoint = if (locale != "en") "$pageEndpoint&language=$locale" else pageEndpoint
+        val localizedEndpoint = appendDisplayLocale(pageEndpoint, locale)
         return executeApiCall(localizedEndpoint)
     }
 
@@ -1443,9 +1448,9 @@ class SeerrApiService @Inject constructor(
         }
         val state = getOrCreatePaginationState("search")
         
-        val locale = getCurrentLanguage()
+        val locale = SharedPreferencesUtil.getDiscoveryLanguage(context)
         val endpoint = "search?query=${query.encodeForOverseerr()}"
-        val localizedEndpoint = if (locale != "en") "$endpoint&language=$locale" else endpoint
+        val localizedEndpoint = appendDisplayLocale(endpoint, locale)
         
         if (BuildConfig.DEBUG) {
             Log.d("SeerrApiService", "Searching for '$query', page ${state.currentPage}")
@@ -1478,18 +1483,18 @@ class SeerrApiService @Inject constructor(
     }
     
     suspend fun getPersonDetails(personId: String): ApiResult<PersonDetails> {
-        val locale = getCurrentLanguage()
+        val locale = SharedPreferencesUtil.getDiscoveryLanguage(context)
         val pageEndpoint = "person/$personId"
         // append locale if not english
-        val localizedEndpoint = if (locale != "en") "$pageEndpoint?language=$locale" else pageEndpoint
+        val localizedEndpoint = appendDisplayLocale(pageEndpoint, locale)
         return executeApiCall(localizedEndpoint)
     }
 
     suspend fun getPersonCombinedCredits(personId: String): ApiResult<CombinedCredits> {
-        val locale = getCurrentLanguage()
+        val locale = SharedPreferencesUtil.getDiscoveryLanguage(context)
         val pageEndpoint = "person/$personId/combined_credits"
         // append locale if not english
-        val localizedEndpoint = if (locale != "en") "$pageEndpoint?language=$locale" else pageEndpoint
+        val localizedEndpoint = appendDisplayLocale(pageEndpoint, locale)
         return executeApiCall(localizedEndpoint)
     }
 
@@ -1518,7 +1523,7 @@ class SeerrApiService @Inject constructor(
         // Build the endpoint string with parameters
         val endpoint = "discover/movies"
         val pageEndpoint = "$endpoint?keywords=$keywordId&page=${state.currentPage}"
-        val localizedEndpoint = if (locale != "en") "${pageEndpoint}&language=$locale" else pageEndpoint
+        val localizedEndpoint = appendDisplayLocale(pageEndpoint, locale)
         if (BuildConfig.DEBUG) {
             Log.d("SeerrApiService", "Fetching movies for keyword $keywordId, page ${state.currentPage}")
         }
@@ -1557,7 +1562,7 @@ class SeerrApiService @Inject constructor(
         // Build the endpoint string with parameters
         val endpoint = "discover/tv"
         val pageEndpoint = "$endpoint?keywords=$keywordId&page=${state.currentPage}"
-        val localizedEndpoint = if (locale != "en") "${pageEndpoint}&language=$locale" else pageEndpoint
+        val localizedEndpoint = appendDisplayLocale(pageEndpoint, locale)
         return when (val result = executeApiCall<Discover>(localizedEndpoint)) {
             is ApiResult.Success -> {
                 // Update pagination info
@@ -1696,7 +1701,7 @@ class SeerrApiService @Inject constructor(
         }
         // append locale if not english
         val locale = SharedPreferencesUtil.getDiscoveryLanguage(context)
-        val localizedEndpoint = if (locale != "en") "$pageEndpoint&language=$locale" else pageEndpoint
+        val localizedEndpoint = appendDisplayLocale(pageEndpoint, locale)
         return executeApiCall(localizedEndpoint)
     }
 
@@ -1716,6 +1721,7 @@ class SeerrApiService @Inject constructor(
             .replace("+", "%20") // Replace + with %20 for spaces
             .replace("*", "%2A") // Replace * with %2A for asterisks
     }
+
 
     suspend fun testBaseConnection(): ApiValidationResult = withContext(Dispatchers.IO) {
         Log.d("SeerrApiService", "Testing base API endpoint: $apiUrl")
@@ -2439,36 +2445,25 @@ class SeerrApiService @Inject constructor(
         // If cache is empty or language changed, fetch all genres again
         if (cachedMovieGenreSlider == null || cachedMovieGenreSliderLanguage != locale) {
             val apiEndpoint = "discover/genreslider/movie"
-            val localizedEndpoint = if (locale != "en") "$apiEndpoint?language=$locale" else apiEndpoint
+            val localizedEndpoint = appendDisplayLocale(apiEndpoint, locale)
             
-            try {
-                // Use executeApiCall with HttpResponse to keep all auth headers and settings
-                when (val httpResult = executeApiCall<HttpResponse>(localizedEndpoint)) {
-                    is ApiResult.Success -> {
-                        val responseBody = httpResult.data.bodyAsText()
-                        try {
-                            // Parse the raw JSON array response
-                            val genresList = json.decodeFromString<List<GenreResponse>>(responseBody)
-                            cachedMovieGenreSlider = genresList
-                            cachedMovieGenreSliderLanguage = locale
-                            Log.d("SeerrApiService", "Cached ${cachedMovieGenreSlider?.size} movie genre slider items")
-                        } catch (e: kotlinx.serialization.SerializationException) {
-                            Log.e("SeerrApiService", "Error parsing genre array: ${e.message}")
-                            return ApiResult.Error(e)
-                        }
-                    }
-
-                    is ApiResult.Error -> {
-                        return ApiResult.Error(httpResult.exception, httpResult.statusCode)
-                    }
-
-                    else -> {
-                        return ApiResult.Loading()
-                    }
+            // Decode straight to the target type — executeApiCall already handles parse failures
+            // and logs the raw body on mismatch.
+            when (val result = executeApiCall<List<GenreResponse>>(localizedEndpoint)) {
+                is ApiResult.Success -> {
+                    cachedMovieGenreSlider = result.data
+                    cachedMovieGenreSliderLanguage = locale
+                    Log.d("SeerrApiService", "Cached ${cachedMovieGenreSlider?.size} movie genre slider items")
                 }
-            } catch (e: Exception) {
-                Log.e("SeerrApiService", "Error fetching movie genres: ${e.message}")
-                return ApiResult.Error(e)
+
+                is ApiResult.Error -> {
+                    Log.e("SeerrApiService", "Error fetching movie genres: ${result.exception.message}")
+                    return ApiResult.Error(result.exception, result.statusCode)
+                }
+
+                is ApiResult.Loading -> {
+                    return ApiResult.Loading()
+                }
             }
         }
         
@@ -2545,36 +2540,25 @@ class SeerrApiService @Inject constructor(
         // If cache is empty or language changed, fetch all genres again
         if (cachedTVGenreSlider == null || cachedTVGenreSliderLanguage != locale) {
             val apiEndpoint = "discover/genreslider/tv"
-            val localizedEndpoint = if (locale != "en") "$apiEndpoint?language=$locale" else apiEndpoint
+            val localizedEndpoint = appendDisplayLocale(apiEndpoint, locale)
             
-            try {
-                // Use executeApiCall with HttpResponse to keep all auth headers and settings
-                when (val httpResult = executeApiCall<HttpResponse>(localizedEndpoint)) {
-                    is ApiResult.Success -> {
-                        val responseBody = httpResult.data.bodyAsText()
-                        try {
-                            // Parse the raw JSON array response
-                            val genresList = json.decodeFromString<List<GenreResponse>>(responseBody)
-                            cachedTVGenreSlider = genresList
-                            cachedTVGenreSliderLanguage = locale
-                            Log.d("SeerrApiService", "Cached ${cachedTVGenreSlider?.size} TV genre slider items")
-                        } catch (e: kotlinx.serialization.SerializationException) {
-                            Log.e("SeerrApiService", "Error parsing genre array: ${e.message}")
-                            return ApiResult.Error(e)
-                        }
-                    }
-
-                    is ApiResult.Error -> {
-                        return ApiResult.Error(httpResult.exception, httpResult.statusCode)
-                    }
-
-                    else -> {
-                        return ApiResult.Loading()
-                    }
+            // Decode straight to the target type — executeApiCall already handles parse failures
+            // and logs the raw body on mismatch.
+            when (val result = executeApiCall<List<GenreResponse>>(localizedEndpoint)) {
+                is ApiResult.Success -> {
+                    cachedTVGenreSlider = result.data
+                    cachedTVGenreSliderLanguage = locale
+                    Log.d("SeerrApiService", "Cached ${cachedTVGenreSlider?.size} TV genre slider items")
                 }
-            } catch (e: Exception) {
-                Log.e("SeerrApiService", "Error fetching TV genres: ${e.message}")
-                return ApiResult.Error(e)
+
+                is ApiResult.Error -> {
+                    Log.e("SeerrApiService", "Error fetching TV genres: ${result.exception.message}")
+                    return ApiResult.Error(result.exception, result.statusCode)
+                }
+
+                is ApiResult.Loading -> {
+                    return ApiResult.Loading()
+                }
             }
         }
         
@@ -2618,29 +2602,18 @@ class SeerrApiService @Inject constructor(
     suspend fun getMovieGenresForFilters(context: Context): ApiResult<List<GenreResponse>> {
         val locale = SharedPreferencesUtil.getDiscoveryLanguage(context)
         val apiEndpoint = "genres/movie"
-        val localizedEndpoint = if (locale != "en") "$apiEndpoint?language=$locale" else apiEndpoint
+        val localizedEndpoint = appendDisplayLocale(apiEndpoint, locale)
 
-        return try {
-            when (val httpResult = executeApiCall<HttpResponse>(localizedEndpoint)) {
-                is ApiResult.Success -> {
-                    val responseBody = httpResult.data.bodyAsText()
-                    try {
-                        val genresList = json.decodeFromString<List<GenreResponse>>(responseBody)
-                        if (BuildConfig.DEBUG) {
-                            Log.d("SeerrApiService", "Loaded ${genresList.size} movie genres from genres/movie")
-                        }
-                        ApiResult.Success(genresList)
-                    } catch (e: kotlinx.serialization.SerializationException) {
-                        Log.e("SeerrApiService", "Error parsing movie genres array: ${e.message}")
-                        ApiResult.Error(e)
+        return executeApiCall<List<GenreResponse>>(localizedEndpoint).also { result ->
+            when (result) {
+                is ApiResult.Success ->
+                    if (BuildConfig.DEBUG) {
+                        Log.d("SeerrApiService", "Loaded ${result.data.size} movie genres from genres/movie")
                     }
-                }
-                is ApiResult.Error -> ApiResult.Error(httpResult.exception, httpResult.statusCode)
-                else -> ApiResult.Loading()
+                is ApiResult.Error ->
+                    Log.e("SeerrApiService", "Error fetching movie genres for filters: ${result.exception.message}")
+                is ApiResult.Loading -> Unit
             }
-        } catch (e: Exception) {
-            Log.e("SeerrApiService", "Error fetching movie genres for filters: ${e.message}")
-            ApiResult.Error(e)
         }
     }
 
@@ -2651,29 +2624,18 @@ class SeerrApiService @Inject constructor(
     suspend fun getTVGenresForFilters(context: Context): ApiResult<List<GenreResponse>> {
         val locale = SharedPreferencesUtil.getDiscoveryLanguage(context)
         val apiEndpoint = "genres/tv"
-        val localizedEndpoint = if (locale != "en") "$apiEndpoint?language=$locale" else apiEndpoint
+        val localizedEndpoint = appendDisplayLocale(apiEndpoint, locale)
 
-        return try {
-            when (val httpResult = executeApiCall<HttpResponse>(localizedEndpoint)) {
-                is ApiResult.Success -> {
-                    val responseBody = httpResult.data.bodyAsText()
-                    try {
-                        val genresList = json.decodeFromString<List<GenreResponse>>(responseBody)
-                        if (BuildConfig.DEBUG) {
-                            Log.d("SeerrApiService", "Loaded ${genresList.size} TV genres from genres/tv")
-                        }
-                        ApiResult.Success(genresList)
-                    } catch (e: kotlinx.serialization.SerializationException) {
-                        Log.e("SeerrApiService", "Error parsing TV genres array: ${e.message}")
-                        ApiResult.Error(e)
+        return executeApiCall<List<GenreResponse>>(localizedEndpoint).also { result ->
+            when (result) {
+                is ApiResult.Success ->
+                    if (BuildConfig.DEBUG) {
+                        Log.d("SeerrApiService", "Loaded ${result.data.size} TV genres from genres/tv")
                     }
-                }
-                is ApiResult.Error -> ApiResult.Error(httpResult.exception, httpResult.statusCode)
-                else -> ApiResult.Loading()
+                is ApiResult.Error ->
+                    Log.e("SeerrApiService", "Error fetching TV genres for filters: ${result.exception.message}")
+                is ApiResult.Loading -> Unit
             }
-        } catch (e: Exception) {
-            Log.e("SeerrApiService", "Error fetching TV genres for filters: ${e.message}")
-            ApiResult.Error(e)
         }
     }
 
@@ -2892,7 +2854,7 @@ class SeerrApiService @Inject constructor(
         // Build the endpoint string with parameters
         val endpoint = "discover/movies"
         val pageEndpoint = "$endpoint?genre=$genreId&page=${state.currentPage}"
-        val localizedEndpoint = if (locale != "en") "${pageEndpoint}&language=${locale}" else pageEndpoint
+        val localizedEndpoint = appendDisplayLocale(pageEndpoint, locale)
         if (BuildConfig.DEBUG) {
             Log.d("SeerrApiService", "🔄 Fetching movies for genre $genreId, page ${state.currentPage}")
         }
@@ -2937,7 +2899,7 @@ class SeerrApiService @Inject constructor(
         // Build the endpoint string with parameters
         val endpoint = "discover/tv"
         val pageEndpoint = "$endpoint?genre=$genreId&page=${state.currentPage}"
-        val localizedEndpoint = if (locale != "en") "${pageEndpoint}&language=$locale" else pageEndpoint
+        val localizedEndpoint = appendDisplayLocale(pageEndpoint, locale)
         if (BuildConfig.DEBUG) {
             Log.d("SeerrApiService", "Fetching TV shows for genre $genreId, page ${state.currentPage}")
         }
@@ -2982,7 +2944,7 @@ class SeerrApiService @Inject constructor(
         // Build the endpoint string with parameters
         val endpoint = "discover/movies/studio/$studioId"
         val pageEndpoint = "$endpoint?page=${state.currentPage}"
-        val localizedEndpoint = if (locale != "en") "${pageEndpoint}&language=$locale" else pageEndpoint
+        val localizedEndpoint = appendDisplayLocale(pageEndpoint, locale)
         if (BuildConfig.DEBUG) {
             Log.d("SeerrApiService", "Fetching movies for studio $studioId, page ${state.currentPage}")
         }
@@ -3027,7 +2989,7 @@ class SeerrApiService @Inject constructor(
         // Build the endpoint string with parameters
         val endpoint = "discover/tv/network/$networkId"
         val pageEndpoint = "$endpoint?page=${state.currentPage}"
-        val localizedEndpoint = if (locale != "en") "${pageEndpoint}&language=$locale" else pageEndpoint
+        val localizedEndpoint = appendDisplayLocale(pageEndpoint, locale)
         if (BuildConfig.DEBUG) {
             Log.d("SeerrApiService", "Fetching TV shows for network $networkId, page ${state.currentPage}")
         }
@@ -3278,8 +3240,7 @@ class SeerrApiService @Inject constructor(
         }
         
         val state = getOrCreatePaginationState("browse_${mediaType.name.lowercase()}_${filters.hashCode()}_${sort.hashCode()}_${query.hashCode()}")
-        val locale = SharedPreferencesUtil.getDiscoveryLanguage(context)
-        
+
         // Build the base endpoint
         val baseEndpoint = when (mediaType) {
             MediaType.MOVIE -> "discover/movies"
@@ -3291,12 +3252,22 @@ class SeerrApiService @Inject constructor(
         
         // Add page parameter
         params.add("page=${state.currentPage}")
-        
-        // Add language if not English
-        if (locale != "en") {
-            params.add("language=$locale")
-        }
-        
+
+        // NOTE: no `language=<discovery locale>` here, deliberately.
+        //
+        // `discover/movies` and `discover/tv` are the two discover routes where the server treats
+        // `language` as the ORIGINAL-LANGUAGE FILTER, not the display locale:
+        //     language: req.locale ?? query.language,   // display — account setting wins
+        //     originalLanguage: query.language,         // -> TMDB with_original_language
+        // Display locale on these two routes comes from the user's Seerr account setting and cannot
+        // be overridden per-request. Sending the discovery locale here silently filtered results to
+        // titles whose ORIGINAL language matched (e.g. a German user saw only German-original
+        // titles) and collided with the filter below.
+        //
+        // Every other discover route uses the opposite precedence
+        // (`req.query.language ?? req.locale`), so `language=<locale>` remains correct there —
+        // do not "fix" those call sites to match this one.
+
         // Add text search if provided
         if (query.isNotEmpty()) {
             params.add("query=$query")
@@ -3319,10 +3290,14 @@ class SeerrApiService @Inject constructor(
         params.add("keywords=${keywordValue.encodeForOverseerr()}")
     }
     
-    // Add original language filter (format: language={code})
-    filters.originalLanguage?.let { 
-        val languageValue = "server|$it"
-        params.add("language=${languageValue.encodeForOverseerr()}")
+    // Add original language filter — bare ISO 639-1 code, e.g. `language=ja`.
+    // The server passes this straight through as TMDB's with_original_language.
+    // (The previous `server|` prefix was not a Seerr convention: `server` is a sentinel in the
+    // Seerr web UI's language dropdown meaning "use account default", which a frontend bug lets
+    // leak into the query string. The API has no such token and forwards it to TMDB verbatim,
+    // which matches nothing.)
+    filters.originalLanguage?.let {
+        params.add("language=${it.encodeForOverseerr()}")
     }
     
     // Add content rating filters (certification)
@@ -3579,7 +3554,7 @@ class SeerrApiService @Inject constructor(
         } else {
             "$baseEndpoint?page=${state.currentPage}"
         }
-        val localizedEndpoint = if (locale != "en") "$pageEndpoint&language=$locale" else pageEndpoint
+        val localizedEndpoint = appendDisplayLocale(pageEndpoint, locale)
 
         return when (val result = executeApiCall<Discover>(localizedEndpoint)) {
             is ApiResult.Success -> {
@@ -3596,4 +3571,35 @@ class SeerrApiService @Inject constructor(
         }
     }
 
+}
+
+/**
+ * Appends the user's discovery/display locale to a Seerr endpoint as `language=<locale>`,
+ * picking `?` or `&` automatically. Returns [endpoint] unchanged for English (the server
+ * default) or on the two routes where `language` does not mean "display locale".
+ *
+ * The per-route rule this helper exists to enforce: on `discover/movies` and `discover/tv`
+ * the server binds `language` to the ORIGINAL-LANGUAGE filter, not the display locale —
+ *     language: req.locale ?? query.language,   // display: account setting wins
+ *     originalLanguage: query.language,          // -> TMDB with_original_language
+ * so display locale on those two routes is the user's account setting and cannot be set
+ * per-request. Sending the locale there silently filters results by original language (e.g.
+ * a German user's Popular Movies / Upcoming / genre / keyword rows show only German-original
+ * titles). Every other discover and detail route uses `req.query.language ?? req.locale`, so
+ * the locale is correctly honoured as the display language and this helper appends it.
+ *
+ * The original-language *filter*, when the user actually asks for it, is applied explicitly
+ * in [SeerrApiService.browseMedia]. Do not add `language=<locale>` to a discover/movies|tv URL
+ * to reintroduce display-locale behaviour — it will not work and will filter instead.
+ *
+ * `locale` is expected pre-normalised to a lowercase code (see
+ * [ca.devmesh.seerrtv.util.SharedPreferencesUtil.getDiscoveryLanguage]); `"en"` is treated as
+ * the no-op server default.
+ */
+internal fun appendDisplayLocale(endpoint: String, locale: String): String {
+    if (locale == "en") return endpoint
+    val path = endpoint.substringBefore('?')
+    if (path == "discover/movies" || path == "discover/tv") return endpoint
+    val separator = if ('?' in endpoint) '&' else '?'
+    return "$endpoint${separator}language=$locale"
 }

@@ -103,6 +103,11 @@ fun processMediaStatus(media: MediaDetails, viewModel: SeerrViewModel): MediaSta
         isAvailable = isAvailable,
         hasCast = media.credits.cast.isNotEmpty(),
         hasCrew = media.credits.crew.isNotEmpty(),
+        // The "Tags" row is the movie/TV keywords. These render in English regardless of the
+        // Discovery Language: the detail request IS sent localized (movie/$id?language=<locale>),
+        // but TMDB keywords are a single global tag database with no per-language translations, so
+        // the `language` param has no effect on them. Not an app bug and not fixable client-side.
+        // (Genres DO translate, but the details screen doesn't display a genre row.)
         hasTags = !media.keywords.isNullOrEmpty(),
         hasTrailer = (media.relatedVideos?.isNotEmpty() == true && getTrailerUrl(media.relatedVideos) != null),
         hasRequest = hasRequest,

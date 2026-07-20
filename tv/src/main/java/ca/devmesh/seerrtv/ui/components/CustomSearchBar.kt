@@ -146,8 +146,6 @@ fun CustomSearchBar(
                                     }
                                     textFieldFocusRequester.requestFocus()
                                     return@onPreviewKeyEvent true
-                                } else {
-                                    false
                                 }
                             }
                         }
