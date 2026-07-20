@@ -169,10 +169,10 @@ object SharedPreferencesUtil {
     fun setAppLanguage(context: Context, language: String) {
         val normalized = language.lowercase()
         val profiles = getProfiles(context)
-        val activeId = getActiveProfileId(context)
-        if (!activeId.isNullOrBlank() && profiles.any { it.id == activeId }) {
+        val targetId = resolveSettingsTargetProfileId(profiles, getActiveProfileId(context))
+        if (targetId != null) {
             val updated = profiles.map { profile ->
-                if (profile.id == activeId) {
+                if (profile.id == targetId) {
                     profile.copy(
                         settings = profile.settings.copy(appLanguage = normalized),
                         updatedAt = System.currentTimeMillis()
@@ -553,14 +553,29 @@ object SharedPreferencesUtil {
     // Profile storage
     // -------------------------------------------------------------------------
 
+    /**
+     * Decodes stored profiles JSON, or null if it cannot be read.
+     *
+     * The null is the point: callers that only need the profiles can treat it as "none", but
+     * [ensureProfilesInitialized] *deletes* the stored JSON when it sees no profiles, and must
+     * never do that to a blob that merely failed to parse. `UserProfile` and its embedded
+     * `SeerrConfig` have required fields with no defaults (`name`, `avatarInitials`,
+     * `avatarColor`, `config`; `protocol`, `hostname`, `authType`, `isSubmitted`, `createdAt`),
+     * so a partial write, or any field added later without a default, turns every saved profile
+     * and its settings into an unreadable blob — and deleting it would make that permanent
+     * instead of recoverable by a later build that can read it.
+     */
+    internal fun decodeProfiles(rawJson: String): List<UserProfile>? =
+        runCatching { this.json.decodeFromString<List<UserProfile>>(rawJson) }
+            .getOrElse { error ->
+                Log.e("SharedPreferencesUtil", "Failed to decode profiles JSON", error)
+                null
+            }
+
     fun getProfiles(context: Context): List<UserProfile> {
         val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val json = sharedPrefs.getString(KEY_PROFILES_JSON, null) ?: return emptyList()
-        return runCatching { this.json.decodeFromString<List<UserProfile>>(json) }
-            .getOrElse { error ->
-                Log.e("SharedPreferencesUtil", "Failed to decode profiles JSON", error)
-                emptyList()
-            }
+        return decodeProfiles(json) ?: emptyList()
     }
 
     fun saveProfiles(context: Context, profiles: List<UserProfile>) {
@@ -595,6 +610,25 @@ object SharedPreferencesUtil {
         val activeId = getActiveProfileId(context)
         return profiles.firstOrNull { it.id == activeId } ?: profiles.firstOrNull()
     }
+
+    /**
+     * Id of the profile a settings write must target, resolved exactly as [getActiveProfile]
+     * resolves reads — including its fall back to the first profile when `active_profile_id` is
+     * missing or names a profile that no longer exists.
+     *
+     * The two sides have to agree. When the setters instead required an exact id match, a write
+     * in that fallback state fell through to the legacy global key, which the getters ignore
+     * whenever any profile exists. The setting appeared to save, every read returned the old
+     * profile value, and the change only surfaced on the next cold start, when
+     * [ensureProfilesInitialized] migrated the stale global key into the first profile.
+     *
+     * Returns null only when there are no profiles at all — the one case where the legacy global
+     * keys are still the correct destination.
+     */
+    internal fun resolveSettingsTargetProfileId(
+        profiles: List<UserProfile>,
+        activeId: String?
+    ): String? = profiles.firstOrNull { it.id == activeId }?.id ?: profiles.firstOrNull()?.id
 
     fun updateActiveProfileAvatarColor(context: Context, colorKey: String): Boolean {
         val profiles = getProfiles(context)
@@ -737,6 +771,19 @@ object SharedPreferencesUtil {
         // Profiles exist but active id missing/invalid
         val profiles = getProfiles(context)
         if (profiles.isEmpty()) {
+            // Distinguish "the stored list is genuinely empty" from "the stored list could not be
+            // read". Only the first is safe to clear. Deleting a blob that merely failed to decode
+            // would permanently destroy every profile and every setting in it over what may be a
+            // partial write or a schema a later build could read. Leave it and bail out instead:
+            // the app falls back to the legacy global keys for this run, and the data survives.
+            if (decodeProfiles(profilesJson) == null) {
+                Log.e(
+                    "SharedPreferencesUtil",
+                    "Profiles JSON present but unreadable; leaving it untouched rather than " +
+                        "discarding saved profiles"
+                )
+                return
+            }
             setActiveProfileId(context, null)
             with(sharedPrefs.edit()) {
                 remove(KEY_PROFILES_JSON)
@@ -929,10 +976,10 @@ object SharedPreferencesUtil {
 
     fun setFolderSelectionEnabled(context: Context, enabled: Boolean) {
         val profiles = getProfiles(context)
-        val activeId = getActiveProfileId(context)
-        if (!activeId.isNullOrBlank() && profiles.any { it.id == activeId }) {
+        val targetId = resolveSettingsTargetProfileId(profiles, getActiveProfileId(context))
+        if (targetId != null) {
             val updated = profiles.map { profile ->
-                if (profile.id == activeId) {
+                if (profile.id == targetId) {
                     profile.copy(
                         settings = profile.settings.copy(folderSelectionEnabled = enabled),
                         updatedAt = System.currentTimeMillis()
@@ -958,10 +1005,10 @@ object SharedPreferencesUtil {
 
     fun setUse24HourClock(context: Context, enabled: Boolean) {
         val profiles = getProfiles(context)
-        val activeId = getActiveProfileId(context)
-        if (!activeId.isNullOrBlank() && profiles.any { it.id == activeId }) {
+        val targetId = resolveSettingsTargetProfileId(profiles, getActiveProfileId(context))
+        if (targetId != null) {
             val updated = profiles.map { profile ->
-                if (profile.id == activeId) {
+                if (profile.id == targetId) {
                     profile.copy(
                         settings = profile.settings.copy(use24HourClock = enabled),
                         updatedAt = System.currentTimeMillis()
@@ -988,10 +1035,10 @@ object SharedPreferencesUtil {
 
     fun setUseTrailerWebView(context: Context, useWebView: Boolean) {
         val profiles = getProfiles(context)
-        val activeId = getActiveProfileId(context)
-        if (!activeId.isNullOrBlank() && profiles.any { it.id == activeId }) {
+        val targetId = resolveSettingsTargetProfileId(profiles, getActiveProfileId(context))
+        if (targetId != null) {
             val updated = profiles.map { profile ->
-                if (profile.id == activeId) {
+                if (profile.id == targetId) {
                     profile.copy(
                         settings = profile.settings.copy(useTrailerWebView = useWebView),
                         updatedAt = System.currentTimeMillis()
@@ -1185,10 +1232,10 @@ object SharedPreferencesUtil {
     fun setDiscoveryLanguage(context: Context, value: String) {
         val normalized = value.lowercase()
         val profiles = getProfiles(context)
-        val activeId = getActiveProfileId(context)
-        if (!activeId.isNullOrBlank() && profiles.any { it.id == activeId }) {
+        val targetId = resolveSettingsTargetProfileId(profiles, getActiveProfileId(context))
+        if (targetId != null) {
             val updated = profiles.map { profile ->
-                if (profile.id == activeId) {
+                if (profile.id == targetId) {
                     profile.copy(
                         settings = profile.settings.copy(discoveryLanguage = normalized),
                         updatedAt = System.currentTimeMillis()
@@ -1223,10 +1270,10 @@ object SharedPreferencesUtil {
     fun setDefaultStreamingRegion(context: Context, value: String) {
         val normalized = value.uppercase()
         val profiles = getProfiles(context)
-        val activeId = getActiveProfileId(context)
-        if (!activeId.isNullOrBlank() && profiles.any { it.id == activeId }) {
+        val targetId = resolveSettingsTargetProfileId(profiles, getActiveProfileId(context))
+        if (targetId != null) {
             val updated = profiles.map { profile ->
-                if (profile.id == activeId) {
+                if (profile.id == targetId) {
                     profile.copy(
                         settings = profile.settings.copy(defaultStreamingRegion = normalized),
                         updatedAt = System.currentTimeMillis()

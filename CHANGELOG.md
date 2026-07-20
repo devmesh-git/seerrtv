@@ -1,5 +1,58 @@
 # Changelog
 
+## 0.28.11
+
+### Fixed: App Language had no effect on Play Store installs
+
+- **Symptom** – Changing **Settings > App Language** saved the setting and showed the new value, but every menu, label and dialog stayed in the device's system language. Reported on a Chromecast with Google TV; reproducible on any Play-installed device. Sideloaded (direct APK) installs were never affected, which is why this survived local testing — a direct APK is universal and carries all nine translations.
+
+- **Root cause — packaging, not code.** Android App Bundles split resources by language by default, and Play installs only the split matching the device's system locale. On an English device the Play build installs `base-master`, `config.arm64_v8a`, `config.xhdpi` and **`config.en`** — no `values-es/`, `values-de/`, or any other translation is present on disk. The app switched its configuration locale correctly; the resource system had nothing to resolve against and fell back to the base (English) resources. The saved setting still rendered its own label correctly, because that label is itself a base-English string — hence "the setting took but the menu stayed in English."
+
+- **Fix** – `bundle { language { enableSplit = false } }` in `tv/build.gradle.kts`. Every translation now ships in the base APK to every device. Verified with bundletool against a connected device: the language split is gone from the generated APK set, and `base-master.apk` now carries `de es et fr hu ja nl pt zh`. Cost is **+872 KB** (57.4 MB → 58.3 MB base APK, +1.5%).
+
+- **Why not the per-app-language API** – `AppCompatDelegate.setApplicationLocales()` with `android:localeConfig` makes Play fetch the needed language split on demand, which would avoid the size cost. It only works on **API 33+**. SeerrTV's own target devices sit below that line — NVIDIA Shield is Android 11 (API 30) and Chromecast with Google TV is Android 12 (API 31) — so it would have fixed neither. Disabling the split is the only approach that covers the actual install base. Worth revisiting if minSdk ever rises to 33.
+
+- **Not a regression from the 0.28.06 locale work.** Verified by building the Play bundle from 0.28.05 (pre-i18n-release) and running the same bundletool device-targeting: it produces the identical split set, `config.en` only. 0.28.05 already shipped eight translations, and its Play build stripped them the same way. No `enableSplit` or `bundle.language` setting has ever existed in this repository, so every Play build since the first has behaved this way. 0.28.06 is simply when the app gained enough translation coverage for anyone to look.
+
+- **Reproduced and verified end to end** on an API 31 Google TV emulator, installing each bundle the way Play would (`bundletool build-apks --connected-device` + `install-apks`), same version and same keypresses in both runs:
+  - Before: `splits=[base, config.arm64_v8a, config.en, config.xhdpi]` — selecting Spanish leaves the UI in English.
+  - After: `splits=[base, config.arm64_v8a, config.xhdpi]` — selecting Spanish renders Spanish immediately.
+- The locale mechanism itself (`MainActivity.attachBaseContext` → `LocaleContextWrapper` → `recreate()`) was confirmed working throughout, on API 31 and API 36, with one profile and with two, in both directions, and in combination with a Discovery Language change.
+
+- **Existing installs need the new Play release.** There is no client-side remedy for an already-installed build — the strings are genuinely absent from the device.
+
+### Fixed: profile settings could be written where nothing reads them
+
+- Found while investigating the above; a separate defect with the same outward symptom, so worth closing while it was in view.
+- **All six profile-scoped settings** — app language, discovery language, default streaming region, folder selection, clock format and trailer player — were **read** through `getActiveProfile()`, which falls back to the first profile when `active_profile_id` is missing or names a deleted profile. The **setters** required an exact id match instead. In that fallback state a write fell through to the legacy global key, which the getters ignore whenever any profile exists: the setting appeared to save, every read returned the old profile value, and the change only surfaced on the next cold start, when `ensureProfilesInitialized` migrated the stale global key into the first profile.
+- Both sides now resolve through one `resolveSettingsTargetProfileId(profiles, activeId)` helper, so a write always lands on the profile a read would resolve to. The legacy global keys remain the destination only when there are no profiles at all.
+- **Severity, honestly stated**: not the reported bug, and possibly not reachable through the UI today — `ensureProfilesInitialized` repairs a stale `active_profile_id` on every `onCreate`, so the window closes before Settings is reachable. That repair is the only thing standing between this asymmetry and a silently-dropped setting, which is too load-bearing for an invariant that can simply hold on both sides.
+- `SettingsTargetProfileTest` (7 cases) pins the resolution rule and the read/write invariant across every id state, and encodes the pre-fix predicate to document which cases actually diverged rather than assuming them.
+
+### Fixed: an unreadable profiles blob destroyed every saved profile
+
+- `getProfiles()` returned an empty list both when there were genuinely no profiles **and** when the stored JSON failed to decode. `ensureProfilesInitialized` responds to "no profiles" by **deleting** `profiles_json` and clearing the active id — so a single unreadable blob permanently destroyed every profile, its embedded server config, and all six of its settings. `UserProfile` and its embedded `SeerrConfig` have nine required fields with no defaults, so a partial write or any field added later without a default is enough to trigger it.
+- Decoding now goes through `decodeProfiles()`, which returns null for unreadable input and an empty list only for a genuinely empty one. `ensureProfilesInitialized` clears the stored JSON only in the latter case; for an unreadable blob it logs and bails out, leaving the data on disk where a later build can still read it. The user sees first-run setup for that launch, but nothing is lost.
+- **Demonstrated on device**, same corrupt blob seeded into both builds on an API 31 emulator: 0.28.10 removed `profiles_json` from storage entirely (**destroyed**); 0.28.11 left the original bytes intact (**preserved**).
+- **Not known to have affected anyone.** `is_submitted` and `created_at` have been required since the initial release (v0.26.3), which predates profiles JSON (0.28.01), so no blob written by any shipped version is missing them. This closes the mechanism before a future field change opens it.
+
+### Verified: upgrades preserve saved settings
+
+Exercised as real in-place installs on an API 31 Google TV emulator, not reasoned about:
+
+- **0.28.10 → 0.28.11 with existing profiles** – both profiles survive with all six settings byte-identical (`app_language`, `discovery_language`, `default_streaming_region`, `folder_selection_enabled`, `use_24_hour_clock`, `use_trailer_webview`), active profile id unchanged, and the UI renders in the stored language — confirming the values are *read*, not merely retained on disk.
+- **Pre-profiles install (legacy global keys only) → 0.28.11** – migrates into a single profile with every setting preserved and the legacy globals cleaned up, exactly as before.
+- No storage key was added, removed or renamed anywhere in this release, and no `@Serializable` model changed, so the on-disk schema is identical to 0.28.10. `ProfileStorageCompatTest` pins a real 0.28.10-shaped blob against the models so a future field change fails the build instead of the upgrade.
+
+### Files Modified
+
+- `tv/build.gradle.kts` – Version 0.28.11 (versionCode 134); `bundle { language { enableSplit = false } }`; `testOptions.unitTests.isReturnDefaultValues` so tests can exercise paths that log.
+- `tv/src/main/java/ca/devmesh/seerrtv/util/SharedPreferencesUtil.kt` – Add `resolveSettingsTargetProfileId`; route all six profile-setting setters through it so writes and reads resolve the same profile. Add `decodeProfiles()` and stop `ensureProfilesInitialized` from deleting a profiles blob it merely failed to read.
+- `tv/src/test/java/ca/devmesh/seerrtv/util/SettingsTargetProfileTest.kt` – **New.**
+- `tv/src/test/java/ca/devmesh/seerrtv/util/ProfileStorageCompatTest.kt` – **New.**
+
+---
+
 ## 0.28.10
 
 ### Fixed two crashes reported against 0.28.08

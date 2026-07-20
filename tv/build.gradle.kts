@@ -2,8 +2,8 @@ import java.io.File
 import java.util.Properties
 
 // Single source for app version; used in defaultConfig and for direct-release APK naming
-val appVersionName = "0.28.10"
-val appVersionCode = 133
+val appVersionName = "0.28.11"
+val appVersionCode = 134
 
 plugins {
     // https://developer.android.com/jetpack/androidx/releases/hilt
@@ -110,9 +110,36 @@ android {
     buildFeatures {
         compose = true
     }
+
+    testOptions {
+        unitTests {
+            // android.util.Log is a stub in JVM unit tests and throws "not mocked" when called.
+            // Returning defaults instead lets tests exercise code paths that log — notably the
+            // profile-decode failure path, whose whole job is to log and degrade safely.
+            isReturnDefaultValues = true
+        }
+    }
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
+
+    bundle {
+        language {
+            // Ship every translation to every device.
+            //
+            // By default Play splits resources by language and installs only the split matching
+            // the device's system locale. The app has its own App Language picker, so a device
+            // set to English would switch to Spanish and find no values-es/ on disk — the
+            // setting stuck but every string fell back to the base (English) resources.
+            //
+            // The per-app-language API (AppCompatDelegate.setApplicationLocales) makes Play
+            // fetch the needed split on demand, but only on API 33+. SeerrTV supports Android
+            // TV devices well below that (NVIDIA Shield is API 30, Chromecast with Google TV
+            // is API 31), so disabling the split is the only fix that covers them. Costs a few
+            // hundred KB of strings in a base APK that is already ~57 MB.
+            enableSplit = false
         }
     }
 
