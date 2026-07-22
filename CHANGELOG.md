@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.28.12
+
+### Fixed: Request button disappeared after watching a trailer in the external YouTube app
+
+- **Symptom** – On the details screen, with the trailer player set to YouTube (external app): watch a trailer, return to the app, and the Request button is gone — only "Add to watchlist" and "Watch trailer" remain. The in-app trailer player was unaffected.
+
+- **Root cause** – Returning from the external app pauses and resumes the activity, and `ON_RESUME` runs `checkAndRefreshTokenIfNeeded()`, which re-fetches `auth/me` and re-persists the user. That path stored `user.permissions ?: 0`. `SafeIntSerializer` returns null for any permissions value it cannot decode as an integer (absent field, non-numeric, out-of-range), so one degraded `auth/me` payload silently stripped every permission in memory. `CommonUtil.canRequest` then returned false and the Request button's visibility gate (`getActionButtonStates`) hid it. The in-app player never pauses the activity, so `ON_RESUME` never fires — matching the repro exactly. A second latent defect compounded it: `getCurrentUserPermissions()` was a plain getter over a plain var, so nothing recomposed when permissions changed — a late or corrected value could never bring the button back without leaving the screen.
+
+- **Fix** –
+  - `persistAuthenticatedUser` resolves permissions through `resolveRefreshedPermissions(fresh, lastKnown)`: an unreadable/absent value falls back to the last known permissions (in-memory first, then the value `saveUserInfo` had persisted, id-matched) instead of degrading to 0. An explicit 0 from the server is still respected — only null falls back.
+  - When the fallback engages, a Diagnostics entry is recorded (Settings > Diagnostics), so the degraded-payload case is observable on an affected user's device instead of inferred.
+  - `currentUserInfoState` is now Compose snapshot state, so composables that read the current user's permissions during composition — the Request-button gate on the details screen — recompose when the resume-time refresh updates them.
+  - `SharedPreferencesUtil.getSavedUserPermissions()` is new; the permissions value has been *saved* since the field existed but was never read back.
+
+- **Honestly stated** – the null-permissions trigger was established by analysis, not reproduced on a device; a healthy backend returns a clean integer and never hits the degrade path. The fix removes the only code path that can zero permissions outside a real login, and the new Diagnostics entry makes the degraded-payload case observable in the field instead of inferred.
+
+- `ResolveRefreshedPermissionsTest` (4 cases) pins the fallback rule, including the explicit-0-wins asymmetry.
+
+### Fixed: Movies/Series browse grid empty ("No results found") after using main-menu search
+
+- **Symptom** – Search from the main menu, open a result's details, back out to the main screen, then enter the Movies or Series menu: the grid is empty with "No results found / Try a different search term", even though the search box is empty and no filters are active.
+
+- **Root cause** – The main-menu search stores its query (`currentQuery`) on the activity-shared `MediaDiscoveryViewModel`, and nothing clears it on leaving the search screen. The browse loaders passed that stale query into `browseMedia`, which appended `query=<term>` to `discover/movies|tv` — and the server's OpenAPI validation **rejects `query` as an unknown parameter on the discover routes**, failing the entire request (verified live: `discover/movies?query=avengers` → `{"message":"Unknown query parameter 'query'"}`). The error path clears the results list, producing the empty grid. Any main-menu search poisoned every subsequent browse visit until the process restarted.
+
+- **Fix** – Removed the `query` plumbing from the browse path entirely (`browseMedia` no longer accepts or sends a query; the loaders no longer read `currentQuery`). Text search was never the discover routes' job: typed queries in the browse screens already flow through `debouncedSearch` → the `search` endpoint, which works. The browse screen's query effect now only reloads the grid when the box is *cleared*, instead of also firing a browse reload for typed queries — that reload raced the debounced search and could overwrite its results with unfiltered discover data.
+
+### Files Modified
+
+- `tv/build.gradle.kts` – Version 0.28.12 (versionCode 135).
+- `tv/src/main/java/ca/devmesh/seerrtv/data/SeerrApiService.kt` – `persistAuthenticatedUser` permission fallback + Diagnostics entry; `currentUserInfoState` as snapshot state; top-level `resolveRefreshedPermissions`; drop the rejected `query` parameter from `browseMedia`.
+- `tv/src/main/java/ca/devmesh/seerrtv/util/SharedPreferencesUtil.kt` – Add `getSavedUserPermissions` (id-matched read-back of the value `saveUserInfo` persists).
+- `tv/src/main/java/ca/devmesh/seerrtv/viewmodel/MediaDiscoveryViewModel.kt` – Browse loaders no longer pass the shared search query into `browseMedia`.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/MediaBrowseScreen.kt` – Browse reload only on cleared search box; typed queries stay on the `search`-endpoint path.
+- `tv/src/test/java/ca/devmesh/seerrtv/data/ResolveRefreshedPermissionsTest.kt` – **New.**
+
+---
+
 ## 0.28.11
 
 ### Fixed: App Language had no effect on Play Store installs

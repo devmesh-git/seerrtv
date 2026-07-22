@@ -1092,6 +1092,18 @@ object SharedPreferencesUtil {
     }
 
     /**
+     * Last permissions value saved by [saveUserInfo], or null when nothing is saved for [userId].
+     * Used so a refreshed `auth/me` payload without a readable permissions value never degrades
+     * the user to "no permissions" (which silently hides the Request button).
+     */
+    fun getSavedUserPermissions(context: Context, userId: Int): Int? {
+        val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        if (!sharedPrefs.contains(KEY_USER_PERMISSIONS)) return null
+        if (sharedPrefs.getInt(KEY_USER_ID, Int.MIN_VALUE) != userId) return null
+        return sharedPrefs.getInt(KEY_USER_PERMISSIONS, 0)
+    }
+
+    /**
      * Keeps the active local profile name, initials, and remote avatar aligned with [auth/me] after login.
      */
     private fun syncActiveProfileWithServerUser(

@@ -264,9 +264,12 @@ fun MediaBrowseScreen(
         }
     }
 
-    // Handle search query changes
+    // Load the browse grid on entry and whenever the search box is cleared. Typed queries are
+    // NOT handled here: the search box routes them through debouncedSearch -> the `search`
+    // endpoint (discover/movies|tv rejects a `query` parameter), and triggering a browse reload
+    // for them raced that search and could overwrite its results with unfiltered discover data.
     LaunchedEffect(searchQuery) {
-        if (searchQuery.length >= 3 || searchQuery.isEmpty()) {
+        if (searchQuery.isEmpty()) {
             // Trigger browse with current filters and sort
             val filters = currentFilters ?: BrowseModels.MediaFilters.default(mediaType)
             val sort = currentSort

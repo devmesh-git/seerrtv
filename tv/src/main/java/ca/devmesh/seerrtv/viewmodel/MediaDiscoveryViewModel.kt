@@ -1121,7 +1121,6 @@ class MediaDiscoveryViewModel @Inject constructor(
                 mediaType = MediaType.MOVIE,
                 filters = filters,
                 sort = sort,
-                query = currentQuery,
                 loadMore = loadMore
             )) {
                 is ApiResult.Success -> {
@@ -1178,7 +1177,6 @@ class MediaDiscoveryViewModel @Inject constructor(
                 mediaType = MediaType.TV,
                 filters = filters,
                 sort = sort,
-                query = currentQuery,
                 loadMore = loadMore
             )) {
                 is ApiResult.Success -> {

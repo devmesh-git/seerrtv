@@ -3,6 +3,9 @@ package ca.devmesh.seerrtv.data
 import android.annotation.SuppressLint
 import android.content.Context
 import android.util.Log
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import ca.devmesh.seerrtv.BuildConfig
 import ca.devmesh.seerrtv.R
 import ca.devmesh.seerrtv.util.AvatarUrlResolver
@@ -168,7 +171,10 @@ class SeerrApiService @Inject constructor(
     /** CSRF cookies when using API key + Seerr CSRF protection (no connect.sid). */
     private var apiKeyCsrfCookieValue: String? = null
     private var apiKeyXsrfToken: String? = null
-    private var currentUserInfo: UserInfo? = null
+    // Snapshot state (not a plain var) so composables that read the current user's permissions
+    // during composition — e.g. the details screen's Request-button gate — recompose when the
+    // resume-time auth refresh updates them.
+    private var currentUserInfoState: UserInfo? by mutableStateOf(null)
     private var cachedRadarrData: RadarrServerInfo? = null
     private var cachedSonarrData: SonarrServerInfo? = null
 
@@ -375,7 +381,7 @@ class SeerrApiService @Inject constructor(
         }
     }
 
-    fun getCurrentUserInfo(): UserInfo? = currentUserInfo
+    fun getCurrentUserInfo(): UserInfo? = currentUserInfoState
 
     /** Site origin for Seerr (no `/api/v1` suffix); used for `/avatarproxy/...` paths. */
     fun getSeerrOrigin(): String {
@@ -429,10 +435,29 @@ class SeerrApiService @Inject constructor(
 
     private fun persistAuthenticatedUser(user: ca.devmesh.seerrtv.model.User) {
         val remoteAvatarUrl = resolveAvatarImageUrl(user.avatar)
-        currentUserInfo = UserInfo(
+        // Never degrade known permissions to 0 when a refreshed auth/me payload has no readable
+        // permissions value (missing field, or a value SafeIntSerializer could not decode).
+        // Treating that as 0 silently hid the Request button after every app resume — e.g. after
+        // returning from the external YouTube trailer player, which triggers the ON_RESUME token
+        // check that re-persists the user.
+        val lastKnownPermissions = currentUserInfoState?.takeIf { it.id == user.id }?.permissions
+            ?: SharedPreferencesUtil.getSavedUserPermissions(context, user.id)
+        val resolvedPermissions = resolveRefreshedPermissions(user.permissions, lastKnownPermissions)
+        if (user.permissions == null && lastKnownPermissions != null) {
+            DiagnosticsLog.record(
+                context = context,
+                category = context.getString(R.string.diagnostics_categorySignIn),
+                summary = "auth/me had no readable permissions value; kept last known value",
+                detail = "The server's auth/me response did not contain a readable integer " +
+                    "permissions value. The app kept the last known value " +
+                    "($lastKnownPermissions) instead of treating the user as having no " +
+                    "permissions, which would hide the Request button."
+            )
+        }
+        currentUserInfoState = UserInfo(
             id = user.id,
             displayName = user.displayName,
-            permissions = user.permissions ?: 0,
+            permissions = resolvedPermissions,
             avatar = user.avatar,
             remoteAvatarUrl = remoteAvatarUrl
         )
@@ -440,7 +465,7 @@ class SeerrApiService @Inject constructor(
             context,
             user.id,
             user.displayName,
-            user.permissions ?: 0,
+            resolvedPermissions,
             remoteAvatarUrl
         )
     }
@@ -1992,10 +2017,10 @@ class SeerrApiService @Inject constructor(
                                 Log.d("SeerrApiService", "✅ Authentication successful")
                                 val user = tokenTestResponse.data
                                 persistAuthenticatedUser(user)
-                                Log.d("SeerrApiService", "ID: ${currentUserInfo?.id}")
-                                Log.d("SeerrApiService", "DisplayName: ${currentUserInfo?.displayName}")
-                                Log.d("SeerrApiService", "Permissions: ${currentUserInfo?.permissions}")
-                                Log.d("SeerrApiService", "Avatar: ${currentUserInfo?.remoteAvatarUrl ?: "none"}")
+                                Log.d("SeerrApiService", "ID: ${currentUserInfoState?.id}")
+                                Log.d("SeerrApiService", "DisplayName: ${currentUserInfoState?.displayName}")
+                                Log.d("SeerrApiService", "Permissions: ${currentUserInfoState?.permissions}")
+                                Log.d("SeerrApiService", "Avatar: ${currentUserInfoState?.remoteAvatarUrl ?: "none"}")
                                 
                                 // Detect media server type after successful authentication
                                 detectMediaServerType()
@@ -2131,7 +2156,7 @@ class SeerrApiService @Inject constructor(
 
         if (!sameConnection) {
             currentAuthToken = null
-            currentUserInfo = null
+            currentUserInfoState = null
             Log.d("SeerrApiService", "Cleared session and user info (server, profile, or credentials changed)")
         }
     }
@@ -3336,15 +3361,14 @@ class SeerrApiService @Inject constructor(
         mediaType: MediaType,
         filters: BrowseModels.MediaFilters,
         sort: BrowseModels.SortOption,
-        query: String = "",
         loadMore: Boolean = false
     ): ApiResult<Discover> {
         if (!loadMore) {
-            val cacheKey = "browse_${mediaType.name.lowercase()}_${filters.hashCode()}_${sort.hashCode()}_${query.hashCode()}"
+            val cacheKey = "browse_${mediaType.name.lowercase()}_${filters.hashCode()}_${sort.hashCode()}"
             resetPaginationState(cacheKey)
         }
-        
-        val state = getOrCreatePaginationState("browse_${mediaType.name.lowercase()}_${filters.hashCode()}_${sort.hashCode()}_${query.hashCode()}")
+
+        val state = getOrCreatePaginationState("browse_${mediaType.name.lowercase()}_${filters.hashCode()}_${sort.hashCode()}")
 
         // Build the base endpoint
         val baseEndpoint = when (mediaType) {
@@ -3373,11 +3397,12 @@ class SeerrApiService @Inject constructor(
         // (`req.query.language ?? req.locale`), so `language=<locale>` remains correct there —
         // do not "fix" those call sites to match this one.
 
-        // Add text search if provided
-        if (query.isNotEmpty()) {
-            params.add("query=$query")
-        }
-        
+        // NOTE: no `query=` here either. The server's OpenAPI validation rejects `query` as an
+        // unknown parameter on `discover/movies|tv`, failing the whole request — this is what
+        // emptied the Movies/Series browse grids after a main-menu search left a stale query in
+        // the shared view model. Text search is the `search` endpoint's job (the browse screens'
+        // search box already routes typed queries through debouncedSearch -> search).
+
         // Add date filters
         filters.releaseFrom?.let { params.add("${if (mediaType == MediaType.MOVIE) "primaryReleaseDateGte" else "firstAirDateGte"}=$it") }
         filters.releaseTo?.let { params.add("${if (mediaType == MediaType.MOVIE) "primaryReleaseDateLte" else "firstAirDateLte"}=$it") }
@@ -3708,3 +3733,18 @@ internal fun appendDisplayLocale(endpoint: String, locale: String): String {
     val separator = if ('?' in endpoint) '&' else '?'
     return "$endpoint${separator}language=$locale"
 }
+
+/**
+ * Resolves the permissions value to persist after an `auth/me` refresh.
+ *
+ * `fresh` is null when the payload had no readable integer permissions value ([SafeIntSerializer]
+ * swallows anything it cannot decode). That null must NOT become 0: the resume-time token check
+ * ([SeerrApiService.checkAndRefreshTokenIfNeeded]) re-persists the user on every app resume, and
+ * a null-to-0 degrade there silently stripped the REQUEST permission — the details screen's
+ * Request button vanished after returning from the external YouTube trailer player.
+ *
+ * An explicit `fresh` value always wins, including a genuine 0 — only an unreadable/absent value
+ * falls back to the last known permissions.
+ */
+internal fun resolveRefreshedPermissions(fresh: Int?, lastKnown: Int?): Int =
+    fresh ?: lastKnown ?: 0
