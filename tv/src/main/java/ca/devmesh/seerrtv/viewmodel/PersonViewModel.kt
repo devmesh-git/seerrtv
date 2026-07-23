@@ -216,7 +216,6 @@ class PersonViewModel @Inject constructor(
     }
 
     override fun onCleared() {
-        super.onCleared()
         loadJob?.cancel()
         loadJob = null
     }

@@ -72,6 +72,7 @@ import ca.devmesh.seerrtv.util.SharedPreferencesUtil
 import ca.devmesh.seerrtv.ui.KeyUtils
 import ca.devmesh.seerrtv.viewmodel.MediaDiscoveryViewModel
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Helper function to handle vertical navigation key events
@@ -151,9 +152,9 @@ fun FiltersDrawer(
         if (isVisible) {
             viewModel.loadFilterOptions()
             viewModel.loadGenres(filters.mediaType)
-            if (filters.mediaType == MediaType.MOVIE) {
-                viewModel.loadStudios()
-            } else {
+            // Studios (movies) use the search flow (searchStudios); only the TV network
+            // picker shows a preloaded list.
+            if (filters.mediaType == MediaType.TV) {
                 viewModel.loadNetworks()
             }
             // Load watch providers for default region or current watchRegion
@@ -1297,7 +1298,7 @@ private fun <T> FilterListSelection(
     LaunchedEffect(selectedIndex) {
         if (selectedIndex in 0..<totalItems) {
             // Small delay to ensure UI has updated
-            delay(50)
+            delay(50.milliseconds)
             
             val layoutInfo = listState.layoutInfo
             if (layoutInfo.visibleItemsInfo.isNotEmpty()) {
@@ -1388,7 +1389,7 @@ private fun <T> FilterMultiListSelection(
     LaunchedEffect(selectedIndex) {
         if (selectedIndex >= 0 && selectedIndex < items.size) {
             // Small delay to ensure UI has updated
-            delay(50)
+            delay(50.milliseconds)
             
             val layoutInfo = listState.layoutInfo
             if (layoutInfo.visibleItemsInfo.isNotEmpty()) {
@@ -1497,7 +1498,7 @@ private fun <T> FilterSearchSelection(
     // Debounce search
     LaunchedEffect(searchQuery) {
         if (searchQuery.length >= 2) {
-            delay(500)
+            delay(500.milliseconds)
             onSearch(searchQuery)
         } else if (searchQuery.isEmpty()) {
             onClearSearch()
@@ -1962,7 +1963,7 @@ private fun <T, ID> FilterSearchSelectionSingle(
     // Debounce search
     LaunchedEffect(searchQuery) {
         if (searchQuery.length >= 2) {
-            delay(500)
+            delay(500.milliseconds)
             onSearch(searchQuery)
         } else if (searchQuery.isEmpty()) {
             onClearSearch()
@@ -2381,7 +2382,7 @@ private fun StreamingServicesFilterContent(
     // Request focus on list when dropdown expands
     LaunchedEffect(isRegionDropdownExpanded) {
         if (isRegionDropdownExpanded) {
-            delay(50)
+            delay(50.milliseconds)
             regionListFocusRequester.requestFocus()
         }
     }
@@ -2756,7 +2757,7 @@ private fun StreamingServicesFilterContent(
     
     // Request focus on region button initially
     LaunchedEffect(Unit) {
-        delay(100) // Small delay to ensure parent has finished setup
+        delay(100.milliseconds) // Small delay to ensure parent has finished setup
         focusManager.clearFocus(force = true)
         regionButtonFocusRequester.requestFocus()
     }

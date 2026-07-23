@@ -163,11 +163,10 @@ object RequestStatus {
         
         // Apply the special case logic
         val finalShowRegular = if (showOnly4K) false else showRegular
-        val finalShowFourK = showFourK
+
+        Log.d("DualMediaStatus", "Final badges: regular=$finalShowRegular, 4K=$showFourK, showOnly4K=$showOnly4K")
         
-        Log.d("DualMediaStatus", "Final badges: regular=$finalShowRegular, 4K=$finalShowFourK, showOnly4K=$showOnly4K")
-        
-        if (finalShowRegular || finalShowFourK) {
+        if (finalShowRegular || showFourK) {
             Row(
                 modifier = modifier,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -182,7 +181,7 @@ object RequestStatus {
                 }
                 
                 // 4K tier status badge
-                if (finalShowFourK) {
+                if (showFourK) {
                     MediaStatus(
                         status = fourKStatus,
                         is4k = true,

@@ -76,6 +76,7 @@ import coil3.ImageLoader
 import coil3.request.ImageRequest
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * A stable state holder for the RequestActionModal to prevent recreation during recomposition
@@ -398,7 +399,7 @@ fun MediaDetails(
     // Show request modal immediately if initialShowRequestModal is true
     LaunchedEffect(initialShowRequestModal, mediaDetailsState) {
         if (initialShowRequestModal && mediaDetailsState is ApiResult.Success && !stateManager.showedRequestModal) {
-            delay(500)
+            delay(500.milliseconds)
             modalManager.openRequest(stateManager.currentFocusArea, stateManager.is4kRequest, null)
             stateManager.showedRequestModal = true
         }
@@ -696,8 +697,17 @@ fun MediaDetails(
         when (val state = mediaDetailsState) {
             is ApiResult.Success<MediaDetails> -> {
                 val media = state.data
-                val mediaServerType = SharedPreferencesUtil.getMediaServerType(context)
-                Log.d("MediaDetails", "🎬 Attempting playback with media server type: $mediaServerType")
+                val configuredServerType = SharedPreferencesUtil.getMediaServerType(context)
+                // Jellyfin and Emby are frequently misconfigured as each other. Prefer the type
+                // learned from a previous successful playback fallback so the known-failing
+                // attempt is skipped. The fallback chain below still self-corrects (and re-saves)
+                // if the learned type ever goes stale.
+                val mediaServerType = when (configuredServerType) {
+                    MediaServerType.JELLYFIN, MediaServerType.EMBY ->
+                        SharedPreferencesUtil.getDetectedMediaServerType(context) ?: configuredServerType
+                    else -> configuredServerType
+                }
+                Log.d("MediaDetails", "🎬 Attempting playback with media server type: $mediaServerType (configured: $configuredServerType)")
                 var playbackSuccessful: Boolean
                 when (mediaServerType) {
                     MediaServerType.PLEX -> {
@@ -774,7 +784,7 @@ fun MediaDetails(
             is ApiResult.Success<MediaDetails> -> {
                 val videoId = getTrailerYouTubeVideoId(state.data.relatedVideos)
                 val trailerUrl = findTrailerUrl(state.data.relatedVideos)
-                if (videoId == null && trailerUrl == null) return@handleWatchTrailerTrigger
+                if (videoId == null && trailerUrl == null) return
                 if (SharedPreferencesUtil.useTrailerWebView(context)) {
                     if (videoId != null) {
                         stateManager.trailerOverlayVideoId = videoId
@@ -791,8 +801,8 @@ fun MediaDetails(
                         // Use full URL so YouTube app opens and plays the video (vnd.youtube:id can open app without playing)
                         val uri = when {
                             !trailerUrl.isNullOrBlank() -> trailerUrl.toUri()
-                            videoId != null -> android.net.Uri.parse("https://www.youtube.com/watch?v=$videoId")
-                            else -> return@handleWatchTrailerTrigger
+                            videoId != null -> "https://www.youtube.com/watch?v=$videoId".toUri()
+                            else -> return
                         }
                         val intent = Intent(Intent.ACTION_VIEW, uri)
                         context.startActivity(intent)
@@ -807,7 +817,7 @@ fun MediaDetails(
 
     LaunchedEffect(showMessage) {
         if (showMessage != null) {
-            delay(500) // Add a 500ms delay before allowing the message to be dismissed
+            delay(500.milliseconds) // Add a 500ms delay before allowing the message to be dismissed
         }
     }
 
@@ -837,7 +847,7 @@ fun MediaDetails(
     // Add LaunchedEffect in the main composable to reset isPlaying
     LaunchedEffect(isPlaying) {
         if (isPlaying) {
-            delay(1500)
+            delay(1500.milliseconds)
             isPlaying = false
         }
     }
@@ -911,7 +921,7 @@ fun MediaDetails(
             // Debug logging removed to reduce instruction count
             
             // Wait for carousel LaunchedEffects to trigger their auto-scroll
-            delay(100)
+            delay(100.milliseconds)
             
             // Then restore the vertical scroll position
             if (returnState.scrollOffset > 0) {
@@ -965,7 +975,7 @@ fun MediaDetails(
         }
         
         // Debounce to avoid rapid fire updates
-        delay(10)
+        delay(10.milliseconds)
 
         when (focus) {
             is AppFocusState.DetailsScreen -> {
@@ -1147,7 +1157,7 @@ fun MediaDetails(
                     if (hasJustRestored) {
                         // Allow time for the UI to fully settle and scroll position to be applied
                         // Extended delay to ensure auto-scroll guard stays active during scroll restoration
-                        delay(500)
+                        delay(500.milliseconds)
                         hasJustRestored = false
                     }
                 }
@@ -1825,13 +1835,11 @@ fun MediaDetails(
                                 val (regularRequest, fourKRequest) = viewModel.getRequestsForMedia(
                                     mediaId.toInt()
                                 )
-                                val localRegularRequest = regularRequest
-                                val localFourKRequest = fourKRequest
                                 stateManager.is4kRequest =
-                                    localFourKRequest != null && localRegularRequest == null
+                                    fourKRequest != null && regularRequest == null
                                 Log.d(
                                     "MediaDetailsButtons",
-                                    "enter: MANAGE_SINGLE resolved stateManager.is4kRequest=${stateManager.is4kRequest} (hd=${localRegularRequest != null}, 4k=${localFourKRequest != null})"
+                                    "enter: MANAGE_SINGLE resolved stateManager.is4kRequest=${stateManager.is4kRequest} (hd=${regularRequest != null}, 4k=${fourKRequest != null})"
                                 )
                                 modalManager.openRequestAction(
                                     stateManager.currentFocusArea,
@@ -2123,7 +2131,7 @@ fun MediaDetails(
 
                     // Allow one brief correction pass for capability-driven UI changes (e.g., split request)
                     // This ensures focus remains on the top-most visible action after recompute
-                    delay(150)
+                    delay(150.milliseconds)
                     val visibleActionsPost = buttonFocusOrder.toSet()
                     val isRequestNowSplit = actionButtonStates["request"]?.isSplit == true
                     if (
@@ -2207,7 +2215,7 @@ fun MediaDetails(
                                 viewModel.getDataForMediaType(mediaType.toString())
 
                                 // Wait a bit for the data to load and then log the result
-                                delay(100)
+                                delay(100.milliseconds)
                                 when (mediaType) {
                                     MediaType.MOVIE -> {
                                         val radarrServers = radarrData?.allServers
@@ -2241,18 +2249,17 @@ fun MediaDetails(
                                             .fillMaxWidth()
                                             .aspectRatio(2f / 3f)
                                     ) {
-                                        val mediaDetails = media
-                                        val mediaForCard = remember(mediaDetails) {
+                                        val mediaForCard = remember(media) {
                                             Media(
-                                                id = mediaDetails.id,
-                                                mediaType = mediaDetails.mediaType?.name?.lowercase()
+                                                id = media.id,
+                                                mediaType = media.mediaType?.name?.lowercase()
                                                     ?: "",
-                                                title = mediaDetails.title ?: "",
-                                                name = mediaDetails.name ?: "",
-                                                posterPath = mediaDetails.posterPath ?: "",
-                                                backdropPath = mediaDetails.backdropPath ?: "",
-                                                overview = mediaDetails.overview,
-                                                mediaInfo = mediaDetails.mediaInfo?.copy() // Create a copy to avoid reference issues
+                                                title = media.title ?: "",
+                                                name = media.name ?: "",
+                                                posterPath = media.posterPath ?: "",
+                                                backdropPath = media.backdropPath ?: "",
+                                                overview = media.overview,
+                                                mediaInfo = media.mediaInfo?.copy() // Create a copy to avoid reference issues
                                             )
                                         }
                                         MediaCard(
@@ -2422,7 +2429,6 @@ fun MediaDetails(
                                 // This gives us approximately 900-950 pixels of visible content height
                                 val viewportHeight = 900 // Fixed viewport height for consistent scrolling behavior
                                 val currentScroll = scrollState.value
-                                val viewportTop = currentScroll
                                 val viewportBottom = currentScroll + viewportHeight
                                 
                                 // Check if the tag is outside the viewport
@@ -2431,7 +2437,7 @@ fun MediaDetails(
                                 
                                 val targetScroll = when {
                                     // Tag is above viewport - scroll up to show it
-                                    tagTop < viewportTop -> {
+                                    tagTop < currentScroll -> {
                                         // Position tag near top of viewport with some padding
                                         (tagTop - 120).coerceAtLeast(0) // Increased padding from 100 to 120
                                     }
@@ -2449,7 +2455,7 @@ fun MediaDetails(
                                     if (BuildConfig.DEBUG) {
                                         Log.d(
                                             "MediaDetails",
-                                            "🏷️ Scrolling to tag ${stateManager.selectedTagIndex}: current=$currentScroll, target=$targetScroll, tagY=$selectedY->$adjustedTagY, viewport=$viewportTop-$viewportBottom"
+                                            "🏷️ Scrolling to tag ${stateManager.selectedTagIndex}: current=$currentScroll, target=$targetScroll, tagY=$selectedY->$adjustedTagY, viewport=$currentScroll-$viewportBottom"
                                         )
                                     }
                                     scrollState.animateScrollToCompat(targetScroll)
@@ -2457,7 +2463,7 @@ fun MediaDetails(
                                     if (BuildConfig.DEBUG) {
                                         Log.d(
                                             "MediaDetails",
-                                            "🏷️ Tag ${stateManager.selectedTagIndex} already visible at Y=$selectedY->$adjustedTagY, viewport=$viewportTop-$viewportBottom, currentScroll=$currentScroll, no scrolling needed"
+                                            "🏷️ Tag ${stateManager.selectedTagIndex} already visible at Y=$selectedY->$adjustedTagY, viewport=$currentScroll-$viewportBottom, currentScroll=$currentScroll, no scrolling needed"
                                         )
                                     }
                                 }
@@ -2709,7 +2715,7 @@ fun MediaDetails(
                                 viewModel.deleteRequest(requestId)
 
                                 // Give the backend time to process the deletion
-                                delay(1000)
+                                delay(1000.milliseconds)
 
                                 // Refresh data after deletion
                                 refreshManager.handleRequestDeleteSuccess(
@@ -2719,7 +2725,7 @@ fun MediaDetails(
                                 )
 
                                 // Now dismiss the modal after the deletion and refresh are complete
-                                delay(500) // Small delay to ensure UI updates are processed
+                                delay(500.milliseconds) // Small delay to ensure UI updates are processed
                                 requestActionState = requestActionState?.copy(isVisible = false)
                                 modalManager.closeRequestAction()
 
@@ -2736,7 +2742,7 @@ fun MediaDetails(
 
                             // Add a small delay before navigation to avoid UI conflicts
                             coroutineScope.launch {
-                                delay(100)
+                                delay(100.milliseconds)
                                 navController.navigate("details/$mediaId/$mediaType") {
                                     launchSingleTop = true
                                     restoreState = true

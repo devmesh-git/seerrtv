@@ -96,6 +96,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.MainScope
 import okhttp3.OkHttpClient
+import kotlin.time.Duration.Companion.milliseconds
 
 // Define loading step data class
 data class LoadingStep(val message: String, val type: LoadingStepType)
@@ -331,7 +332,7 @@ class MainActivity : AppCompatActivity() {
             LoadingStepType.SUCCESS -> 800L   // Success messages get moderate delay
             LoadingStepType.INFO -> 300L    // Info messages get short delay
         }
-        delay(delayMs)
+        delay(delayMs.milliseconds)
     }
 
     private suspend fun validateConfiguration() {
@@ -345,7 +346,7 @@ class MainActivity : AppCompatActivity() {
             try {
                 apiService.updateConfig(config)
                 // Small delay to ensure HTTP client is fully ready after refresh
-                delay(100)
+                delay(100.milliseconds)
                 addLoadingStep(getString(R.string.splashScreen_checkingConnection))
 
                 Log.d("MainActivity", "🔗 Testing base connection...")
@@ -755,7 +756,7 @@ class MainActivity : AppCompatActivity() {
                                 // New auth cycle starting; allow post-auth navigation again.
                                 didHandlePostAuthNavigation = false
                                 isAuthenticationComplete = false
-                                delay(300) // Show initial loading message
+                                delay(300.milliseconds) // Show initial loading message
                                 validateConfiguration()
                                 // For play flavor, call onContinue after validation
                                 // For direct flavor, let SplashScreen call onContinue after update dialog is handled
@@ -910,7 +911,7 @@ class MainActivity : AppCompatActivity() {
                                             }
                                             // Small delay to ensure navigation completes, then recreate
                                             CoroutineScope(Dispatchers.Main).launch {
-                                                delay(100)
+                                                delay(100.milliseconds)
                                                 recreate()
                                             }
                                         }

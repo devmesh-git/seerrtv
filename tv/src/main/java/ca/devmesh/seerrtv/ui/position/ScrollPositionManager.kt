@@ -9,6 +9,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Singleton to manage user scroll position in various scrollable components
@@ -101,7 +102,7 @@ object ScrollPositionManager {
                         }
                     }
 
-                    delay(500) // Check every half second
+                    delay(500.milliseconds) // Check every half second
                 }
             } catch (_: CancellationException) {
                 // Normal during app exit; avoid error noise

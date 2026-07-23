@@ -71,6 +71,7 @@ import ca.devmesh.seerrtv.model.audioIssues
 import ca.devmesh.seerrtv.model.subtitleIssues
 import ca.devmesh.seerrtv.model.otherIssues
 import ca.devmesh.seerrtv.viewmodel.IssueViewModel
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 // resolveString bridges string resources into non-composable modal content.
@@ -136,7 +137,7 @@ fun AddCommentModal(
     LaunchedEffect(isVisible) {
         if (isVisible) {
             Log.d("AddCommentModal", "🎯 Modal is visible, requesting focus")
-            delay(100)
+            delay(100.milliseconds)
             focusRequester.requestFocus()
         }
     }
@@ -148,7 +149,7 @@ fun AddCommentModal(
             while (true) {
                 // Check if modal is visible but doesn't have focus
                 // This will help regain focus if it's stolen by other components
-                delay(100) // Check every 100ms
+                delay(100.milliseconds) // Check every 100ms
                 // Only request focus if we're not in the text field (to avoid interfering with keyboard)
                 val isTextFieldFocused = controller.currentFocus is AddCommentFocusState.CustomComment
                 if (!isTextFieldFocused) {
@@ -353,7 +354,7 @@ fun AddCommentModal(
                         LaunchedEffect(keyboardTrigger) {
                             if (isFocused && keyboardTrigger > 0) {
                                 Log.d("AddCommentModal", "🎯 Keyboard trigger activated (trigger: $keyboardTrigger) - requesting focus on text field")
-                                delay(100)
+                                delay(100.milliseconds)
                                 textFieldFocusRequester.requestFocus()
                             }
                         }

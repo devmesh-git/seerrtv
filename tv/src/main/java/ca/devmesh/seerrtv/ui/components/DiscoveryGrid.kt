@@ -23,7 +23,6 @@ import ca.devmesh.seerrtv.model.SearchResult
 import ca.devmesh.seerrtv.ui.MediaItem
 import ca.devmesh.seerrtv.ui.FocusedItem
 import coil3.ImageLoader
-import kotlinx.coroutines.flow.collect
 
 /**
  * Reusable grid component for displaying search results in a grid layout.
@@ -31,6 +30,7 @@ import kotlinx.coroutines.flow.collect
  */
 @Composable
 fun DiscoveryGrid(
+    modifier: Modifier = Modifier,
     results: List<SearchResult>,
     isLoading: Boolean,
     hasMoreResults: Boolean,
@@ -42,8 +42,7 @@ fun DiscoveryGrid(
     onEndReached: () -> Unit,
     screenKey: String,
     imageLoader: ImageLoader,
-    context: Context,
-    modifier: Modifier = Modifier
+    context: Context
 ) {
     // Track current selection from GridPositionManager
     val currentSelection = remember { mutableStateOf(Pair(selectedRow, selectedColumn)) }
@@ -62,7 +61,7 @@ fun DiscoveryGrid(
             val totalItems = layoutInfo.totalItemsCount
             Pair(lastVisibleIndex, totalItems)
         }
-            .collect { (lastVisibleIndex, totalItems) ->
+            .collect { (lastVisibleIndex, _) ->
                 // Only proceed if we have results and more are available
                 if (results.isEmpty() || !hasMoreResults || isLoading) {
                     return@collect
@@ -72,7 +71,7 @@ fun DiscoveryGrid(
                 val threshold = numberOfColumns * 3 // Prefetch 3 rows ahead
                 val itemsRemaining = results.size - lastVisibleIndex - 1
                 val isNearEnd = itemsRemaining <= threshold && lastVisibleIndex >= 0
-                val isAtBottom = lastVisibleIndex >= results.size - 1 && results.size > 0
+                val isAtBottom = lastVisibleIndex >= results.size - 1
                 
                 if (isNearEnd || isAtBottom) {
                     onEndReached()

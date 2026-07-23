@@ -46,6 +46,7 @@ import coil3.ImageLoader
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Modal component for request actions
@@ -103,7 +104,7 @@ fun RequestActionModal(
             currentFocus = FocusState.CancelButton
             
             // Request focus after a delay to ensure UI is fully composed
-            delay(500)
+            delay(500.milliseconds)
             
             // Only request focus if the modal is still visible
             if (uiVisibleState) {
@@ -116,7 +117,7 @@ fun RequestActionModal(
                     Log.e("RequestActionModal", "❌ Failed to request focus: ${e.message}", e)
                     
                     // Retry focus request after a short delay if it failed
-                    delay(300)
+                    delay(300.milliseconds)
                     try {
                         Log.d("RequestActionModal", "🔄 Retrying focus request")
                         focusRequester.requestFocus()
@@ -159,7 +160,7 @@ fun RequestActionModal(
     LaunchedEffect(uiVisibleState) {
         if (uiVisibleState && !focusRequestedState.value) {
             // Wait for UI to be fully composed
-            delay(800)
+            delay(800.milliseconds)
             
             // Only request focus if the modal is still visible
             if (uiVisibleState) {
@@ -262,7 +263,7 @@ fun RequestActionModal(
         if (!isDismissing) {
             isDismissing = true
             coroutineScope.launch {
-                delay(300)
+                delay(300.milliseconds)
                 isDismissing = false
                 onDismiss()
             }
@@ -370,7 +371,7 @@ fun RequestActionModal(
                                             deleteConfirmationActive = true
                                             deleteConfirmationJob?.cancel()
                                             deleteConfirmationJob = coroutineScope.launch {
-                                                delay(5000)
+                                                delay(5000.milliseconds)
                                                 deleteConfirmationActive = false
                                                 deleteConfirmationJob = null
                                             }
@@ -392,7 +393,7 @@ fun RequestActionModal(
                                                     viewModel?.deleteMedia(mediaId)
                                                     
                                                     // Give the backend time to process the deletion
-                                                    delay(1500)
+                                                    delay(1500.milliseconds)
                                                     
                                                     // Dismiss the modal
                                                     handleDismiss()
@@ -419,7 +420,7 @@ fun RequestActionModal(
                                             adminDeleteConfirmationActive = true
                                             adminDeleteConfirmationJob?.cancel()
                                             adminDeleteConfirmationJob = coroutineScope.launch {
-                                                delay(5000)
+                                                delay(5000.milliseconds)
                                                 adminDeleteConfirmationActive = false
                                                 adminDeleteConfirmationJob = null
                                             }
@@ -442,7 +443,7 @@ fun RequestActionModal(
                                             approveConfirmationActive = true
                                             approveConfirmationJob?.cancel()
                                             approveConfirmationJob = coroutineScope.launch {
-                                                delay(5000)
+                                                delay(5000.milliseconds)
                                                 approveConfirmationActive = false
                                                 approveConfirmationJob = null
                                             }
@@ -465,7 +466,7 @@ fun RequestActionModal(
                                             declineConfirmationActive = true
                                             declineConfirmationJob?.cancel()
                                             declineConfirmationJob = coroutineScope.launch {
-                                                delay(5000)
+                                                delay(5000.milliseconds)
                                                 declineConfirmationActive = false
                                                 declineConfirmationJob = null
                                             }

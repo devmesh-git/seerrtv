@@ -2,6 +2,7 @@ package ca.devmesh.seerrtv.util
 
 import android.content.Context
 import android.content.SharedPreferences
+import androidx.core.content.edit
 import ca.devmesh.seerrtv.BuildConfig
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -82,9 +83,9 @@ object DiagnosticsLog {
                     }
                 }
 
-                prefs.edit()
-                    .putString(KEY_ENTRIES, json.encodeToString(updated.take(MAX_ENTRIES)))
-                    .apply()
+                prefs.edit {
+                    putString(KEY_ENTRIES, json.encodeToString(updated.take(MAX_ENTRIES)))
+                }
             }
         } catch (_: Throwable) {
             // Diagnostics must never be the reason something fails — this is called from an
@@ -116,7 +117,7 @@ object DiagnosticsLog {
 
     fun clear(context: Context) {
         synchronized(lock) {
-            prefs(context).edit().remove(KEY_ENTRIES).apply()
+            prefs(context).edit { remove(KEY_ENTRIES) }
         }
     }
 

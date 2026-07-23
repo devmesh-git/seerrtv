@@ -1,10 +1,9 @@
 package ca.devmesh.seerrtv.viewmodel
 
-import androidx.lifecycle.ViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
-fun ViewModel.handleApiError(error: Exception, statusCode: Int? = null): Boolean {
+fun handleApiError(error: Exception, statusCode: Int? = null): Boolean {
     // First check if it's a serialization error - not an auth error
     if (error is kotlinx.serialization.SerializationException ||
         error.message?.contains("Unexpected JSON token") == true) {

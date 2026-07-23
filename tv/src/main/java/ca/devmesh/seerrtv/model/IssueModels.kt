@@ -68,11 +68,6 @@ enum class IssueType(val value: Int) {
     OTHER(4)
 }
 
-enum class IssueStatus(val value: Int) {
-    OPEN(1),
-    RESOLVED(3)
-}
-
 val videoIssues = listOf(
     PrecannedIssue("video_quality", R.string.issue_video_quality, IssueType.VIDEO),
     PrecannedIssue("video_stuttering", R.string.issue_video_stuttering, IssueType.VIDEO),

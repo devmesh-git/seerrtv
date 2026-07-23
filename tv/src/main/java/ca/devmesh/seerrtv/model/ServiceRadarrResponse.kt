@@ -52,3 +52,16 @@ data class RadarrServerInfo(
     val defaultServer: Radarr?,
     val error: Exception? = null
 )
+
+/**
+ * JSON-persistable snapshot of [RadarrServerInfo] ([RadarrServerInfo] itself can't be
+ * `@Serializable` — it carries an [Exception]). Persisted after each successful
+ * `loadRadarrConfiguration` so a process restart (e.g. after the external trailer player got the
+ * app killed) restores 4K capability and the request modal's server/profile/folder options
+ * without waiting for a full splash-time reload.
+ */
+@Serializable
+data class PersistedRadarrCache(
+    val allServers: List<Radarr>,
+    val defaultServerId: Int? = null
+)

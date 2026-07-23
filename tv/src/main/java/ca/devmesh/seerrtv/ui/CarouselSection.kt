@@ -22,6 +22,7 @@ import ca.devmesh.seerrtv.viewmodel.SeerrViewModel
 import coil3.ImageLoader
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun CarouselSection(
@@ -205,7 +206,7 @@ fun CarouselSection(
 
                             // Clear transitioning flag after a short delay
                             coroutineScope.launch {
-                                delay(300)
+                                delay(300.milliseconds)
                                 isDataTransitioning.value = false
                             }
                         }

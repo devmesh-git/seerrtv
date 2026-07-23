@@ -35,7 +35,6 @@ import ca.devmesh.seerrtv.model.UserProfile
  */
 enum class TopBarMode {
     MAIN,
-    SEARCH,
     MOVIES,
     SERIES
 }

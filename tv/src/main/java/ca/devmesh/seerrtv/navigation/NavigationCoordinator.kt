@@ -10,6 +10,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * NavigationCoordinator serves as a single source of truth for navigation state management.
@@ -165,7 +166,7 @@ class NavigationCoordinator(
             
             // Clear the entry after processing (preserves existing business rule)
             scope.launch {
-                kotlinx.coroutines.delay(300) // Preserve existing delay
+                kotlinx.coroutines.delay(300.milliseconds) // Preserve existing delay
                 _currentBackStackEntry.value = null
                 
                 if (BuildConfig.DEBUG) {

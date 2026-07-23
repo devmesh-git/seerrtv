@@ -7,7 +7,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -17,11 +16,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.res.stringResource
 import ca.devmesh.seerrtv.BuildConfig
@@ -384,33 +381,3 @@ private fun SortMenuItem(
     }
 }
 
-/**
- * Sort menu trigger button that shows the current selection
- */
-@Composable
-fun SortMenuButton(
-    selectedSort: BrowseModels.SortOption,
-    onMenuOpen: () -> Unit,
-    isFocused: Boolean,
-    modifier: Modifier = Modifier
-) {
-    Button(
-        onClick = onMenuOpen,
-        modifier = modifier
-            .focusable()
-            .onFocusChanged { focusState ->
-                if (focusState.isFocused) {
-                    // Handle focus state
-                }
-            },
-        colors = ButtonDefaults.buttonColors(
-            containerColor = if (isFocused) Color(0xFF4A4A4A) else Color(0xFF2A2A2A)
-        )
-    ) {
-        Text(
-            text = "Sort: ${selectedSort.displayName}",
-            color = Color.White,
-            fontSize = 12.sp
-        )
-    }
-}

@@ -54,6 +54,7 @@ import ca.devmesh.seerrtv.ui.focus.AppFocusManager
 import ca.devmesh.seerrtv.ui.focus.AppFocusState
 import ca.devmesh.seerrtv.ui.focus.DpadController
 import ca.devmesh.seerrtv.ui.focus.createSettingsScreenDpadConfig
+import kotlin.time.Duration.Companion.milliseconds
 
 private const val SETTINGS_LEFT_PANEL_WIDTH_DP = 320
 private const val UPDATE_JSON_URL = "https://api.github.com/repos/devmesh-git/seerrtv/releases/latest"
@@ -105,7 +106,7 @@ fun SettingsScreen(
                 noUpdateText,
                 Toast.LENGTH_LONG
             ).show()
-            delay(5000)
+            delay(5000.milliseconds)
         }
     }
 
@@ -133,7 +134,7 @@ fun SettingsScreen(
 
     LaunchedEffect(Unit) {
         appFocusManager.setFocus(AppFocusState.SettingsScreen)
-        delay(100)
+        delay(100.milliseconds)
         focusRequester.requestFocus()
     }
 
@@ -888,7 +889,7 @@ fun AppLanguageSubMenu(controller: SettingsScreenController) {
     LaunchedEffect(controller.subMenuSelectedIndex) {
         val index = controller.subMenuSelectedIndex
         if (index >= 0 && index < controller.appLanguageOptions.size) {
-            delay(50)
+            delay(50.milliseconds)
             listState.ensureItemFullyVisible(index)
         }
     }
@@ -959,7 +960,7 @@ fun DiscoveryLanguageSubMenu(controller: SettingsScreenController) {
     LaunchedEffect(controller.subMenuSelectedIndex) {
         val index = controller.subMenuSelectedIndex
         if (index >= 0 && index < controller.discoveryLanguageOptions.size) {
-            delay(50)
+            delay(50.milliseconds)
             listState.ensureItemFullyVisible(index)
         }
     }
@@ -1185,7 +1186,7 @@ fun DefaultStreamingRegionSubMenu(
     LaunchedEffect(controller.subMenuSelectedIndex) {
         if (controller.subMenuSelectedIndex >= 0 && controller.subMenuSelectedIndex < regions.size && !isLoading) {
             // Small delay to ensure UI has updated
-            delay(50)
+            delay(50.milliseconds)
             listState.ensureItemFullyVisible(controller.subMenuSelectedIndex)
         }
     }

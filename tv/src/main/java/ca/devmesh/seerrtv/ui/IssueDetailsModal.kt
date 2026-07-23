@@ -56,6 +56,7 @@ import androidx.compose.ui.res.stringResource
 import ca.devmesh.seerrtv.R
 import ca.devmesh.seerrtv.util.uiTruncateForDisplay
 import ca.devmesh.seerrtv.model.Issue
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun IssueDetailsModal(
@@ -124,7 +125,7 @@ fun IssueDetailsModal(
     LaunchedEffect(isVisible) {
         if (isVisible) {
             Log.d("IssueDetailsModal", "🎯 Modal is visible, requesting focus")
-            kotlinx.coroutines.delay(100)
+            kotlinx.coroutines.delay(100.milliseconds)
             focusRequester.requestFocus()
             Log.d("IssueDetailsModal", "🎯 Focus requested")
         }
@@ -137,7 +138,7 @@ fun IssueDetailsModal(
             while (!showAddComment) {
                 // Check if modal is visible but doesn't have focus
                 // This will help regain focus after data refreshes or other operations
-                kotlinx.coroutines.delay(100) // Check every 100ms
+                kotlinx.coroutines.delay(100.milliseconds) // Check every 100ms
                 if (!showAddComment) {
                     // Request focus to ensure modal stays focused while open
                     focusRequester.requestFocus()

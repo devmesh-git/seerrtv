@@ -34,7 +34,7 @@ private const val RELEASE_TYPE_PHYSICAL = 5
 
 /**
  * Returns (theatricalDate, digitalDate, physicalDate) for the given region from releases.
- * Each date is trimmed to yyyy-MM-dd for CommonUtil.formatDate. Returns nulls when no data.
+ * Each date is trimmed to yyyy-MM-dd for CommonUtil.formatDateShort. Returns nulls when no data.
  */
 private fun getMovieReleaseDatesByType(mediaDetails: MediaDetails, region: String): Triple<String?, String?, String?> {
     val results = mediaDetails.releases?.results ?: return Triple(null, null, null)

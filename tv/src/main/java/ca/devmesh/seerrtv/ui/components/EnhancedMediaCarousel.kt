@@ -33,13 +33,14 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.time.Duration.Companion.milliseconds
 
 // Placeholder marker class
 class CarouselPlaceholderItem
 
 /**
  * A unified carousel component that can display both MediaCards and CategoryCard items.
- * This component handles auto-loading more data when the user reaches the end of the list,
+ * This component handles autoloading more data when the user reaches the end of the list,
  * maintains the selection during recomposition, and provides consistent loading behavior.
  * The component now uses smooth scrolling animations for a more natural user experience.
  */
@@ -209,7 +210,7 @@ fun <T> EnhancedMediaCarousel(
                     
                     // If we're not at the target and not using animation, try once more
                     if (!animated && scrollState.firstVisibleItemIndex != targetPosition) {
-                        delay(50)
+                        delay(50.milliseconds)
                         withContext(Dispatchers.Main.immediate) {
                             scrollState.scrollToItem(targetPosition)
                         }
@@ -298,12 +299,12 @@ fun <T> EnhancedMediaCarousel(
         )
         
         // Add a short delay and then verify the item is actually visible
-        delay(30)
+        delay(30.milliseconds)
         
         // Calculate current position information
         val maxVisibleItems = if (itemType == "CategoryCard") 4 else 6
         val positionOnScreen = validIndex - scrollState.firstVisibleItemIndex + 1
-        val isOffScreen = positionOnScreen < 1 || positionOnScreen > maxVisibleItems
+        val isOffScreen = positionOnScreen !in 1..maxVisibleItems
         
         // Emergency handling for off-screen items only
         if (isOffScreen) {
@@ -455,18 +456,16 @@ fun <T> EnhancedMediaCarousel(
             val categoryKey = "${category.name}_index"
             val savedIndex = ScrollPositionManager.getUserIndex(categoryKey)
             if (savedIndex >= 0) {
-                val indexToRestore = savedIndex
-
                 if (BuildConfig.DEBUG) {
                     Log.d(
                         "MediaCarousel",
-                        "🚀 ${category.name}: Restoring index $indexToRestore after navigation"
+                        "🚀 ${category.name}: Restoring index $savedIndex after navigation"
                     )
                 }
 
                 // First, update state variables
-                selectedIndex.value = indexToRestore
-                rowState.lastSelectedIndex = indexToRestore
+                selectedIndex.value = savedIndex
+                rowState.lastSelectedIndex = savedIndex
                 lastScrolledIndex.intValue = -1
                 highestSuccessfulPosition.intValue = 3
 
@@ -493,7 +492,7 @@ fun <T> EnhancedMediaCarousel(
                                 
                             // Calculate target position based on current scroll
                             val targetPosition = calculateOptimalScrollPosition(
-                                index = indexToRestore,
+                                index = savedIndex,
                                 isCategoryCard = itemType == "CategoryCard",
                                 totalItems = items.size,
                                 scrollState = scrollState,
@@ -512,16 +511,16 @@ fun <T> EnhancedMediaCarousel(
                                 
                             // SAFETY CHECK - Verify the selected item is visible after navigation
                             // This helps with rapid navigation where animations might not keep up
-                            delay(50) // Brief delay to let any running animations progress
+                            delay(50.milliseconds) // Brief delay to let any running animations progress
                             
                             // Calculate position information
-                            val positionOnScreen = indexToRestore - scrollState.firstVisibleItemIndex + 1
+                            val positionOnScreen = savedIndex - scrollState.firstVisibleItemIndex + 1
                             val maxVisibleItems = if (itemType == "CategoryCard") 4 else 6
-                            val isOffScreen = positionOnScreen < 1 || positionOnScreen > maxVisibleItems
+                            val isOffScreen = positionOnScreen !in 1..maxVisibleItems
                             
                             // Check key conditions based on simplified rules
                             val isFirstCardInPosition1 = scrollState.firstVisibleItemIndex == 0
-                            val isLastCardInPosition6 = indexToRestore == items.size - 1 && 
+                            val isLastCardInPosition6 = savedIndex == items.size - 1 && 
                                                       (positionOnScreen == 6 || (items.size <= 6 && positionOnScreen == items.size))
 
                             // Emergency handling for off-screen items
@@ -558,7 +557,7 @@ fun <T> EnhancedMediaCarousel(
                                 } else {
                                     // RULE 3: Default - center card at position 3
                                     val centerPosition = if (itemType == "CategoryCard") 2 else 2  // Position 3
-                                    val idealPosition = (indexToRestore - centerPosition).coerceAtLeast(0)
+                                    val idealPosition = (savedIndex - centerPosition).coerceAtLeast(0)
                                     val maxScrollPosition = (items.size - maxVisibleItems).coerceAtLeast(0)
                                     emergencyTargetPosition = idealPosition.coerceAtMost(maxScrollPosition)
                                     if (BuildConfig.DEBUG) {
@@ -607,12 +606,12 @@ fun <T> EnhancedMediaCarousel(
                         )
                     }
 
-                    delay(50)
+                    delay(50.milliseconds)
                     val currentIndex = selectedIndex.value
                     viewModel.loadMoreForCategory(context, category)
                     
                     coroutineScope.launch {
-                        delay(500)
+                        delay(500.milliseconds)
                         val newScrollPosition = if (itemType == "CategoryCard") {
                             (currentIndex - 2).coerceAtLeast(0)
                         } else {
@@ -649,7 +648,7 @@ fun <T> EnhancedMediaCarousel(
                     )
                 }
                 
-                delay(100)
+                delay(100.milliseconds)
                 
                 val placeholderPosition = if (itemType == "CategoryCard") {
                     (selectedIndex.value + 1).coerceAtMost(items.size)
@@ -680,7 +679,7 @@ fun <T> EnhancedMediaCarousel(
                     lastScrolledIndex.intValue = -1
                     
                     if (itemType == "CategoryCard") {
-                        delay(150)
+                        delay(150.milliseconds)
                     }
                     
                     coroutineScope.launch {
@@ -691,7 +690,7 @@ fun <T> EnhancedMediaCarousel(
                     }
                 }
             } else if (items.isNotEmpty()) {
-                delay(200)
+                delay(200.milliseconds)
                 val currentIndex = selectedIndex.value
                 
                 if (BuildConfig.DEBUG) {
@@ -731,7 +730,7 @@ fun <T> EnhancedMediaCarousel(
                                         scrollState.animateScrollToItem(finalPosition)
                                     }
                                     
-                                    delay(100)
+                                    delay(100.milliseconds)
                                     
                                     if (scrollState.firstVisibleItemIndex != finalPosition) {
                                         if (BuildConfig.DEBUG) {
@@ -761,19 +760,18 @@ fun <T> EnhancedMediaCarousel(
                                             }
                                             
                                             withContext(Dispatchers.Main.immediate) {
-                                                val targetItem = currentFirstVisible
                                                 val newOffset = scrollState.firstVisibleItemScrollOffset + pixelsToMove
-                                                
+
                                                 coroutineScope.launch {
                                                     // Use animated scrolling for smoother offset transition
                                                     scrollState.animateScrollToItem(
-                                                        index = targetItem,
+                                                        index = currentFirstVisible,
                                                         scrollOffset = newOffset.coerceAtLeast(0)
                                                     )
                                                 }.join()
                                             }
                                             
-                                            delay(100)
+                                            delay(100.milliseconds)
                                             
                                             if (BuildConfig.DEBUG) {
                                                 Log.d(
@@ -785,7 +783,7 @@ fun <T> EnhancedMediaCarousel(
                                             }
                                             
                                             if (scrollState.firstVisibleItemIndex != finalPosition) {
-                                                delay(50)
+                                                delay(50.milliseconds)
                                                 
                                                 withContext(Dispatchers.Main.immediate) {
                                                     coroutineScope.launch {
@@ -895,14 +893,14 @@ fun <T> EnhancedMediaCarousel(
                     // Use smooth animation for better user experience
                     coroutineScope.launch {
                         // Animate scrolling to position 0 using the standard animation
-                        // Note: We can't directly customize animation parameters in this version of Compose
+                        // Note: We can't directly customize animation parameters in this version of Compose,
                         // but we can slow it down by using multiple small animations
                         
                         // First, calculate 1/2 way point for smoother, slower animation feel
                         val halfway = scrollState.firstVisibleItemIndex / 2
                         if (halfway > 0) {
                             scrollState.animateScrollToItem(halfway)
-                            delay(150) // Small delay between animations makes it appear slower
+                            delay(150.milliseconds) // Small delay between animations makes it appear slower
                         }
                         
                         // Then complete the animation to position 0
@@ -929,7 +927,7 @@ fun <T> EnhancedMediaCarousel(
 
             // After a short delay, allow position restoration again
             coroutineScope.launch {
-                delay(1000)
+                delay(1000.milliseconds)
                 wasResetPerformed.value = false
             }
         }
@@ -1016,7 +1014,7 @@ fun <T> EnhancedMediaCarousel(
         }
     }.joinToString("|")
     val stableRowItems = remember(rowItems.size, rowItemsContentKey) {
-        if (rowItems.isEmpty()) emptyList<T>() else rowItems.toList()
+        if (rowItems.isEmpty()) emptyList() else rowItems.toList()
     }
 
     Box(
@@ -1207,7 +1205,7 @@ fun isCarouselItemProperlyPositioned(
         // This ensures the first card is fully visible and not cut in half
         if (index <= 2) {
             // For these indices, we want to ensure the first items are at the left edge
-            // Check if the firstVisibleItem is index 0 and it's properly aligned at the left edge
+            // Check if the firstVisibleItem is index 0 and, it's properly aligned at the left edge
             val firstVisibleItem = layoutInfo.visibleItemsInfo.firstOrNull()
             return firstVisibleItem?.index == 0 && 
                    (firstVisibleItem.offset >= layoutInfo.viewportStartOffset - 20)
@@ -1321,7 +1319,7 @@ private fun calculateOptimalScrollPosition(
     // CATEGORY CARD CAROUSEL LOGIC
     if (isCategoryCard) {
         // Handle emergency cases first - item completely off-screen
-        val isOffScreen = positionOnScreen < 1 || positionOnScreen > maxVisibleItems
+        val isOffScreen = positionOnScreen !in 1..maxVisibleItems
         if (isOffScreen) {
             // Center highlighted card at position 3
             val targetPosition = (index - 2).coerceAtLeast(0).coerceAtMost(maxScrollPosition)
@@ -1380,7 +1378,7 @@ private fun calculateOptimalScrollPosition(
     // SIMPLIFIED MEDIA CARD CAROUSEL LOGIC
     else {
         // Handle emergency cases first - item completely off-screen
-        val isOffScreen = positionOnScreen < 1 || positionOnScreen > maxVisibleItems
+        val isOffScreen = positionOnScreen !in 1..maxVisibleItems
         if (isOffScreen) {
             // Center highlighted card at position 4
             val targetPosition = (index - 3).coerceAtLeast(0).coerceAtMost(maxScrollPosition)

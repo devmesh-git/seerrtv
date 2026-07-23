@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -60,6 +59,7 @@ import coil3.request.ImageRequest
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 private fun logDiscovery(message: String) {
     Log.d("MediaDiscoveryScreen", message)
@@ -368,7 +368,7 @@ fun MediaDiscoveryScreen(
                     isInitialLoad = false
 
                     // Restore scroll position with a slight delay to ensure layout is ready
-                    delay(100)
+                    delay(100.milliseconds)
                     gridState.scrollToItem(
                         index = savedPosition.first,
                         scrollOffset = savedPosition.second
@@ -870,7 +870,7 @@ fun MediaDiscoveryScreen(
             kotlinx.coroutines.android.awaitFrame()
             controllerFocusRequester.requestFocus()
             // Extra nudge after a short delay to survive IME animations
-            delay(120)
+            delay(120.milliseconds)
             controllerFocusRequester.requestFocus()
         }
     }

@@ -52,6 +52,7 @@ import ca.devmesh.seerrtv.ui.focus.DpadSection
 import ca.devmesh.seerrtv.ui.position.GridPositionManager
 import ca.devmesh.seerrtv.viewmodel.MediaDiscoveryViewModel
 import coil3.ImageLoader
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Shared composable for both Movies and Series browsing screens.
@@ -183,7 +184,7 @@ fun MediaBrowseScreen(
 
                 // Restore scroll position with a slight delay to ensure layout is ready
                 coroutineScope.launch {
-                    delay(100)
+                    delay(100.milliseconds)
                     gridState.scrollToItem(
                         index = currentSavedPosition.first,
                         scrollOffset = currentSavedPosition.second
@@ -242,20 +243,35 @@ fun MediaBrowseScreen(
     
     // Initialize filters when needed, but do not clear them when navigating to details
     // so that filters persist while browsing multiple series.
+    // When the ViewModel state is gone (recreated ViewModel, or the other browse screen was
+    // visited in between), restore the last-used filters/sort saved in GridPositionManager
+    // instead of resetting to defaults — matching how grid position is restored.
     LaunchedEffect(mediaType) {
         val existingFilters = currentFilters
         val shouldInitialize =
             existingFilters == null || existingFilters.mediaType != mediaType
 
         if (shouldInitialize) {
-            val defaultFilters = BrowseModels.MediaFilters.default(mediaType)
+            val savedFilters = GridPositionManager.getSavedBrowseFilters(screenKey)
+                ?.takeIf { it.mediaType == mediaType }
+            val savedSort = GridPositionManager.getSavedBrowseSort(screenKey)
             if (BuildConfig.DEBUG) {
                 Log.d(
                     "MediaBrowseScreen",
-                    "🔄 Initializing filters for $screenKey with mediaType=$mediaType"
+                    "🔄 Initializing filters for $screenKey with mediaType=$mediaType " +
+                        "(restored filters=${savedFilters != null}, sort=${savedSort != null})"
                 )
             }
-            viewModel.applyFilters(defaultFilters)
+            if (savedFilters != null || savedSort != null) {
+                val filters = savedFilters ?: BrowseModels.MediaFilters.default(mediaType)
+                val sort = savedSort ?: currentSort
+                when (mediaType) {
+                    MediaType.MOVIE -> viewModel.browseMovies(filters, sort)
+                    MediaType.TV -> viewModel.browseSeries(filters, sort)
+                }
+            } else {
+                viewModel.applyFilters(BrowseModels.MediaFilters.default(mediaType))
+            }
         } else if (BuildConfig.DEBUG) {
             Log.d(
                 "MediaBrowseScreen",

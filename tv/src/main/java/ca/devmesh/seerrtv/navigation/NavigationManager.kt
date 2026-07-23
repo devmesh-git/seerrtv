@@ -10,6 +10,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 val LocalNavController = compositionLocalOf<NavController> { error("No NavController provided") }
 
@@ -39,7 +40,7 @@ class NavigationManager(
                 _isNavigating.value = true
                 _lastNavigationTime.value = System.currentTimeMillis()
                 navController.popBackStack()
-                delay(navigationDebounceTime)
+                delay(navigationDebounceTime.milliseconds)
                 _isNavigating.value = false
             }
         }
@@ -65,7 +66,7 @@ class NavigationManager(
                         }
                     }
                 }
-                delay(navigationDebounceTime)
+                delay(navigationDebounceTime.milliseconds)
                 _isNavigating.value = false
             }
         }
@@ -81,7 +82,7 @@ class NavigationManager(
                         popUpTo(route) { inclusive = true }
                     }
                 }
-                delay(navigationDebounceTime)
+                delay(navigationDebounceTime.milliseconds)
                 _isNavigating.value = false
             }
         }
@@ -93,7 +94,7 @@ class NavigationManager(
                 _isNavigating.value = true
                 _lastNavigationTime.value = System.currentTimeMillis()
                 navController.popBackStack()
-                delay(navigationDebounceTime)
+                delay(navigationDebounceTime.milliseconds)
                 _isNavigating.value = false
             }
         }
@@ -106,7 +107,7 @@ class NavigationManager(
                 _lastNavigationTime.value = System.currentTimeMillis()
                 SharedPreferencesUtil.clearPendingNewProfileCreation(navController.context)
                 navController.navigate("config")
-                delay(navigationDebounceTime)
+                delay(navigationDebounceTime.milliseconds)
                 _isNavigating.value = false
             }
         }
@@ -119,7 +120,7 @@ class NavigationManager(
                 _lastNavigationTime.value = System.currentTimeMillis()
                 val timestamp = System.currentTimeMillis()
                 navController.navigate("mediaDiscovery/$type/$keywordId/$keywordText/$timestamp")
-                delay(navigationDebounceTime)
+                delay(navigationDebounceTime.milliseconds)
                 _isNavigating.value = false
             }
         }
@@ -175,7 +176,7 @@ class NavigationManager(
                 
                 navController.navigate(route)
                 
-                delay(navigationDebounceTime)
+                delay(navigationDebounceTime.milliseconds)
                 _isNavigating.value = false
             }
         }
@@ -187,7 +188,7 @@ class NavigationManager(
                 _isNavigating.value = true
                 _lastNavigationTime.value = System.currentTimeMillis()
                 navController.navigate("browse/movies")
-                delay(navigationDebounceTime)
+                delay(navigationDebounceTime.milliseconds)
                 _isNavigating.value = false
             }
         }
@@ -199,7 +200,7 @@ class NavigationManager(
                 _isNavigating.value = true
                 _lastNavigationTime.value = System.currentTimeMillis()
                 navController.navigate("browse/series")
-                delay(navigationDebounceTime)
+                delay(navigationDebounceTime.milliseconds)
                 _isNavigating.value = false
             }
         }

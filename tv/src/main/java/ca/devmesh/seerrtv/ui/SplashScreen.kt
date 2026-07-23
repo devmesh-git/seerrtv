@@ -34,6 +34,7 @@ import ca.devmesh.seerrtv.LoadingStep
 import ca.devmesh.seerrtv.LoadingStepType
 import android.util.Log
 import androidx.compose.runtime.mutableIntStateOf
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun SplashScreen(
@@ -125,7 +126,7 @@ fun SplashScreen(
             LaunchedEffect(allStatusMessages.size, loadingSteps.size, apiValidationError) {
                 coroutineScope.launch {
                     // Small delay to ensure content is rendered before scrolling
-                    kotlinx.coroutines.delay(50)
+                    kotlinx.coroutines.delay(50.milliseconds)
                     scrollState.animateScrollToCompat(scrollState.maxValue)
                 }
             }

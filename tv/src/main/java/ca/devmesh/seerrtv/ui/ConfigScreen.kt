@@ -63,6 +63,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 enum class ConfigWizardStep {
     SERVER_CONNECTION,  // Protocol and hostname
@@ -237,7 +238,7 @@ fun ConfigScreen(
         LaunchedEffect(Unit) {
             try {
                 // Single attempt to get user info since we just logged in successfully
-                delay(300)
+                delay(300.milliseconds)
                 userInfo = viewModel.apiService.getCurrentUserInfo()
                 Log.d("ConfigScreen", "User info retrieved: ${userInfo != null}")
             } catch (e: Exception) {
@@ -354,7 +355,7 @@ fun WizardConfigScreen(
                                             else -> successString
                                         }
                                         CoroutineScope(Dispatchers.Main).launch {
-                                            delay(2000)
+                                            delay(2000.milliseconds)
                                             successMessage = null
                                             errorMessage = null
                                             onStepChange(ConfigWizardStep.AUTH_METHOD)
@@ -367,7 +368,7 @@ fun WizardConfigScreen(
                                         enableCloudflare = true
                                         successMessage = successString
                                         CoroutineScope(Dispatchers.Main).launch {
-                                            delay(2000)
+                                            delay(2000.milliseconds)
                                             successMessage = null
                                             errorMessage = null
                                             onStepChange(ConfigWizardStep.CLOUDFLARE_CONFIG)
@@ -417,7 +418,7 @@ fun WizardConfigScreen(
                                             else -> successString
                                         }
                                         CoroutineScope(Dispatchers.Main).launch {
-                                            delay(2000)
+                                            delay(2000.milliseconds)
                                             successMessage = null
                                             errorMessage = null
                                             onStepChange(ConfigWizardStep.AUTH_METHOD)
@@ -480,7 +481,7 @@ fun WizardConfigScreen(
                                     onSuccess = { _ ->
                                         successMessage = successString
                                         CoroutineScope(Dispatchers.Main).launch {
-                                            delay(2000)
+                                            delay(2000.milliseconds)
                                             onShowLoginSuccessModal()
                                         }
                                     },
@@ -528,7 +529,7 @@ fun WizardConfigScreen(
                                         successMessage = successString
                                         Log.d("ConfigScreen", "Set success message, waiting 2 seconds before showing modal")
                                         // Then wait 2 seconds before showing modal
-                                        delay(2000)
+                                        delay(2000.milliseconds)
                                         onShowLoginSuccessModal()
                                     }
                                     is ApiValidationResult.Error -> {
@@ -590,7 +591,7 @@ fun WizardConfigScreen(
                                     onSuccess = { _ ->
                                         successMessage = successString
                                         CoroutineScope(Dispatchers.Main).launch {
-                                            delay(2000)
+                                            delay(2000.milliseconds)
                                             onShowLoginSuccessModal()
                                         }
                                     },
@@ -765,7 +766,7 @@ fun ServerConnectionStep(
 
     // Initial focus - only set when we're in the initial state
     LaunchedEffect(Unit) {
-        delay(100) // Small delay to ensure composition is complete
+        delay(100.milliseconds) // Small delay to ensure composition is complete
         if (isActive && !hasInteracted && errorMessage == null && successMessage == null) {
             try {
                 Log.d("ServerConnectionStep", "Requesting initial focus on protocol")
@@ -1065,7 +1066,7 @@ fun ApiKeyConfigStep(
     LaunchedEffect(errorMessage) {
         if (errorMessage != null) {
             Log.d("ApiKeyConfigStep", "Error occurred, focusing next button")
-            delay(100) // Small delay to ensure error message is shown
+            delay(100.milliseconds) // Small delay to ensure error message is shown
             nextButtonFocusRequester.requestFocus()
         }
     }
@@ -1144,7 +1145,7 @@ fun LocalUserStep(
     LaunchedEffect(errorMessage) {
         if (errorMessage != null) {
             Log.d("LocalUserStep", "Error occurred, focusing next button")
-            delay(100) // Small delay to ensure error message is shown
+            delay(100.milliseconds) // Small delay to ensure error message is shown
             nextButtonFocusRequester.requestFocus()
         }
     }
@@ -1586,7 +1587,7 @@ fun PlexConfigStep(
 
     // Set initial focus to cancel button
     LaunchedEffect(Unit) {
-        delay(100) // Small delay to ensure button is ready
+        delay(100.milliseconds) // Small delay to ensure button is ready
         cancelButtonFocusRequester.requestFocus()
     }
 }
@@ -1620,7 +1621,7 @@ private suspend fun startPollingForToken(
             Log.w("ConfigScreen", "Error during polling (attempt $attempts): ${e.message}")
             if (e.message?.contains("Waiting for user authentication") == true) {
                 Log.d("ConfigScreen", "Still waiting for user authentication...")
-                delay(5000) // Wait 5 seconds before retrying
+                delay(5000.milliseconds) // Wait 5 seconds before retrying
             } else {
                 isPolling = false
                 onError("Failed to check auth status: ${e.message}")
@@ -1707,7 +1708,7 @@ private fun ConfigStepLayout(
     content: @Composable ColumnScope.() -> Unit
 ) {
     var internalNextButtonFocused by remember { mutableStateOf(false) }
-    val nextButtonFocusedState = if (nextButtonFocused) nextButtonFocused else internalNextButtonFocused
+    val nextButtonFocusedState = nextButtonFocused || internalNextButtonFocused
     val defaultButtonFocusRequester = remember { FocusRequester() }
     val buttonFocusRequester = nextButtonFocusRequester ?: defaultButtonFocusRequester
     val defaultTitleFocusRequester = remember { FocusRequester() }
@@ -1724,7 +1725,7 @@ private fun ConfigStepLayout(
             if (errorMessage != null && onNext != null) {
                 try {
                     Log.d("ConfigScreen:ConfigStepLayout", "Error message shown, focusing button")
-                    delay(100) // Small delay to ensure UI is ready
+                    delay(100.milliseconds) // Small delay to ensure UI is ready
                     buttonFocusRequester.requestFocus()
                 } catch (e: Exception) {
                     Log.e("ConfigScreen:ConfigStepLayout", "Error focusing button: ${e.message}")
@@ -1828,7 +1829,7 @@ class LanguageSelectionController(
     val currentLanguage = initialLanguage
     
     // Navigation state: 0..size-1 = list item focused
-    var selectedIndex by mutableStateOf(
+    var selectedIndex by mutableIntStateOf(
         languageOptions.indexOfFirst { it.first == currentLanguage }.coerceAtLeast(0)
     )
         private set
@@ -2111,7 +2112,7 @@ fun ConfigSelectionScreen(
             } catch (e: IllegalStateException) {
                 Log.w("ConfigSelectionScreen", "Focus request failed: ${e.message}")
                 // If focus request fails, try again after a short delay
-                delay(50)
+                delay(50.milliseconds)
                 try {
                     browserFocusRequester.requestFocus()
                     focusRequestAttempted = true
@@ -2207,7 +2208,7 @@ fun BrowserConfigScreen(
         errorMessage = null
         scope.launch {
             while (isPolling) {
-                delay(5000) // Poll every 5 seconds
+                delay(5000.milliseconds) // Poll every 5 seconds
                 when (val configResult = viewModel.apiService.getBrowserConfig(setupId)) {
                     is ApiResult.Success<SeerrConfig> -> {
                         val config = configResult.data
@@ -2596,7 +2597,7 @@ private fun LoginSuccessModal(
     LaunchedEffect(Unit) {
         if (!hasRequestedInitialFocus && !isDismissing) {
             Log.d("LoginSuccessModal", "Initial composition started")
-            delay(100)
+            delay(100.milliseconds)
             Log.d("LoginSuccessModal", "Composition ready")
             Log.d("LoginSuccessModal", "Requesting focus")
             okButtonfocusRequester.requestFocus()

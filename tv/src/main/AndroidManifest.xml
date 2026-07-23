@@ -15,7 +15,8 @@ xmlns:tools="http://schemas.android.com/tools">
         android:name=".SeerrTV"
         android:supportsRtl="true"
         android:networkSecurityConfig="@xml/network_security_config"
-        android:theme="@style/Theme.SeerrTV">
+        android:theme="@style/Theme.SeerrTV"
+        tools:targetApi="24">
         <activity
             android:name=".MainActivity"
             android:exported="true"

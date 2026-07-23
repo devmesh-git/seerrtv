@@ -47,6 +47,7 @@ import java.time.format.DateTimeFormatter
 import java.time.LocalDate
 import java.time.Period
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 enum class PersonScreenFocus { Top, ReadMore, KnownFor, Crew }
 
@@ -229,7 +230,6 @@ fun PersonScreen(
             } else {
                 logPerson("Back navigation skipped - already navigating")
             }
-            Unit // Explicitly return Unit
         }
     }
 
@@ -622,7 +622,7 @@ fun CyclingBackdrop(
     LaunchedEffect(currentFocus, backdropImages) {
         if (currentFocus !in listOf(PersonScreenFocus.KnownFor, PersonScreenFocus.Crew) && backdropImages.isNotEmpty()) {
             while (currentFocus !in listOf(PersonScreenFocus.KnownFor, PersonScreenFocus.Crew)) {
-                delay(10000) // Change image every 10 seconds
+                delay(10000.milliseconds) // Change image every 10 seconds
                 currentBackdropIndex = (currentBackdropIndex + 1) % backdropImages.size
             }
         }

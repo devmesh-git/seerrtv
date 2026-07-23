@@ -28,6 +28,7 @@ import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * Server-side slider type enum matching Seerr's DiscoverSliderType.
@@ -588,10 +589,9 @@ class SeerrViewModel @Inject constructor(
         val slider = _discoverSliders.value.firstOrNull { it.id == sliderId } ?: return
         if (slider.data == null) return
 
-        val cacheKey = "custom_slider_$sliderId"
         val now = System.currentTimeMillis()
         val lastUpdate = customSliderCacheTimestamps[sliderId] ?: 0L
-        val cacheExpired = (now - lastUpdate) > java.util.concurrent.TimeUnit.MINUTES.toMillis(5)
+        val cacheExpired = (now - lastUpdate) > TimeUnit.MINUTES.toMillis(5)
 
         if (!loadMore && !forceRefresh && !cacheExpired && _customSliderData.value[sliderId] is ApiResult.Success) {
             return
@@ -782,13 +782,13 @@ class SeerrViewModel @Inject constructor(
                 forceCarouselReset(category, animate = true)
 
                 // Small delay to ensure reset is processed
-                delay(200)
+                delay(200.milliseconds)
 
                 // Now perform the standard refresh
                 refreshCategory(category)
 
                 // Add a delay to ensure data fetch is complete
-                delay(500)
+                delay(500.milliseconds)
 
                 // Check if data was loaded - if not, force another reload
                 if (categoryMediaLists[category]?.isEmpty() == true) {
@@ -799,7 +799,7 @@ class SeerrViewModel @Inject constructor(
                         )
                     }
                     refreshCategory(category)
-                    delay(300)
+                    delay(300.milliseconds)
                 }
 
                 // Final force carousel update and reset to ensure UI is updated
@@ -1433,9 +1433,9 @@ class SeerrViewModel @Inject constructor(
                                     )
 
                                     // Ensure update is noticed by clearing and sending again after a tiny delay
-                                    delay(50)
+                                    delay(50.milliseconds)
                                     _carouselUpdates.value = null
-                                    delay(50)
+                                    delay(50.milliseconds)
                                     _carouselUpdates.value = CarouselUpdateEvent(
                                         category = category,
                                         itemsBefore = initialCount,
@@ -1479,13 +1479,13 @@ class SeerrViewModel @Inject constructor(
 
                             // Clear the loading flag after a delay to ensure UI has time to process the results
                             // This will also ensure the placeholder stays visible for the minimum time
-                            delay(500)
+                            delay(500.milliseconds)
                             setLoadMoreFlag(category, false)
 
                             // Make sure we always emit a final update event after the placeholder is removed
                             // This ensures the carousel recalculates its position even in edge cases
                             viewModelScope.launch {
-                                delay(100)  // Very short delay after placeholder is removed
+                                delay(100.milliseconds)  // Very short delay after placeholder is removed
                                 _carouselUpdates.value = CarouselUpdateEvent(
                                     category = category,
                                     itemsBefore = getCategoryMediaList(category).size,
@@ -1625,9 +1625,9 @@ class SeerrViewModel @Inject constructor(
                                     )
 
                                     // Ensure update is noticed by clearing and sending again after a tiny delay
-                                    delay(50)
+                                    delay(50.milliseconds)
                                     _carouselUpdates.value = null
-                                    delay(50)
+                                    delay(50.milliseconds)
                                     _carouselUpdates.value = CarouselUpdateEvent(
                                         category = category,
                                         itemsBefore = initialCount,
@@ -1671,13 +1671,13 @@ class SeerrViewModel @Inject constructor(
 
                             // Clear the loading flag after a delay to ensure UI has time to process the results
                             // This will also ensure the placeholder stays visible for the minimum time
-                            delay(500)
+                            delay(500.milliseconds)
                             setLoadMoreFlag(category, false)
 
                             // Make sure we always emit a final update event after the placeholder is removed
                             // This ensures the carousel recalculates its position even in edge cases
                             viewModelScope.launch {
-                                delay(100)  // Very short delay after placeholder is removed
+                                delay(100.milliseconds)  // Very short delay after placeholder is removed
                                 _carouselUpdates.value = CarouselUpdateEvent(
                                     category = category,
                                     itemsBefore = getCategoryCardList(category).size,
@@ -1889,9 +1889,8 @@ class SeerrViewModel @Inject constructor(
                         if (!forceRefresh && cachedResult != null) {
                             val timeSinceCache = currentTime - cachedResult.timestamp
                             val effectiveCacheTimeMs = minOf(TimeUnit.MINUTES.toMillis(cacheTimeMinutes), cachedResult.cacheTimeMs)
-                            val cacheExpirationTime = effectiveCacheTimeMs
 
-                            if (timeSinceCache < cacheExpirationTime) {
+                            if (timeSinceCache < effectiveCacheTimeMs) {
                                 if (effectiveCacheTimeMs < cachedResult.cacheTimeMs) {
                                     _mediaDetailsCache.update { cache ->
                                         cache + (cacheKey to CachedMediaDetails(
@@ -2019,8 +2018,7 @@ class SeerrViewModel @Inject constructor(
         return try {
             when (val movieDetails = apiService.getMovieDetails(mediaId)) {
                 is ApiResult.Success -> {
-                    val ratingsResult = apiService.getRatingsData(mediaId, "movie")
-                    when (ratingsResult) {
+                    when (val ratingsResult = apiService.getRatingsData(mediaId, "movie")) {
                         is ApiResult.Success -> {
                             val result = ApiResult.Success(
                                 movieDetails.data.copy(
@@ -2071,8 +2069,7 @@ class SeerrViewModel @Inject constructor(
 
     private suspend fun fetchTVDetails(mediaId: String): ApiResult<MediaDetails> {
         return try {
-            val tvDetails = apiService.getTVDetails(mediaId)
-            when (tvDetails) {
+            when (val tvDetails = apiService.getTVDetails(mediaId)) {
                 is ApiResult.Success -> {
                     Log.d("SeerrViewModel", "TV Details API response: ${tvDetails.data}")
                     Log.d("SeerrViewModel", "TV Details mediaInfo: ${tvDetails.data.mediaInfo}")
@@ -2138,7 +2135,6 @@ class SeerrViewModel @Inject constructor(
 
 
     override fun onCleared() {
-        super.onCleared()
         // Cancel all active jobs
         activeJobs.values.forEach { it.cancel() }
         mediaDetailsJobs.values.forEach { it.cancel() }
@@ -2362,9 +2358,7 @@ class SeerrViewModel @Inject constructor(
     private suspend fun fetchRecentRequests(forceRefresh: Boolean): ApiResult<List<Media>> {
         return try {
             // Get requests with pagination
-            val response = apiService.getRequests(reset = forceRefresh)
-
-            when (response) {
+            when (val response = apiService.getRequests(reset = forceRefresh)) {
                 is ApiResult.Success<RequestResponse> -> {
                     val mediaList = mutableListOf<Media>()
 
@@ -2848,7 +2842,7 @@ class SeerrViewModel @Inject constructor(
             // If we haven't shown the placeholder for long enough, delay hiding it
             if (elapsedTime < currentState.minimumLoadingTimeMs) {
                 viewModelScope.launch {
-                    delay(currentState.minimumLoadingTimeMs - elapsedTime)
+                    delay((currentState.minimumLoadingTimeMs - elapsedTime).milliseconds)
                     _showPlaceholders.value = _showPlaceholders.value.toMutableMap().apply {
                         put(category, false)
                     }
@@ -2983,13 +2977,13 @@ class SeerrViewModel @Inject constructor(
             _carouselResetEvents.value = Pair(category, animate)
 
             // Small delay to allow UI to catch up
-            delay(100)
+            delay(100.milliseconds)
 
             // Reset to null to allow future events to be triggered
             _carouselResetEvents.value = null
 
             // Now trigger a final update with the correct size
-            delay(50)
+            delay(50.milliseconds)
             emitCarouselUpdateEvent(category, itemsBefore = 0, itemsAfter = currentSize)
         }
     }
@@ -3189,7 +3183,7 @@ class SeerrViewModel @Inject constructor(
                 val initialSuccess = fetchMediaDetailsForPolling(isInitialLoad = true)
                 
                 // Wait for data to settle
-                delay(1000)
+                delay(1000.milliseconds)
                 
                 // Continue polling if successful
                 if (initialSuccess && _isPollingActive.value) {
@@ -3241,7 +3235,7 @@ class SeerrViewModel @Inject constructor(
                 Log.d(TAG, "⏱️ Waiting ${updateInterval}ms until next polling update (next will be cycle #${pollingCycleCount + 1})")
                 
                 // Wait before next update
-                delay(updateInterval)
+                delay(updateInterval.milliseconds)
                 
                 // Only update if still active
                 if (_isPollingActive.value) {
@@ -3320,7 +3314,7 @@ class SeerrViewModel @Inject constructor(
             _pollingLoadingState.value = if (isInitialLoad) LoadingState.LOADING else LoadingState.REFRESHING
             
             // Use withTimeout to ensure the API call doesn't hang indefinitely
-            withTimeout(15000) {
+            withTimeout(15000.milliseconds) {
                 // Use the shared fetchMediaDetails method to avoid duplicate API calls
                 val cacheKey = "$tmdbId-$mediaType"
                 val currentTime = System.currentTimeMillis()

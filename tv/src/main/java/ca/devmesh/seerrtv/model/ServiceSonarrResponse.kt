@@ -89,3 +89,13 @@ data class SonarrServerInfo(
     val defaultServer: Sonarr?,
     val error: Exception? = null
 )
+
+/**
+ * JSON-persistable snapshot of [SonarrServerInfo] — see [PersistedRadarrCache] for why this
+ * exists and when it is written/restored.
+ */
+@Serializable
+data class PersistedSonarrCache(
+    val allServers: List<Sonarr>,
+    val defaultServerId: Int? = null
+)

@@ -1,5 +1,64 @@
 # Changelog
 
+## 0.28.13
+
+### Fixed: Stale user/server state after process death (external trailer player)
+
+- **Symptom** – Launching an external app (e.g. the YouTube trailer player) can get the process killed on memory-constrained TVs. Android then restores the UI straight back to the details screen without running the splash-time loads (`testAuthentication`, `loadRadarr/SonarrConfiguration`) that normally populate in-memory state — leaving permissions null (silently hiding the Request button) and the 4K capability / request-modal server/profile/folder options empty.
+
+- **Fix** –
+  - The Radarr/Sonarr configurations are now persisted after each successful load (`PersistedRadarrCache`/`PersistedSonarrCache` — JSON-persistable snapshots, since the in-memory types carry an `Exception` and can't be `@Serializable`) and restored in the `SeerrApiService` init, together with the saved user info. Later successful loads overwrite the seeds, and the permissions-driven UI reacts since `currentUserInfoState` is snapshot state (0.28.12).
+  - Resume-time re-logins now go through `loginAndRefreshUser()`: `login()` only stores the session cookie, and with the splash path skipped nothing else would fetch `auth/me` — so the in-memory user would have kept the seeded/stale value until the next full launch.
+  - On connection/profile change the persisted copies are dropped (`clearUserInfo`, `clearServiceCaches`) so a process restart can never seed state from a different server's account.
+
+### Fixed: Playback retried the wrong media server on every launch (Jellyfin/Emby)
+
+- Jellyfin and Emby are frequently misconfigured as each other. The app already *detected* the correct type when a playback fallback succeeded — and saved it — but the saved value was never read: every playback re-tried the misconfigured type first and paid the fail-then-fallback latency again.
+- Playback dispatch now prefers the detected type when the configured type is Jellyfin or Emby (a Plex configuration is never overridden), and `saveMediaServerType` clears the learned value whenever the configured type actually changes, so a reconfiguration can't leave a stale detection behind. The fallback chain is unchanged and still self-corrects.
+
+### Fixed: Browse filters and sort reset when ViewModel state was lost
+
+- Movies/Series browse saved the active filters and sort per screen (`GridPositionManager`) but never read them back — grid *position* survived a return to the screen while filters/sort silently reset to defaults whenever the ViewModel was recreated. The initialization path now restores the saved filters/sort before falling back to defaults.
+
+### Fixed: Missing plural forms in translations
+
+- Spanish, French and Portuguese require a `many` plural quantity (CLDR large-number forms); it was missing from the two splash-screen server-count plurals in all three locales. Added. Removed the irrelevant `one` quantities from Japanese and Chinese (those languages only use `other`).
+
+### Changed: Inspection-driven cleanup (1,026 findings triaged)
+
+Full project inspection in Android Studio; every actionable finding verified against the code before fixing (several were false positives — e.g. Hilt modules flagged "unused", the launcher manifest's `.MainActivity`, and the intentional cleartext network config for LAN servers — and were left alone or suppressed with an explanatory comment).
+
+- **Dead code removed (~450 lines)** – `SettingsModels.kt` (entire file), the unused `RequestStatus`/`IssueStatus` model enums, `UserResponse`, `TopBarMode.SEARCH`, `RequestModalController.RequestStatus.Success/Error`, `SortMenuButton`, `DevMeshBranding`, `getDpadConfigForRoute`, `CommonUtil.formatDate`, the dead `loadPopularMovies/Series` chain and `applySort`/`clearFilters`/`setSort`/`setFilters` in `MediaDiscoveryViewModel`, the never-displayed studio preload (`loadStudios`/`availableStudios` — the studio picker uses the search flow; also saves an API call per movie-filters-drawer open), a vestigial `onLaunchApp` parameter, unused imports/variables, and four unused launcher/banner resources.
+- **Correctness of state types** – 12 `mutableStateOf(Int/Float)` converted to `mutableIntStateOf`/`mutableFloatStateOf` (avoids autoboxing on every write).
+- **KTX modernization** – 41 `SharedPreferences.edit()` call sites converted to the `edit { }`/`edit(commit = true) { }` extensions (commit-vs-apply semantics preserved), `Uri.parse` → `String.toUri`.
+- **kotlin.time Duration API** – 165 legacy `Long`-overload call sites (`delay(300)`, `withTimeout(15000)`, …) converted to `Duration` (`delay(300.milliseconds)`, `withTimeout(15.seconds)`) across ~25 files, with the corresponding `kotlin.time.Duration.Companion` imports.
+- **Manifest/resources** – `tools:targetApi` on `networkSecurityConfig` (min SDK 23 vs attribute's API 24), deprecated `package` attribute removed from the direct-flavor manifest, `DiscoveryGrid`'s `modifier` parameter moved to the conventional first-optional position.
+- **Style** – redundant qualifiers/labels/`Unit`/type arguments removed (incl. fully-qualified `ca.devmesh.seerrtv.…` references shortened and inferable `MutableStateFlow` type arguments dropped), trivial alias locals inlined, `x = x + y` → `x += y` operator assignments, two-comparison bounds checks → range checks (`positionOnScreen !in 1..maxVisibleItems`), `if (list.isNotEmpty()) list else fallback` → `list.ifEmpty { … }`, subject variables moved into `when (val x = …)`, comment grammar fixes, `SeerrImageAuthHolder` StaticFieldLeak warning suppressed with a comment documenting why it is safe (only ever holds the Hilt `@ApplicationContext`).
+
+### Build tooling
+
+- Gradle 9.5.0 → 9.6.1; KSP 2.3.2 → 2.3.10, which properly supports AGP 9's built-in Kotlin — allowing removal of the experimental `android.disallowKotlinSourceSets=false` escape hatch (and its per-build warning) from `gradle.properties`.
+- detekt's lazy apply modernized to `pluginManager.apply(...)`; duplicate Compose BOM declaration dropped (`androidTestImplementation` extends `implementation`, so the androidTest classpath already gets the BOM constraints — verified by dependency resolution); `com.github.ben-manes.versions` 0.53.0 → 0.54.0.
+- IDE "Unstable API Usage" warnings suppressed with rationale comments: `dependencyResolutionManagement`/`RepositoriesMode` (settings.gradle.kts) and `enableSplit` (tv/build.gradle.kts) are `@Incubating` but are the standard/only APIs — the former is the Android Studio project template itself, the latter carries the 0.28.11 language fix.
+
+### Files Modified
+
+- `tv/build.gradle.kts` – Version 0.28.13 (versionCode 136); detekt `pluginManager.apply`; duplicate Compose BOM removed.
+- `build.gradle.kts`, `gradle.properties`, `gradle/libs.versions.toml`, `gradle/wrapper/gradle-wrapper.properties` – Tooling bumps above.
+- `tv/src/main/java/ca/devmesh/seerrtv/data/SeerrApiService.kt` – Persisted startup caches (seed in `init`, persist on load, clear on connection change); `loginAndRefreshUser()`.
+- `tv/src/main/java/ca/devmesh/seerrtv/model/ServiceRadarrResponse.kt`, `ServiceSonarrResponse.kt` – `PersistedRadarrCache`/`PersistedSonarrCache`.
+- `tv/src/main/java/ca/devmesh/seerrtv/util/SharedPreferencesUtil.kt` – Radarr/Sonarr cache JSON storage; `getSavedUserId`/`clearUserInfo`/`clearServiceCaches`; detected-server-type clear folded into `saveMediaServerType`; KTX `edit` conversions.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/MediaDetails.kt` – Playback dispatch prefers the detected Jellyfin/Emby type.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/MediaBrowseScreen.kt` – Restore saved browse filters/sort on initialization.
+- `tv/src/main/java/ca/devmesh/seerrtv/ui/components/FiltersDrawer.kt` – Studio preload call removed (search flow only); networks preload unchanged.
+- `tv/src/main/java/ca/devmesh/seerrtv/viewmodel/MediaDiscoveryViewModel.kt` – Dead browse/popular/sort/filter API removed; studio preload state removed.
+- `tv/src/main/AndroidManifest.xml`, `tv/src/direct/AndroidManifest.xml` – `tools:targetApi`; deprecated `package` attribute removed.
+- `tv/src/main/res/values-{es,fr,pt,ja,zh}/strings.xml` – Plural quantity fixes.
+- `tv/src/main/java/ca/devmesh/seerrtv/model/SettingsModels.kt`, `tv/src/main/res/drawable-anydpi/ic_banner*.xml`, `ic_launcher_background` (drawable + color) – **Deleted** (unused).
+- ~40 further files under `ui/`, `util/`, `viewmodel/`, `navigation/`, plus `MainActivity.kt` – Mechanical cleanup per the inspection section (dead code, state types, KTX, Duration API, style).
+
+---
+
 ## 0.28.12
 
 ### Fixed: Request button disappeared after watching a trailer in the external YouTube app

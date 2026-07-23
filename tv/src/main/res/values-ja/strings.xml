@@ -353,11 +353,9 @@
     <string name="splashScreen_ready">準備完了！</string>
     <string name="splashScreen_sonarrConfigComplete">Sonarr: %1$dサーバー - HD (%2$d) 4K (%3$d)</string>
     <plurals name="splashScreen_sonarrConfigComplete_basic">
-        <item quantity="one">Sonarr: %1$dサーバー</item>
         <item quantity="other">Sonarr: %1$dサーバー</item>
     </plurals>
     <plurals name="splashScreen_radarrConfigComplete_basic">
-        <item quantity="one">Radarr: %1$dサーバー</item>
         <item quantity="other">Radarr: %1$dサーバー</item>
     </plurals>
     <!-- Time Strings -->

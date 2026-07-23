@@ -67,6 +67,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 data class ServerOption(val id: Int, val name: String, val type: ServerType, val is4k: Boolean = false)
 enum class ServerType { RADARR, SONARR }
@@ -294,8 +295,6 @@ class RequestModalController(
     sealed class RequestStatus {
         object Idle : RequestStatus()
         object Loading : RequestStatus()
-        data class Success(val message: String) : RequestStatus()
-        data class Error(val message: String) : RequestStatus()
     }
 
     // Track when modal was opened to prevent Enter key leakage
@@ -581,7 +580,7 @@ class RequestModalController(
                     FocusState.CancelButton -> {
                         // Add a delay before closing to ensure the event is not handled by the parent
                         viewModelScope.launch {
-                            delay(300)
+                            delay(300.milliseconds)
                             onCancel()
                         }
                         true // Always consume the event when cancel is focused
@@ -851,7 +850,7 @@ class RequestModalController(
                 Log.d("RequestModalController", "Back pressed while in main menu - closing modal")
                 // Add a small delay to ensure the back event is properly consumed
                 viewModelScope.launch {
-                    delay(100)
+                    delay(100.milliseconds)
                     onCancel()
                 }
             }
@@ -904,14 +903,14 @@ class RequestModalController(
                             Log.d("RequestModalController", "Found exactly one server, selecting it")
                             selectServer(availableServers.value.first())
                             // Give a short delay for the selection to propagate
-                            delay(100)
+                            delay(100.milliseconds)
                         } 
                         // If there are multiple servers, just select the first one
                         else if (availableServers.value.isNotEmpty()) {
                             Log.d("RequestModalController", "Found ${availableServers.value.size} servers, selecting the first one")
                             selectServer(availableServers.value.first())
                             // Give a short delay for the selection to propagate
-                            delay(100)
+                            delay(100.milliseconds)
                         }
                     }
                     
@@ -2232,7 +2231,7 @@ fun StatusMessage(
 
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
-        delay(1000) // Wait 1 second before allowing dismissal
+        delay(1000.milliseconds) // Wait 1 second before allowing dismissal
         canDismiss = true
     }
 

@@ -46,7 +46,6 @@ import ca.devmesh.seerrtv.model.ContentRating
 import ca.devmesh.seerrtv.model.Provider
 import ca.devmesh.seerrtv.util.DiagnosticsLog
 import ca.devmesh.seerrtv.util.SharedPreferencesUtil
-import io.ktor.client.call.body
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.HttpClient
 import io.ktor.client.network.sockets.ConnectTimeoutException
@@ -92,6 +91,7 @@ import okhttp3.ConnectionPool
 import okhttp3.Dns
 import okhttp3.OkHttpClient
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import kotlin.time.Duration.Companion.milliseconds
 
 object TrustAllCerts {
     val trustAllCerts = arrayOf<X509TrustManager>(@SuppressLint("CustomX509TrustManager")
@@ -148,6 +148,17 @@ internal data class MutablePaginationInfo(
     )
 }
 
+/**
+ * Codec for the persisted startup caches (user info aside — that's plain prefs fields).
+ * Top-level rather than a class property so the constructor's `init` seeding can run before the
+ * class's own `json` property (declared further down) is initialized.
+ */
+private val startupCacheJson = Json {
+    ignoreUnknownKeys = true
+    isLenient = true
+    coerceInputValues = true
+}
+
 class SeerrApiService @Inject constructor(
     private var config: SeerrConfig,
     private val context: Context
@@ -179,6 +190,20 @@ class SeerrApiService @Inject constructor(
     private var cachedSonarrData: SonarrServerInfo? = null
 
     private var apiUrl = buildApiUrl(config)
+
+    init {
+        // Seed in-memory startup state from the last persisted copies. Launching an external
+        // app (e.g. the YouTube trailer player) can get this process killed on memory-constrained
+        // TVs; Android then restores the UI straight back to the details screen without running
+        // the splash-time loads (testAuthentication, loadRadarr/SonarrConfiguration) that
+        // normally populate these — leaving permissions null (silently hiding the Request
+        // button) and the 4K capability / request-modal options empty. Later successful loads
+        // overwrite these seeds (and the permissions-driven UI reacts, since
+        // currentUserInfoState is snapshot state).
+        currentUserInfoState = restoreSavedUserInfo()
+        cachedRadarrData = restoreSavedRadarrData()
+        cachedSonarrData = restoreSavedSonarrData()
+    }
 
     private val paginationStates = mutableMapOf<String, MutablePaginationInfo>()
     
@@ -431,6 +456,70 @@ class SeerrApiService @Inject constructor(
             }
         }
         return builder.build()
+    }
+
+    /** Rebuilds the Radarr cache persisted by [loadRadarrConfiguration]; null when none saved or unreadable. */
+    private fun restoreSavedRadarrData(): RadarrServerInfo? {
+        val raw = SharedPreferencesUtil.getRadarrCacheJson(context) ?: return null
+        val persisted = runCatching {
+            startupCacheJson.decodeFromString<ca.devmesh.seerrtv.model.PersistedRadarrCache>(raw)
+        }.getOrNull() ?: return null
+        if (persisted.allServers.isEmpty()) return null
+        return RadarrServerInfo(
+            allServers = persisted.allServers,
+            defaultServer = persisted.allServers.find { it.server.id == persisted.defaultServerId }
+                ?: persisted.allServers.firstOrNull()
+        )
+    }
+
+    /** Rebuilds the Sonarr cache persisted by [loadSonarrConfiguration]; null when none saved or unreadable. */
+    private fun restoreSavedSonarrData(): SonarrServerInfo? {
+        val raw = SharedPreferencesUtil.getSonarrCacheJson(context) ?: return null
+        val persisted = runCatching {
+            startupCacheJson.decodeFromString<ca.devmesh.seerrtv.model.PersistedSonarrCache>(raw)
+        }.getOrNull() ?: return null
+        if (persisted.allServers.isEmpty()) return null
+        return SonarrServerInfo(
+            allServers = persisted.allServers,
+            defaultServer = persisted.allServers.find { it.server.id == persisted.defaultServerId }
+                ?: persisted.allServers.firstOrNull()
+        )
+    }
+
+    /** Persists the freshly loaded Radarr configuration for [restoreSavedRadarrData]. Never throws. */
+    private fun persistRadarrCache(servers: List<Radarr>, defaultServer: Radarr?) {
+        runCatching {
+            SharedPreferencesUtil.saveRadarrCacheJson(
+                context,
+                startupCacheJson.encodeToString(
+                    ca.devmesh.seerrtv.model.PersistedRadarrCache(servers, defaultServer?.server?.id)
+                )
+            )
+        }
+    }
+
+    /** Persists the freshly loaded Sonarr configuration for [restoreSavedSonarrData]. Never throws. */
+    private fun persistSonarrCache(servers: List<Sonarr>, defaultServer: Sonarr?) {
+        runCatching {
+            SharedPreferencesUtil.saveSonarrCacheJson(
+                context,
+                startupCacheJson.encodeToString(
+                    ca.devmesh.seerrtv.model.PersistedSonarrCache(servers, defaultServer?.server?.id)
+                )
+            )
+        }
+    }
+
+    /** Rebuilds [UserInfo] from the values [persistAuthenticatedUser] saved; null when none saved. */
+    private fun restoreSavedUserInfo(): UserInfo? {
+        val id = SharedPreferencesUtil.getSavedUserId(context) ?: return null
+        val permissions = SharedPreferencesUtil.getSavedUserPermissions(context, id) ?: return null
+        return UserInfo(
+            id = id,
+            displayName = SharedPreferencesUtil.getUserDisplayName(context).orEmpty(),
+            permissions = permissions,
+            remoteAvatarUrl = SharedPreferencesUtil.getRemoteAvatarUrl(context)
+        )
     }
 
     private fun persistAuthenticatedUser(user: ca.devmesh.seerrtv.model.User) {
@@ -2003,7 +2092,7 @@ class SeerrApiService @Inject constructor(
                 if (attempt > 0) {
                     Log.d("SeerrApiService", "🔄 Retrying authentication (attempt ${attempt + 1}/${maxRetries + 1})...")
                     // Small delay before retry to allow server/client to stabilize
-                    kotlinx.coroutines.delay(500)
+                    kotlinx.coroutines.delay(500.milliseconds)
                 }
                 
                 // Attempt login to get initial token
@@ -2157,6 +2246,11 @@ class SeerrApiService @Inject constructor(
         if (!sameConnection) {
             currentAuthToken = null
             currentUserInfoState = null
+            // Also drop the persisted copies so a process restart can never seed the in-memory
+            // user or service caches from a different server (see restoreSavedUserInfo /
+            // restoreSavedRadarrData / restoreSavedSonarrData).
+            SharedPreferencesUtil.clearUserInfo(context)
+            SharedPreferencesUtil.clearServiceCaches(context)
             Log.d("SeerrApiService", "Cleared session and user info (server, profile, or credentials changed)")
         }
     }
@@ -2194,6 +2288,7 @@ class SeerrApiService @Inject constructor(
                         allServers = fullRadarrList,
                         defaultServer = defaultRadarrDetails ?: fullRadarrList.firstOrNull()
                     )
+                    persistRadarrCache(fullRadarrList, defaultRadarrDetails ?: fullRadarrList.firstOrNull())
                 }
                 is ApiResult.Error -> {
                     Log.e("SeerrApiService", "Failed to load Radarr servers", radarrResults.exception)
@@ -2241,6 +2336,7 @@ class SeerrApiService @Inject constructor(
                         allServers = fullSonarrList,
                         defaultServer = defaultSonarrDetails ?: fullSonarrList.firstOrNull()
                     )
+                    persistSonarrCache(fullSonarrList, defaultSonarrDetails ?: fullSonarrList.firstOrNull())
                 }
                 is ApiResult.Error -> {
                     Log.e("SeerrApiService", "Failed to load Sonarr servers", sonarrResults.exception)
@@ -3306,7 +3402,7 @@ class SeerrApiService @Inject constructor(
             // If we don't have a token, try to login
             if (currentAuthToken == null) {
                 Log.d("SeerrApiService", "No auth token found, attempting login...")
-                return@withContext login()
+                return@withContext loginAndRefreshUser()
             }
 
             // Check if token is expired or about to expire
@@ -3314,11 +3410,11 @@ class SeerrApiService @Inject constructor(
             if (now.isAfter(currentAuthToken!!.expiresAt)) {
                 Log.d("SeerrApiService", "Auth token has expired, refreshing...")
                 currentAuthToken = null
-                return@withContext login()
+                return@withContext loginAndRefreshUser()
             } else if (now.isAfter(currentAuthToken!!.expiresAt.minus(1, ChronoUnit.HOURS))) {
                 Log.d("SeerrApiService", "Auth token is about to expire, refreshing...")
                 currentAuthToken = null
-                return@withContext login()
+                return@withContext loginAndRefreshUser()
             }
 
             // Test the current token to make sure it's still valid
@@ -3332,7 +3428,7 @@ class SeerrApiService @Inject constructor(
                 is ApiResult.Error -> {
                     Log.d("SeerrApiService", "Current auth token is invalid, refreshing...")
                     currentAuthToken = null
-                    login()
+                    loginAndRefreshUser()
                 }
                 is ApiResult.Loading -> {
                     Log.e("SeerrApiService", "Unexpected loading state during token validation")
@@ -3343,6 +3439,25 @@ class SeerrApiService @Inject constructor(
             Log.e("SeerrApiService", "Error checking/refreshing token", e)
             ApiResult.Error(e)
         }
+    }
+
+    /**
+     * [login] intentionally stores only the session cookie — user info is normally fetched by the
+     * splash-time [testAuthentication]. When a login happens from the resume-time token check
+     * instead (e.g. after the process was killed while the user watched a trailer in the external
+     * YouTube app, and Android restored the UI straight to the details screen), that splash path
+     * never runs — so fetch auth/me here or the in-memory user would keep the seeded/stale value
+     * until the next full launch.
+     */
+    private suspend fun loginAndRefreshUser(): ApiResult<Unit> {
+        val result = login()
+        if (result is ApiResult.Success) {
+            when (val user = executeApiCall<ca.devmesh.seerrtv.model.User>("auth/me")) {
+                is ApiResult.Success -> persistAuthenticatedUser(user.data)
+                else -> { /* keep the seeded/last-known user info */ }
+            }
+        }
+        return result
     }
 
     /**

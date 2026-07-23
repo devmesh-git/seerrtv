@@ -125,8 +125,7 @@ fun ActionRequestButton(
     val (regularState, fourKState) = if (leftTier != null || rightTier != null || singleTier != null) {
         // Use provided tier states - don't default to REQUEST if tier is null
         val regularTier = leftTier ?: singleTier
-        val fourKTier = rightTier
-        Pair(regularTier, fourKTier)
+        Pair(regularTier, rightTier)
     } else {
         // Fall back to getTierStates for backward compatibility
         getTierStates(media, viewModel, canRequest, has4kCapability)

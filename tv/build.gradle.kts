@@ -2,8 +2,8 @@ import java.io.File
 import java.util.Properties
 
 // Single source for app version; used in defaultConfig and for direct-release APK naming
-val appVersionName = "0.28.12"
-val appVersionCode = 135
+val appVersionName = "0.28.13"
+val appVersionCode = 136
 
 plugins {
     // https://developer.android.com/jetpack/androidx/releases/hilt
@@ -25,7 +25,7 @@ val detektRequested = gradle.startParameter.taskNames.any {
     it.substringAfterLast(':').startsWith("detekt", ignoreCase = true)
 }
 if (detektRequested) {
-    apply(plugin = "io.gitlab.arturbosch.detekt")
+    pluginManager.apply("io.gitlab.arturbosch.detekt")
     configure<io.gitlab.arturbosch.detekt.extensions.DetektExtension> {
         buildUponDefaultConfig = true
         config.setFrom("$rootDir/config/detekt/detekt.yml")
@@ -126,6 +126,8 @@ android {
     }
 
     bundle {
+        // enableSplit is @Incubating but is AGP's only API for this; no stable alternative.
+        @Suppress("UnstableApiUsage")
         language {
             // Ship every translation to every device.
             //
@@ -192,7 +194,6 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
 
     // Material Design & TV Components

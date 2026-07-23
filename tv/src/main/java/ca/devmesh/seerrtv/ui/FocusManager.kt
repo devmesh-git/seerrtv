@@ -12,12 +12,6 @@ class FocusManager {
     fun setButtonOrder(order: List<Int>) {
         buttonFocusOrder = order
     }
-
-    fun getPrevInOrder(current: Int): Int? {
-        val idx = buttonFocusOrder.indexOf(current)
-        if (idx == -1) return buttonFocusOrder.firstOrNull()
-        return if (idx > 0) buttonFocusOrder[idx - 1] else null
-    }
 }
 
 

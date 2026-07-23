@@ -35,7 +35,7 @@ fun UpdateAvailableDialog(
     val updateManager = remember { UpdateManager(context, updateJsonUrl) }
 
     // Focus management for TV remote
-    var focusedButton by remember { mutableStateOf(0) } // 0 = Update Now, 1 = Close
+    var focusedButton by remember { mutableIntStateOf(0) } // 0 = Update Now, 1 = Close
     val updateNowFocusRequester = remember { FocusRequester() }
     val closeFocusRequester = remember { FocusRequester() }
     var isHandlingEnter by remember { mutableStateOf(false) }

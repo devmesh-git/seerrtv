@@ -13,6 +13,7 @@ import ca.devmesh.seerrtv.util.SharedPreferencesUtil
 import java.time.format.DateTimeFormatter
 import java.time.LocalTime
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * A simple clock component that shows the current time
@@ -35,7 +36,7 @@ fun Clock(context: Context) {
         while (true) {
             currentTime = LocalTime.now()
             // Update every second but only show hours and minutes
-            delay(1000)
+            delay(1000.milliseconds)
         }
     }
 

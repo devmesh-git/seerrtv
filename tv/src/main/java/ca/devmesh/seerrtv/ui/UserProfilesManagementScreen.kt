@@ -38,6 +38,7 @@ import ca.devmesh.seerrtv.data.SeerrApiService
 import ca.devmesh.seerrtv.model.User
 import androidx.compose.ui.res.stringResource
 import ca.devmesh.seerrtv.R
+import kotlin.time.Duration.Companion.milliseconds
 
 enum class ManagementMode {
     LIST,
@@ -78,20 +79,20 @@ fun UserProfilesManagementScreen(
     var profiles by remember { mutableStateOf(SharedPreferencesUtil.getProfiles(context)) }
     val activeProfileId = SharedPreferencesUtil.getActiveProfileId(context)
     var selectedListIndex by remember {
-        mutableStateOf(
+        mutableIntStateOf(
             profiles.indexOfFirst { it.id == activeProfileId }.takeIf { it >= 0 } ?: 0
         )
     }
 
     var mode by remember { mutableStateOf(ManagementMode.LIST) }
-    var selectedActionIndex by remember { mutableStateOf(0) }
+    var selectedActionIndex by remember { mutableIntStateOf(0) }
 
     var pinBuffer by remember { mutableStateOf("") }
     var pinError by remember { mutableStateOf<String?>(null) }
 
-    var confirmDeleteIndex by remember { mutableStateOf(0) } // 0=Cancel, 1=Delete
+    var confirmDeleteIndex by remember { mutableIntStateOf(0) } // 0=Cancel, 1=Delete
 
-    var pinKeypadIndex by remember { mutableStateOf(0) }
+    var pinKeypadIndex by remember { mutableIntStateOf(0) }
 
     val activeProfile = profiles.firstOrNull { it.id == activeProfileId }
 
@@ -100,8 +101,7 @@ fun UserProfilesManagementScreen(
 
     LaunchedEffect(mode, activeProfileId) {
         if (mode != ManagementMode.ACTIONS) return@LaunchedEffect
-        val active = activeProfile
-        if (active == null) return@LaunchedEffect
+        if (activeProfile == null) return@LaunchedEffect
 
         isLoadingAuthUser = true
         authUserResult = null
@@ -321,7 +321,7 @@ fun UserProfilesManagementScreen(
                                 val activity = context as? Activity
                                 if (activity != null) {
                                     scope.launch {
-                                        delay(100)
+                                        delay(100.milliseconds)
                                         activity.recreate()
                                     }
                                 }

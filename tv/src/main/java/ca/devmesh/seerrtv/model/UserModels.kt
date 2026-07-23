@@ -38,12 +38,6 @@ object SafeIntSerializer : KSerializer<Int?> {
 }
 
 @Serializable
-data class UserResponse(
-    val pageInfo: PageInfo,
-    val results: List<User>
-)
-
-@Serializable
 data class User(
     val id: Int,
     val email: String? = null,

@@ -14,18 +14,6 @@ enum class MediaType {
     TV
 }
 
-enum class RequestStatus(val value: Int) {
-    UNKNOWN(1),
-    PENDING(2),
-    PROCESSING(3),
-    PARTIALLY_AVAILABLE(4),
-    AVAILABLE(5);
-
-    companion object {
-        fun fromInt(value: Int) = entries.find { it.value == value } ?: UNKNOWN
-    }
-}
-
 @Serializable
 data class PaginatedMediaResponse(
     val pageInfo: PageInfo,

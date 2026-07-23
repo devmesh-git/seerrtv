@@ -64,6 +64,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
 import android.widget.Toast
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 // resolveString and an onKeyEvent Toast resolve resources outside composable scope.
@@ -111,7 +112,7 @@ fun IssueReportModal(
     LaunchedEffect(isVisible) {
         if (isVisible) {
             Log.d("IssueReportModal", "🎯 Modal is visible, requesting focus")
-            kotlinx.coroutines.delay(100)
+            kotlinx.coroutines.delay(100.milliseconds)
             focusRequester.requestFocus()
             Log.d("IssueReportModal", "🎯 Focus requested")
         }
@@ -227,8 +228,7 @@ fun IssueReportModal(
 
                     // Auto-scroll to keep focused item within viewport in a fluid way
                     fun computeFocusIndex(): Int {
-                        val afterHeader = if (isSeries) 3 else 1
-                        val issueTypeTitleIndex = afterHeader
+                        val issueTypeTitleIndex = if (isSeries) 3 else 1
                         val issueTypeStart = issueTypeTitleIndex + 1
                         val commonIssuesTitle = issueTypeStart + IssueType.entries.size
                         val precannedStart = commonIssuesTitle + 1
@@ -536,7 +536,7 @@ fun IssueReportModal(
                             val textFieldFocusRequester = remember { FocusRequester() }
                             LaunchedEffect(key1 = keyboardTrigger) {
                                 if (isFocused && keyboardTrigger > 0) {
-                                    kotlinx.coroutines.delay(100)
+                                    kotlinx.coroutines.delay(100.milliseconds)
                                     textFieldFocusRequester.requestFocus()
                                 }
                             }

@@ -20,6 +20,7 @@ import ca.devmesh.seerrtv.model.MediaDetails
 import ca.devmesh.seerrtv.model.Request
 import ca.devmesh.seerrtv.viewmodel.SeerrViewModel
 import ca.devmesh.seerrtv.model.RelatedVideo
+import kotlin.time.Duration.Companion.milliseconds
 
 // Data class to hold media status information
 data class MediaStatusInfo(
@@ -43,7 +44,7 @@ fun TVMessage(
     onDismiss: () -> Unit
 ) {
     LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(3000) // Wait 3 seconds
+        kotlinx.coroutines.delay(3000.milliseconds) // Wait 3 seconds
         onDismiss()
     }
 

@@ -163,18 +163,6 @@ object CommonUtil {
         )
     }
 
-    fun formatDate(date: String?): String {
-        if (date.isNullOrEmpty()) return ""
-        val inputFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-        val outputFormat = SimpleDateFormat("MMMM d, yyyy", Locale.US)
-        return try {
-            val parsedDate = inputFormat.parse(date)
-            outputFormat.format(parsedDate ?: return "")
-        } catch (_: Exception) {
-            ""
-        }
-    }
-
     /**
      * Short month format for compact display (e.g. "Oct 15, 1999" in English).
      * Uses [locale] for month names so dates display in the app's language.

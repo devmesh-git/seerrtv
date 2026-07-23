@@ -1,3 +1,8 @@
+// dependencyResolutionManagement/RepositoriesMode are @Incubating (since Gradle 6.8) but are the
+// standard settings DSL — the Android Studio new-project template itself uses them. Nothing
+// stable exists to migrate to; suppress the IDE's unstable-API warnings.
+@file:Suppress("UnstableApiUsage")
+
 pluginManagement {
     repositories {
         mavenCentral()

@@ -35,6 +35,7 @@ import ca.devmesh.seerrtv.model.DownloadStatus
 import ca.devmesh.seerrtv.R
 import java.time.Instant
 import kotlinx.coroutines.delay
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun AppLogo(
@@ -81,27 +82,6 @@ fun VersionNumber(
     )
 }
 
-@Composable
-fun DevMeshBranding(
-    modifier: Modifier = Modifier
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier
-    ) {
-        Image(
-            painter = painterResource(id = R.drawable.devmesh_logo),
-            contentDescription = stringResource(R.string.common_devmeshLogo),
-            modifier = Modifier.size(24.dp)
-        )
-        Spacer(modifier = Modifier.width(8.dp))
-        Text(
-            text = "devmesh.ca",
-            color = Color.White,
-            fontSize = 14.sp
-        )
-    }
-}
 
 @Composable
 // Relative-date strings are resolved with context.getString inside a non-composable
@@ -133,7 +113,7 @@ fun AutoUpdatingHumanizedDate(
                     diffSeconds < 86400 -> 300000L // Update every 5 minutes if less than a day
                     else -> 3600000L // Update every hour for older dates
                 }
-                delay(delay)
+                delay(delay.milliseconds)
                 tick = System.currentTimeMillis()
             } else {
                 break // Exit the loop if date is null

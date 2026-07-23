@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import android.app.Application
+import kotlin.time.Duration.Companion.milliseconds
 
 @HiltViewModel
 class MediaDiscoveryViewModel @Inject constructor(
@@ -41,7 +42,7 @@ class MediaDiscoveryViewModel @Inject constructor(
     private val _currentFilters = MutableStateFlow<BrowseModels.MediaFilters?>(null)
     val currentFilters: StateFlow<BrowseModels.MediaFilters?> = _currentFilters
 
-    private val _currentSort = MutableStateFlow<BrowseModels.SortOption>(BrowseModels.SortOption.default())
+    private val _currentSort = MutableStateFlow(BrowseModels.SortOption.default())
     val currentSort: StateFlow<BrowseModels.SortOption> = _currentSort
 
     private val _activeFilterCount = MutableStateFlow(0)
@@ -64,28 +65,22 @@ class MediaDiscoveryViewModel @Inject constructor(
     private val _keywordSearchResults = MutableStateFlow<List<ca.devmesh.seerrtv.model.Keyword>>(emptyList())
     val keywordSearchResults: StateFlow<List<ca.devmesh.seerrtv.model.Keyword>> = _keywordSearchResults
     
-    private val _studioSearchResults = MutableStateFlow<List<ca.devmesh.seerrtv.data.SeerrApiService.CompanySearchResult>>(emptyList())
-    val studioSearchResults: StateFlow<List<ca.devmesh.seerrtv.data.SeerrApiService.CompanySearchResult>> = _studioSearchResults
+    private val _studioSearchResults = MutableStateFlow<List<SeerrApiService.CompanySearchResult>>(emptyList())
+    val studioSearchResults: StateFlow<List<SeerrApiService.CompanySearchResult>> = _studioSearchResults
     
     private val _selectedStudioName = MutableStateFlow<String?>(null)
     val selectedStudioName: StateFlow<String?> = _selectedStudioName
     
-    private val _networkSearchResults = MutableStateFlow<List<ca.devmesh.seerrtv.data.SeerrApiService.NetworkResponse>>(emptyList())
-    val networkSearchResults: StateFlow<List<ca.devmesh.seerrtv.data.SeerrApiService.NetworkResponse>> = _networkSearchResults
+    private val _availableGenres = MutableStateFlow<List<SeerrApiService.GenreResponse>>(emptyList())
+    val availableGenres: StateFlow<List<SeerrApiService.GenreResponse>> = _availableGenres
 
-    private val _availableGenres = MutableStateFlow<List<ca.devmesh.seerrtv.data.SeerrApiService.GenreResponse>>(emptyList())
-    val availableGenres: StateFlow<List<ca.devmesh.seerrtv.data.SeerrApiService.GenreResponse>> = _availableGenres
-
-    private val _availableStudios = MutableStateFlow<List<ca.devmesh.seerrtv.data.SeerrApiService.StudioResponse>>(emptyList())
-    val availableStudios: StateFlow<List<ca.devmesh.seerrtv.data.SeerrApiService.StudioResponse>> = _availableStudios
-
-    private val _availableNetworks = MutableStateFlow<List<ca.devmesh.seerrtv.data.SeerrApiService.NetworkResponse>>(emptyList())
-    val availableNetworks: StateFlow<List<ca.devmesh.seerrtv.data.SeerrApiService.NetworkResponse>> = _availableNetworks
+    private val _availableNetworks = MutableStateFlow<List<SeerrApiService.NetworkResponse>>(emptyList())
+    val availableNetworks: StateFlow<List<SeerrApiService.NetworkResponse>> = _availableNetworks
 
     private val _availableWatchProviders = MutableStateFlow<List<ca.devmesh.seerrtv.model.Provider>>(emptyList())
     val availableWatchProviders: StateFlow<List<ca.devmesh.seerrtv.model.Provider>> = _availableWatchProviders
 
-    private val _selectedWatchRegion = MutableStateFlow<String>("US")
+    private val _selectedWatchRegion = MutableStateFlow("US")
     val selectedWatchRegion: StateFlow<String> = _selectedWatchRegion
 
     private val authErrorState = AuthenticationErrorState()
@@ -126,7 +121,7 @@ class MediaDiscoveryViewModel @Inject constructor(
 
             setLastAction {
                 searchJob = viewModelScope.launch {
-                    delay(500) // Debounce delay
+                    delay(500.milliseconds) // Debounce delay
                     search(query, false)
                 }
             }
@@ -157,8 +152,8 @@ class MediaDiscoveryViewModel @Inject constructor(
                                 Log.d("MediaDiscoveryViewModel", "⚠️ Filtered out ${newResults.size - uniqueNewResults.size} duplicate items from search")
                             }
                         }
-                        
-                        _searchResults.value = _searchResults.value + uniqueNewResults
+
+                        _searchResults.value += uniqueNewResults
                     } else {
                         _searchResults.value = newResults
                     }
@@ -225,8 +220,8 @@ class MediaDiscoveryViewModel @Inject constructor(
                                 Log.d("MediaDiscoveryViewModel", "⚠️ Filtered out ${newResults.size - uniqueNewResults.size} duplicate movie keyword items")
                             }
                         }
-                        
-                        _searchResults.value = _searchResults.value + uniqueNewResults
+
+                        _searchResults.value += uniqueNewResults
                     } else {
                         _searchResults.value = newResults
                     }
@@ -292,8 +287,8 @@ class MediaDiscoveryViewModel @Inject constructor(
                                 Log.d("MediaDiscoveryViewModel", "⚠️ Filtered out ${newResults.size - uniqueNewResults.size} duplicate TV keyword items")
                             }
                         }
-                        
-                        _searchResults.value = _searchResults.value + uniqueNewResults
+
+                        _searchResults.value += uniqueNewResults
                     } else {
                         _searchResults.value = newResults
                     }
@@ -319,98 +314,6 @@ class MediaDiscoveryViewModel @Inject constructor(
         } finally {
             _isLoading.value = false
             lastLoadTimestamp = System.currentTimeMillis()
-        }
-    }
-
-    /**
-     * Load popular movies for initial browse screen
-     */
-    fun loadPopularMovies() {
-        currentDiscoveryMode = DiscoveryMode.MOVIE_BROWSE
-        _searchResults.value = emptyList()
-        _activeFilterCount.value = 0
-        
-        setLastAction {
-            viewModelScope.launch {
-                loadPopularMoviesInternal()
-            }
-        }
-    }
-
-    /**
-     * Load popular TV series for initial browse screen
-     */
-    fun loadPopularSeries() {
-        currentDiscoveryMode = DiscoveryMode.TV_BROWSE
-        _searchResults.value = emptyList()
-        _activeFilterCount.value = 0
-        
-        setLastAction {
-            viewModelScope.launch {
-                loadPopularSeriesInternal()
-            }
-        }
-    }
-
-    private suspend fun loadPopularMoviesInternal() {
-        if (_isLoading.value) return
-        
-        _isLoading.value = true
-        
-        try {
-            Log.d("MediaDiscoveryViewModel", "🎬 Loading popular movies...")
-            val result = apiService.discoverMovies(reset = true)
-            
-            when (result) {
-                is ApiResult.Success<List<Media>> -> {
-                    _searchResults.value = result.data.map { it.toSearchResult("movie") }
-                    _hasMoreResults.value = result.data.size >= 20 // Assume more if we got a full page
-                    Log.d("MediaDiscoveryViewModel", "✅ Loaded ${result.data.size} popular movies")
-                }
-                is ApiResult.Error -> {
-                    if (handleApiError(result.exception, result.statusCode)) {
-                        authErrorState.showError()
-                    }
-                }
-                is ApiResult.Loading -> {
-                    // Handle loading state if needed
-                }
-            }
-        } catch (e: Exception) {
-            Log.e("MediaDiscoveryViewModel", "❌ Exception loading popular movies", e)
-        } finally {
-            _isLoading.value = false
-        }
-    }
-
-    private suspend fun loadPopularSeriesInternal() {
-        if (_isLoading.value) return
-        
-        _isLoading.value = true
-        
-        try {
-            Log.d("MediaDiscoveryViewModel", "📺 Loading popular series...")
-            val result = apiService.getPopularSeries(reset = true)
-            
-            when (result) {
-                is ApiResult.Success<List<Media>> -> {
-                    _searchResults.value = result.data.map { it.toSearchResult("tv") }
-                    _hasMoreResults.value = result.data.size >= 20 // Assume more if we got a full page
-                    Log.d("MediaDiscoveryViewModel", "✅ Loaded ${result.data.size} popular series")
-                }
-                is ApiResult.Error -> {
-                    if (handleApiError(result.exception, result.statusCode)) {
-                        authErrorState.showError()
-                    }
-                }
-                is ApiResult.Loading -> {
-                    // Handle loading state if needed
-                }
-            }
-        } catch (e: Exception) {
-            Log.e("MediaDiscoveryViewModel", "❌ Exception loading popular series", e)
-        } finally {
-            _isLoading.value = false
         }
     }
 
@@ -480,7 +383,7 @@ class MediaDiscoveryViewModel @Inject constructor(
         action.invoke()
     }
 
-    private fun ca.devmesh.seerrtv.model.Media.toSearchResult(type: String): SearchResult {
+    private fun Media.toSearchResult(type: String): SearchResult {
         return when (type) {
             "movie" -> Movie(
                 id = this.id,
@@ -558,8 +461,8 @@ class MediaDiscoveryViewModel @Inject constructor(
                                 Log.d("MediaDiscoveryViewModel", "⚠️ Filtered out ${newResults.size - uniqueNewResults.size} duplicate items")
                             }
                         }
-                        
-                        _searchResults.value = _searchResults.value + uniqueNewResults
+
+                        _searchResults.value += uniqueNewResults
                     } else {
                         _searchResults.value = newResults
                     }
@@ -625,8 +528,8 @@ class MediaDiscoveryViewModel @Inject constructor(
                                 Log.d("MediaDiscoveryViewModel", "⚠️ Filtered out ${newResults.size - uniqueNewResults.size} duplicate TV genre items")
                             }
                         }
-                        
-                        _searchResults.value = _searchResults.value + uniqueNewResults
+
+                        _searchResults.value += uniqueNewResults
                     } else {
                         _searchResults.value = newResults
                     }
@@ -692,8 +595,8 @@ class MediaDiscoveryViewModel @Inject constructor(
                                 Log.d("MediaDiscoveryViewModel", "⚠️ Filtered out ${newResults.size - uniqueNewResults.size} duplicate movie studio items")
                             }
                         }
-                        
-                        _searchResults.value = _searchResults.value + uniqueNewResults
+
+                        _searchResults.value += uniqueNewResults
                     } else {
                         _searchResults.value = newResults
                     }
@@ -759,8 +662,8 @@ class MediaDiscoveryViewModel @Inject constructor(
                                 Log.d("MediaDiscoveryViewModel", "⚠️ Filtered out ${newResults.size - uniqueNewResults.size} duplicate TV network items")
                             }
                         }
-                        
-                        _searchResults.value = _searchResults.value + uniqueNewResults
+
+                        _searchResults.value += uniqueNewResults
                     } else {
                         _searchResults.value = newResults
                     }
@@ -950,17 +853,6 @@ class MediaDiscoveryViewModel @Inject constructor(
         }
     }
     
-    fun loadStudios() {
-        viewModelScope.launch {
-            // Load first page of studios
-            when (val result = apiService.getStudios(reset = true)) {
-                is ApiResult.Success -> _availableStudios.value = result.data
-                is ApiResult.Error -> Log.e("MediaDiscoveryViewModel", "Failed to load studios", result.exception)
-                else -> {}
-            }
-        }
-    }
-    
     fun loadNetworks() {
         viewModelScope.launch {
             // Load first page of networks
@@ -1080,37 +972,6 @@ class MediaDiscoveryViewModel @Inject constructor(
         
 
 
-    /**
-     * Apply new sort and reset pagination
-     */
-    fun applySort(sort: BrowseModels.SortOption) {
-        _currentSort.value = sort
-        
-        // Reset pagination and results
-        _searchResults.value = emptyList()
-        _hasMoreResults.value = true
-        
-        // Trigger new search with current filters
-        val currentFilters = _currentFilters.value
-        if (currentFilters != null) {
-            when (currentFilters.mediaType) {
-                MediaType.MOVIE -> browseMovies(currentFilters, sort)
-                MediaType.TV -> browseSeries(currentFilters, sort)
-            }
-        }
-    }
-
-    /**
-     * Clear all filters and reset to defaults
-     */
-    fun clearFilters() {
-        val currentFilters = _currentFilters.value
-        if (currentFilters != null) {
-            val defaultFilters = BrowseModels.MediaFilters.default(currentFilters.mediaType)
-            applyFilters(defaultFilters)
-        }
-    }
-
     private suspend fun loadMoviesWithBrowse(filters: BrowseModels.MediaFilters, sort: BrowseModels.SortOption, loadMore: Boolean = false) {
         if (_isLoading.value) return
         
@@ -1136,8 +997,8 @@ class MediaDiscoveryViewModel @Inject constructor(
                                 Log.d("MediaDiscoveryViewModel", "⚠️ Filtered out ${newResults.size - uniqueNewResults.size} duplicate movie browse items")
                             }
                         }
-                        
-                        _searchResults.value = _searchResults.value + uniqueNewResults
+
+                        _searchResults.value += uniqueNewResults
                     } else {
                         _searchResults.value = newResults
                     }
@@ -1192,8 +1053,8 @@ class MediaDiscoveryViewModel @Inject constructor(
                                 Log.d("MediaDiscoveryViewModel", "⚠️ Filtered out ${newResults.size - uniqueNewResults.size} duplicate TV browse items")
                             }
                         }
-                        
-                        _searchResults.value = _searchResults.value + uniqueNewResults
+
+                        _searchResults.value += uniqueNewResults
                     } else {
                         _searchResults.value = newResults
                     }
@@ -1223,25 +1084,7 @@ class MediaDiscoveryViewModel @Inject constructor(
         }
     }
 
-    /**
-     * Update the current sort option without triggering a reload.
-     * Call browseMovies() or browseSeries() after to apply the new sort.
-     */
-    fun setSort(sort: BrowseModels.SortOption) {
-        _currentSort.value = sort
-    }
-
-    /**
-     * Update the current filters without triggering a reload.
-     * Call browseMovies() or browseSeries() after to apply the new filters.
-     */
-    fun setFilters(filters: BrowseModels.MediaFilters) {
-        _currentFilters.value = filters
-        _activeFilterCount.value = filters.activeCount()
-    }
-
     override fun onCleared() {
-        super.onCleared()
         searchJob?.cancel()
     }
 }

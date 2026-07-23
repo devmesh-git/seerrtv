@@ -91,6 +91,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.time.Duration.Companion.milliseconds
 
 // Layout constants for main screen (single source of truth for row alignment and heights)
 private val MEDIA_DETAILS_AREA_HEIGHT = 150.dp
@@ -242,7 +243,7 @@ fun MainScreen(
     // Selected state for custom slider rows (null = no custom row focused)
     // Declared here so the focus sync LaunchedEffect below can reference them
     val selectedCustomSliderId = remember { mutableStateOf<Int?>(null) }
-    val selectedCustomSliderItemIndex = remember { mutableStateOf(0) }
+    val selectedCustomSliderItemIndex = remember { mutableIntStateOf(0) }
 
     // CONSOLIDATED: Bidirectional sync between AppFocusManager and local state
     LaunchedEffect(currentAppFocus, selectedCategory.value, selectedMediaIndex.value) {
@@ -298,11 +299,11 @@ fun MainScreen(
                     }
                     is MainScreenFocusState.CustomSliderRow -> {
                         selectedCustomSliderId.value = mainScreenFocus.sliderId
-                        selectedCustomSliderItemIndex.value = 0
+                        selectedCustomSliderItemIndex.intValue = 0
                     }
                     is MainScreenFocusState.CustomSliderItem -> {
                         selectedCustomSliderId.value = mainScreenFocus.sliderId
-                        selectedCustomSliderItemIndex.value = mainScreenFocus.index
+                        selectedCustomSliderItemIndex.intValue = mainScreenFocus.index
                     }
                     is MainScreenFocusState.AppsRow -> {
                         // No local state to sync for Apps row; index lives in focus only
@@ -392,7 +393,7 @@ fun MainScreen(
 
             // Auto-hide the hint after 7 seconds
             coroutineScope.launch {
-                delay(7000)
+                delay(7000.milliseconds)
                 uiState.showRefreshHint = false
             }
         } else if (!isInTopBar && uiState.isInTopBar) {
@@ -577,7 +578,7 @@ fun MainScreen(
             }
             is ActiveRow.Custom -> {
                 selectedCustomSliderId.value = row.sliderId
-                selectedCustomSliderItemIndex.value = 0
+                selectedCustomSliderItemIndex.intValue = 0
                 appFocusManager.setFocus(
                     AppFocusState.MainScreen(MainScreenFocusState.CustomSliderRow(row.sliderId))
                 )
@@ -719,8 +720,8 @@ fun MainScreen(
                     is MainScreenFocusState.CustomSliderRow, is MainScreenFocusState.CustomSliderItem -> {
                         val sliderId = selectedCustomSliderId.value
                         if (sliderId != null) {
-                            val newIndex = (selectedCustomSliderItemIndex.value - 1).coerceAtLeast(0)
-                            selectedCustomSliderItemIndex.value = newIndex
+                            val newIndex = (selectedCustomSliderItemIndex.intValue - 1).coerceAtLeast(0)
+                            selectedCustomSliderItemIndex.intValue = newIndex
                             appFocusManager.setFocus(
                                 AppFocusState.MainScreen(
                                     MainScreenFocusState.CustomSliderItem(sliderId, newIndex)
@@ -851,12 +852,12 @@ fun MainScreen(
                             val sliderResult = customSliderData[sliderId]
                             if (sliderResult is ApiResult.Success) {
                                 val mediaCount = sliderResult.data.size
-                                val isAtLastItem = selectedCustomSliderItemIndex.value >= mediaCount - 1
+                                val isAtLastItem = selectedCustomSliderItemIndex.intValue >= mediaCount - 1
                                 val hasMorePages = sliderResult.paginationInfo?.hasMorePages != false
                                 val isLoadingMore = viewModel.isLoadingMoreCustomSlider(sliderId)
                                 if (!isAtLastItem || !hasMorePages) {
-                                    val newIndex = (selectedCustomSliderItemIndex.value + 1).coerceAtMost(mediaCount - 1)
-                                    selectedCustomSliderItemIndex.value = newIndex
+                                    val newIndex = (selectedCustomSliderItemIndex.intValue + 1).coerceAtMost(mediaCount - 1)
+                                    selectedCustomSliderItemIndex.intValue = newIndex
                                     appFocusManager.setFocus(
                                         AppFocusState.MainScreen(MainScreenFocusState.CustomSliderItem(sliderId, newIndex))
                                     )
@@ -928,7 +929,7 @@ fun MainScreen(
                     is MainScreenFocusState.CustomSliderRow, is MainScreenFocusState.CustomSliderItem -> {
                         val sliderId = selectedCustomSliderId.value
                         if (sliderId != null) {
-                            val currentIndex = selectedCustomSliderItemIndex.value
+                            val currentIndex = selectedCustomSliderItemIndex.intValue
                             val sliderResult = customSliderData[sliderId]
                             if (sliderResult is ApiResult.Success && currentIndex < sliderResult.data.size) {
                                 val selectedItem = sliderResult.data[currentIndex]
@@ -1002,7 +1003,7 @@ fun MainScreen(
 
             // Fallback auto-hide in case isRefreshing callback is missed
             coroutineScope.launch {
-                delay(3000)
+                delay(3000.milliseconds)
                 if (uiState.isRefreshRowVisible) uiState.isRefreshRowVisible = false
             }
         },
@@ -1022,7 +1023,7 @@ fun MainScreen(
                         Toast.LENGTH_SHORT
                     ).show()
                     coroutineScope.launch {
-                        delay(2000)
+                        delay(2000.milliseconds)
                         uiState.backPressCount = 0
                     }
                 } else if (uiState.backPressCount == 2) {
@@ -1044,7 +1045,7 @@ fun MainScreen(
             return@LaunchedEffect
         }
         repeat(25) {
-            delay(50)
+            delay(50.milliseconds)
             holdToReorderProgress.floatValue = min(1f, (System.currentTimeMillis() - start) / 1200f)
         }
         holdToReorderProgress.floatValue = 0f
@@ -1057,7 +1058,7 @@ fun MainScreen(
             snapshotFlow { uiState.showRefreshHint }
                 .collect { showRefreshHint ->
                     if (showRefreshHint) {
-                        delay(3000)
+                        delay(3000.milliseconds)
                         uiState.showRefreshHint = false
                     }
                 }
@@ -1070,7 +1071,7 @@ fun MainScreen(
                     if (!showModal) {
                         // Modal was just closed, temporarily ignore key events
                         uiState.ignoreKeyEvents = true
-                        delay(300) // Match the modal exit animation duration
+                        delay(300.milliseconds) // Match the modal exit animation duration
                         uiState.ignoreKeyEvents = false
                         mainFocusRequester.requestFocus()
                     }
@@ -1157,7 +1158,7 @@ fun MainScreen(
                 if (bestIndex > 0) {
                     // First attempt - after UI has settled
                     coroutineScope.launch {
-                        delay(100)
+                        delay(100.milliseconds)
                         // Only update if we have a valid saved index
                         updateSelectedIndex(
                             selectedCategory,
@@ -1169,7 +1170,7 @@ fun MainScreen(
 
 
                         // Second attempt - a bit later to override any subsequent focus
-                        delay(200)
+                        delay(200.milliseconds)
                         updateSelectedIndex(
                             selectedCategory,
                             selectedMediaIndex,
@@ -1180,7 +1181,7 @@ fun MainScreen(
 
 
                         // Third attempt - final override after everything else is done
-                        delay(500)
+                        delay(500.milliseconds)
                         updateSelectedIndex(
                             selectedCategory,
                             selectedMediaIndex,
@@ -1206,7 +1207,7 @@ fun MainScreen(
 
                     // After a brief delay, force it again to ensure it takes effect
                     coroutineScope.launch {
-                        delay(100)
+                        delay(100.milliseconds)
                         updateSelectedIndex(selectedCategory, selectedMediaIndex, savedIndex, force = true)
                         forceUIUpdate()
 
@@ -1233,7 +1234,7 @@ fun MainScreen(
 
                     // Force carousel scroll to show the selected item
                     coroutineScope.launch {
-                        delay(150) // Short delay to ensure state is updated
+                        delay(150.milliseconds) // Short delay to ensure state is updated
 
                         // Force a recomposition of the category rows
                         forceUIUpdate()
@@ -1290,7 +1291,7 @@ fun MainScreen(
 
                         // Give the server more time to update its database
                         // For new requests, allow ~2 seconds for backend processing
-                        delay(2000)
+                        delay(2000.milliseconds)
 
                         // Force carousel reset first to clear any cached state
                         viewModel.forceCarouselReset(MediaCategory.RECENT_REQUESTS, animate = true)
@@ -1305,7 +1306,7 @@ fun MainScreen(
                         viewModel.refreshCategoryWithForce(MediaCategory.RECENT_REQUESTS)
 
                         // Allow sufficient time for the refresh to complete and data to load
-                        delay(1500)
+                        delay(1500.milliseconds)
 
                         // Force a second carousel reset to ensure updated data is displayed
                         viewModel.forceCarouselReset(MediaCategory.RECENT_REQUESTS, animate = true)
@@ -1330,7 +1331,7 @@ fun MainScreen(
                 if (selectedCategory.value == MediaCategory.RECENT_REQUESTS) {
                     coroutineScope.launch {
                         // Wait for refresh to complete
-                        delay(2000)
+                        delay(2000.milliseconds)
 
                         val categoryResult = categoryData[MediaCategory.RECENT_REQUESTS]
                         if (categoryResult is ApiResult.Success) {
@@ -1412,7 +1413,7 @@ fun MainScreen(
 
             // Add a brief delay before allowing scrolling animations
             // This helps prevent flickering when returning from details screen
-            delay(300)
+            delay(300.milliseconds)
 
             // Log refresh status when returning from any screen for debugging
             Log.d(
@@ -1482,11 +1483,11 @@ fun MainScreen(
     }
 
     // Update selected media / backdrop when a custom slider item is highlighted
-    LaunchedEffect(selectedCustomSliderId.value, selectedCustomSliderItemIndex.value, customSliderData) {
+    LaunchedEffect(selectedCustomSliderId.value, selectedCustomSliderItemIndex.intValue, customSliderData) {
         val sliderId = selectedCustomSliderId.value ?: return@LaunchedEffect
         val sliderResult = customSliderData[sliderId]
         if (sliderResult is ApiResult.Success) {
-            val newMedia = sliderResult.data.getOrNull(selectedCustomSliderItemIndex.value)
+            val newMedia = sliderResult.data.getOrNull(selectedCustomSliderItemIndex.intValue)
             if (newMedia != null) {
                 mediaState.selectedMedia = newMedia
                 viewModel.updateCurrentMedia(newMedia)
@@ -1602,7 +1603,7 @@ fun MainScreen(
             selectedCategory.value = selectedCategory.value
             if (uiState.isRefreshRowVisible) {
                 // Allow the "Refreshed" text to be visible before hiding
-                delay(1500)
+                delay(1500.milliseconds)
                 uiState.isRefreshRowVisible = false
             }
         }
@@ -1910,7 +1911,7 @@ fun MainScreen(
         when {
             uiState.cameFromDownNavigation -> {
                 // Keep the flag active for 1 second to ensure effects complete
-                delay(1000)
+                delay(1000.milliseconds)
                 uiState.cameFromDownNavigation = false
                 
                 if (BuildConfig.DEBUG) {
@@ -1919,7 +1920,7 @@ fun MainScreen(
             }
             uiState.ignoreKeyEvents -> {
                 // Safety timeout - never block key events for more than 300 ms
-                delay(300)
+                delay(300.milliseconds)
                 if (uiState.ignoreKeyEvents) {
                     uiState.ignoreKeyEvents = false
                     if (BuildConfig.DEBUG) {
@@ -1968,7 +1969,7 @@ fun ScrollableCategoriesSection(
     allActiveRows: List<ActiveRow> = emptyList(),
     customSliderData: Map<Int, ApiResult<List<Media>>> = emptyMap(),
     selectedCustomSliderId: MutableState<Int?> = mutableStateOf(null),
-    selectedCustomSliderItemIndex: MutableState<Int> = mutableStateOf(0),
+    selectedCustomSliderItemIndex: MutableState<Int> = mutableIntStateOf(0),
     discoverSliders: List<ca.devmesh.seerrtv.viewmodel.DiscoverSlider> = emptyList()
 ) {
     if (BuildConfig.DEBUG) {
@@ -2052,8 +2053,7 @@ fun ScrollableCategoriesSection(
                 }
             }
             // Render the full ordered list of rows (standard built-in + custom slider rows)
-            val rowList: List<ActiveRow> = if (allActiveRows.isNotEmpty()) allActiveRows
-                else categories.map { ActiveRow.Standard(it) }
+            val rowList: List<ActiveRow> = allActiveRows.ifEmpty { categories.map { ActiveRow.Standard(it) } }
             if (BuildConfig.DEBUG) {
                 Log.d("ScrollableCategoriesSection", "🎬 LazyColumn rendering ${rowList.size} rows (${rowList.count { it is ActiveRow.Custom }} custom)")
             }
@@ -2139,8 +2139,7 @@ fun ScrollableCategoriesSection(
     val hasAppsRow = installedApps != null
     val density = LocalDensity.current
     val fixedScrollOffsetPx = -with(density) { ROW_SCROLL_ANCHOR.roundToPx() }
-    val rowList: List<ActiveRow> = if (allActiveRows.isNotEmpty()) allActiveRows
-        else categories.map { ActiveRow.Standard(it) }
+    val rowList: List<ActiveRow> = allActiveRows.ifEmpty { categories.map { ActiveRow.Standard(it) } }
     LaunchedEffect(selectedCategory.value, selectedCustomSliderId.value, isOnAppsRow, hasAppsRow) {
         val rowIndex = when {
             hasAppsRow && isOnAppsRow -> 0
@@ -2346,7 +2345,7 @@ fun CustomSliderSection(
     imageLoader: ImageLoader,
     isInTopBar: Boolean = false,
 ) {
-    val lazyRowState = androidx.compose.foundation.lazy.rememberLazyListState()
+    val lazyRowState = rememberLazyListState()
 
     // Scroll to keep the selected item visible
     LaunchedEffect(selectedItemIndex) {
@@ -2359,7 +2358,7 @@ fun CustomSliderSection(
         Text(
             text = title,
             style = MaterialTheme.typography.headlineMedium,
-            color = androidx.compose.ui.graphics.Color.White,
+            color = Color.White,
             modifier = Modifier.padding(bottom = 8.dp)
         )
 

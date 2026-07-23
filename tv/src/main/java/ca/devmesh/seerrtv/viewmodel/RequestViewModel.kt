@@ -15,6 +15,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.time.Duration.Companion.milliseconds
 
 @HiltViewModel
 class RequestViewModel @Inject constructor(
@@ -343,7 +344,7 @@ class RequestViewModel @Inject constructor(
         viewModelScope.launch {
             mainViewModel?.let { vm ->
                 Log.d("RequestViewModel", "🔄 Direct force refresh of RECENT_REQUESTS - waiting 1 second for backend to process")
-                delay(1000)
+                delay(1000.milliseconds)
                 vm.setRefreshRequired(true)
                 vm.clearCategoryData(MediaCategory.RECENT_REQUESTS)
                 vm.resetApiPagination(MediaCategory.RECENT_REQUESTS)

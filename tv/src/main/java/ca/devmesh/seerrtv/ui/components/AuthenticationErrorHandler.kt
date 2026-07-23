@@ -14,6 +14,7 @@ import ca.devmesh.seerrtv.ui.KeyUtils
 import ca.devmesh.seerrtv.util.SafeKeyEventHandler
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 @Composable
 fun AuthenticationErrorHandler(
@@ -32,7 +33,7 @@ fun AuthenticationErrorHandler(
         // Request focus when the dialog appears
         LaunchedEffect(Unit) {
             if (!hasRequestedInitialFocus) {
-                delay(150) // Slightly longer delay to ensure all components are rendered
+                delay(150.milliseconds) // Slightly longer delay to ensure all components are rendered
                 try {
                     dialogFocusRequester.requestFocus()
                     hasRequestedInitialFocus = true
@@ -74,10 +75,10 @@ fun AuthenticationErrorHandler(
                                                 if (selectedOption == 0) {
                                                     onRetry()
                                                 } else {
-                                                    delay(300) // Delay before reconfigure to ensure key consumption
+                                                    delay(300.milliseconds) // Delay before reconfigure to ensure key consumption
                                                     onReconfigure()
                                                 }
-                                                delay(200) // Additional delay after action
+                                                delay(200.milliseconds) // Additional delay after action
                                                 isHandlingEnter = false
                                             }
                                             true

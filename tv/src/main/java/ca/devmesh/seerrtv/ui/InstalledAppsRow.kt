@@ -31,7 +31,7 @@ import ca.devmesh.seerrtv.util.TvAppInfo
 
 /**
  * A horizontal row showing installed Android TV apps. Used only in the launcher build.
- * [selectedIndex] is the focused app. Parent handles Enter key to launch via [onLaunchApp].
+ * [selectedIndex] is the focused app. The parent handles the Enter key to launch apps.
  */
 @Composable
 fun InstalledAppsRow(
@@ -39,8 +39,7 @@ fun InstalledAppsRow(
     selectedIndex: Int,
     isRowFocused: Boolean,
     isReorderMode: Boolean = false,
-    holdToReorderProgress: Float = 0f,
-    onLaunchApp: (TvAppInfo) -> Unit = {}
+    holdToReorderProgress: Float = 0f
 ) {
     val listState = rememberLazyListState()
     val title = if (isReorderMode) stringResource(R.string.mainScreen_appsRowReorderTitle) else stringResource(R.string.mainScreen_appsRow)

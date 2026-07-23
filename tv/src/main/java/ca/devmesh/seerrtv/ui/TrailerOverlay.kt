@@ -14,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -51,10 +52,10 @@ fun TrailerOverlay(
     val currentVideoId by rememberUpdatedState(videoId)
     val playerViewRef = remember { mutableStateOf<YouTubePlayerView?>(null) }
     val youTubePlayerRef = remember { mutableStateOf<YouTubePlayer?>(null) }
-    var currentSecond by remember { mutableStateOf(0f) }
-    var videoDuration by remember { mutableStateOf(0f) }
+    var currentSecond by remember { mutableFloatStateOf(0f) }
+    var videoDuration by remember { mutableFloatStateOf(0f) }
     var isPlaying by remember { mutableStateOf(false) }
-    var loadState by remember { mutableStateOf<LoadState>(LoadState.Loading) }
+    var loadState by remember { mutableStateOf(LoadState.Loading) }
     var hasInitialized by remember { mutableStateOf(false) }
 
     BackHandler(onBack = onClose)
@@ -150,7 +151,7 @@ fun TrailerOverlay(
                             }
                             override fun onError(
                                 youTubePlayer: YouTubePlayer,
-                                error: com.pierfrancescosoffritti.androidyoutubeplayer.core.player.PlayerConstants.PlayerError
+                                error: PlayerConstants.PlayerError
                             ) {
                                 loadState = LoadState.Error
                                 Log.w(TAG, "YouTube player error: $error")

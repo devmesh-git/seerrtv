@@ -35,7 +35,6 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.ui.Alignment.Companion.CenterVertically
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.graphics.RectangleShape
@@ -47,6 +46,7 @@ import androidx.compose.ui.draw.shadow
 import ca.devmesh.seerrtv.R
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
 
 /** Lazy row slot width — keep close to avatar + label; extra width only adds empty space between circles. */
 private val ProfileCarouselItemWidth = 120.dp
@@ -76,7 +76,7 @@ fun UserProfileSelectionScreen(
     var mode by remember { mutableStateOf(ProfileGateMode.SELECT_LIST) }
 
     var selectedProfileIndex by remember {
-        mutableStateOf(
+        mutableIntStateOf(
             profiles.indexOfFirst { it.id == initialSelectionId }.let { idx ->
                 if (idx >= 0) idx else 0
             }
@@ -85,7 +85,7 @@ fun UserProfileSelectionScreen(
 
     var pinBuffer by remember { mutableStateOf("") }
     var pinError by remember { mutableStateOf<String?>(null) }
-    var keypadSelectedIndex by remember { mutableStateOf(0) }
+    var keypadSelectedIndex by remember { mutableIntStateOf(0) }
     // Some remotes dispatch Back twice (down/up); swallow one after closing PIN modal.
     var consumeNextBackOnSelectList by remember { mutableStateOf(false) }
 
@@ -132,7 +132,7 @@ fun UserProfileSelectionScreen(
         val activity = context as? Activity
         if (activity != null) {
             scope.launch {
-                delay(100)
+                delay(100.milliseconds)
                 activity.recreate()
             }
         }
