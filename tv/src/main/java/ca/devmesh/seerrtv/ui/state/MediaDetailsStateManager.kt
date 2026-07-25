@@ -12,19 +12,49 @@ import ca.devmesh.seerrtv.model.MediaDetails
 import ca.devmesh.seerrtv.model.MediaType
 import ca.devmesh.seerrtv.model.SimilarMediaItem
 import ca.devmesh.seerrtv.ui.components.MediaStatusInfo
+import ca.devmesh.seerrtv.ui.focus.AppFocusManager
+import ca.devmesh.seerrtv.ui.focus.AppFocusState
+import ca.devmesh.seerrtv.ui.focus.toDetailsFocusState
+import ca.devmesh.seerrtv.ui.focus.toFocusArea
 
 /**
  * Centralized state manager for MediaDetails screen
  * Consolidates all state variables while preserving existing interfaces
  */
 @Stable
-class MediaDetailsStateManager {
+class MediaDetailsStateManager(private val appFocusManager: AppFocusManager) {
     // Core media state
     var mediaDetailsState by mutableStateOf<ApiResult<MediaDetails>?>(null)
     var statusInfo by mutableStateOf<MediaStatusInfo?>(null)
 
-    // Focus and navigation states
-    var currentFocusArea by mutableIntStateOf(FocusArea.OVERVIEW)
+    /**
+     * The highlighted area, projected from [AppFocusManager] rather than stored alongside it.
+     *
+     * This used to be independent state mirrored to and from `appFocusManager.currentFocus` by a
+     * pair of effects, which had no notion of which side was authoritative: both fired on the same
+     * change and the manager-to-local direction was debounced, so anything written inside that
+     * window was echoed back over. The guards that tried to suppress the echo could not tell
+     * "nothing has been decided yet" from "the user is on the overview text", because both were
+     * [FocusArea.OVERVIEW] — which is how returning from an external app could leave the screen
+     * with no highlight at all.
+     *
+     * With one owner there is no echo to suppress, and [FocusArea.NONE] now means exactly one
+     * thing: some other surface (top bar, another screen, a freshly restored process) holds the
+     * focus, so the details screen has no highlight and needs to seed one.
+     *
+     * Reading [AppFocusManager.currentFocus] here is a snapshot read, so composables that read
+     * this property recompose on focus changes just as they did with the old backing state.
+     */
+    var currentFocusArea: Int
+        get() = (appFocusManager.currentFocus as? AppFocusState.DetailsScreen)
+            ?.focus
+            ?.toFocusArea()
+            ?: FocusArea.NONE
+        set(value) {
+            // NONE is not the details screen's to assert — whoever took the focus already did.
+            val target = value.toDetailsFocusState() ?: return
+            appFocusManager.setFocus(AppFocusState.DetailsScreen(target))
+        }
     var selectedCastIndex by mutableIntStateOf(0)
     var selectedCrewIndex by mutableIntStateOf(0)
     var selectedTagIndex by mutableIntStateOf(0)

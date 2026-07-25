@@ -25,5 +25,23 @@ object FocusArea {
     const val TRAILER = 16
     const val ISSUE = 17 // Issue reporting/details
     const val WATCHLIST_ACTION = 18
+
+    /**
+     * The areas that live in the details screen's action-button column. Which of these exist
+     * depends on availability, permissions and 4K capability, so the set can change while the
+     * screen loads — an area that drops out of the live button order draws no highlight at all
+     * and must be re-homed to a button that does exist.
+     */
+    val ACTION_BUTTONS = setOf(
+        PLAY,
+        REQUEST_HD,
+        REQUEST_4K,
+        REQUEST_SINGLE,
+        MANAGE_HD,
+        MANAGE_4K,
+        MANAGE_SINGLE,
+        WATCHLIST_ACTION,
+        TRAILER
+    )
 }
 

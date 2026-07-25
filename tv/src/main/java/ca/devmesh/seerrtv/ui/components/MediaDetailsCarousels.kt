@@ -119,9 +119,12 @@ fun MediaDetailsCarousels(
                 selectedIndex = selectedSimilarMediaIndex,
                 isFocused = currentFocusArea == FocusArea.SIMILAR_MEDIA,
                 onMediaClick = { mediaId, mediaType ->
+                    // Stack on top of the current title so Back returns to it (see the d-pad path
+                    // in MediaDetails, which saves this screen's position before navigating).
                     navigationManager.navigateToDetails(
                         mediaId.toString(),
-                        mediaType
+                        mediaType,
+                        singleTop = false
                     )
                 },
                 onLoadNextPage = {

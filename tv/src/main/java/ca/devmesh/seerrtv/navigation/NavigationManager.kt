@@ -46,7 +46,20 @@ class NavigationManager(
         }
     }
 
-    fun navigateToDetails(mediaId: String, mediaType: String, popUpTo: String? = null, showRequestModal: Boolean = false) {
+    /**
+     * @param singleTop reuses the top entry when it is already the details destination. Callers
+     * coming from another screen are unaffected either way, but a details-to-details navigation
+     * (Similar Movies, related media in the request modal) must pass false: collapsing the two into
+     * one entry is what made Back from a similar title jump to the main menu instead of returning
+     * to the title it was opened from.
+     */
+    fun navigateToDetails(
+        mediaId: String,
+        mediaType: String,
+        popUpTo: String? = null,
+        showRequestModal: Boolean = false,
+        singleTop: Boolean = true
+    ) {
         if (canNavigate()) {
             scope.launch {
                 _isNavigating.value = true
@@ -57,7 +70,7 @@ class NavigationManager(
                     "details/$mediaId/$mediaType"
                 }
                 navController.navigate(route) {
-                    launchSingleTop = true
+                    launchSingleTop = singleTop
                     restoreState = true
                     popUpTo?.let { routeStr ->
                         popUpTo(routeStr) {

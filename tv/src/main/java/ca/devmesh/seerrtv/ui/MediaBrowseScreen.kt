@@ -708,7 +708,9 @@ fun MediaBrowseScreen(
                     value = searchQuery,
                     onValueChange = { newValue ->
                         searchQuery = newValue
-                        viewModel.debouncedSearch(newValue)
+                        // Restrict results to this screen's media type: searching on Movies must
+                        // not surface series or people, and vice versa on Series.
+                        viewModel.debouncedSearch(newValue, mediaType)
                         // Reset row and column selection when search query changes
                         selectedRow = 0
                         selectedColumn = 0

@@ -11,6 +11,60 @@
   - Resume-time re-logins now go through `loginAndRefreshUser()`: `login()` only stores the session cookie, and with the splash path skipped nothing else would fetch `auth/me` — so the in-memory user would have kept the seeded/stale value until the next full launch.
   - On connection/profile change the persisted copies are dropped (`clearUserInfo`, `clearServiceCaches`) so a process restart can never seed state from a different server's account.
 
+- **Now reproduced.** 0.28.12 shipped a fix for this report based on analysis alone (a degraded `auth/me` payload), and the symptom survived it. The failing path has since been reproduced on a Google TV emulator and confirmed to be process death, not a degraded payload: open an unavailable title, launch the trailer, `adb shell am kill` the app while YouTube is foreground, then return. On 0.28.12 the screen comes back with `canRequest=false` and only the trailer button; on this build the Request button is intact. The degraded-payload guard from 0.28.12 is still in place — it was simply not what users were hitting.
+
+### Fixed: No focus highlight after returning to the details screen
+
+- **Symptom** – Coming back to the details screen — from the external trailer player, or after the process was killed behind it — left nothing highlighted. Every button rendered, but no white focus ring, so there was no visible cursor to move.
+
+- **Root cause** – `currentFocusArea` was screen-local state mirrored to and from the app-wide `AppFocusManager` by a pair of effects with no notion of which side was authoritative. Both fired on the same change and the manager-to-local direction was debounced, so the initial-focus pick could be clobbered before it was ever drawn. The guards meant to suppress that echo could not distinguish "nothing has been decided yet" from "the user is on the overview text" — both were `FocusArea.OVERVIEW`.
+
+- **Fix** – Returning to the app now re-homes the highlight to the screen's default action button (the Request button when it is available), and the highlight re-homes itself whenever the button it points at stops existing — `buttonFocusOrder` changes while capabilities load, turning `REQUEST_SINGLE` into the split `REQUEST_HD`/`REQUEST_4K` pair, and a stale area draws no highlight at all.
+
+### Changed: The details screen's focus has a single owner
+
+Groundwork for the fix above, and for the two focus bugs below it.
+
+- `MediaDetailsStateManager.currentFocusArea` is now a projection of `AppFocusManager` rather than independent state kept in step with it. Both mirror effects, their five echo-suppression guards and a 10 ms debounce are gone; `FocusArea.NONE` now means exactly one thing — some other surface holds the focus. Every existing assignment still works, writing through to the manager.
+- The four effects that each seeded focus for one arrival path (first entry, return from the top bar, return from `PersonScreen`, and a 150 ms timer that corrected capability-driven button changes) collapse into one invariant, driven by the button order actually changing rather than by a timer.
+- `FocusArea` ⇄ `DetailsFocusState` translation moves to `ui/focus/DetailsFocusMapping.kt`, exhaustive in both directions, so adding a focus state on either side is a compile error rather than a silently unmapped area.
+- Net ~230 lines removed. Verified on a Google TV emulator across every entry path into the screen: fresh navigation, split-button and carousel d-pad movement, the top-bar round trip, modals, `PersonScreen`, back to the main screen, Similar Movies, plain resume, and process death.
+
+### Fixed: Opening a title from Similar Movies had no highlight and kept the previous scroll position
+
+- **Symptom** – Selecting a title from Similar Movies opened it mid-page, scrolled where the previous title had been, with nothing highlighted.
+
+- **Root cause** – `navigateToDetails` pairs `restoreState = true` with `popUpTo { saveState = true }`, and Navigation keys that save/restore by *destination*, not by arguments. The incoming title therefore restored the outgoing title's `rememberSaveable` state — including the "returning from navigation" flag its predecessor had just set on the way out, and its `isFirstEntry = false`. The new screen concluded it was restoring a position, so it neither seeded its focus nor scrolled to the top. (`rememberSaveable`'s leading vararg is `inputs`, not the saved-state key, so passing the media key positionally never scoped the state per title; passing it as `key` is deprecated in favour of positional scoping.)
+
+- **Fix** – The details destination is wrapped in `key(mediaId, mediaType)`, giving each title its own positional identity so nothing carries across. Both `restoreState = true` call sites target this destination, so both are covered.
+
+- A second cause sat behind the same symptom: the incoming screen also inherited the outgoing title's `DetailsScreen(SimilarMedia)` focus, and accepting that as its own left it highlighting a carousel it never chose — which then dragged the auto-scroll down to that carousel instead of opening at the top. A focus carried in from elsewhere now only counts as this screen's when it was genuinely restored for this title.
+
+### Fixed: Back from a title opened via Similar Movies went to the main menu
+
+- **Symptom** – Opening a title from Similar Movies and pressing Back unwound to the main menu instead of returning to the title it was opened from.
+
+- **Root cause** – `navigateToDetails` sets `launchSingleTop = true`. Every other caller comes from a different destination, where that flag is inert, but a details-to-details navigation is already on the details destination — so the new title replaced the previous entry rather than stacking on it, and the parent was gone from the back stack.
+
+- **Fix** – `navigateToDetails` takes a `singleTop` flag; the two details-to-details call sites (the Similar Media d-pad path and the carousel's click handler) pass false. Back now returns to the originating title, restored to the scroll offset and carousel index it saved on the way out — and to its own highlight, which is read from that saved state rather than from the app-wide focus, since the latter now holds whatever the screen being left behind had chosen.
+
+- Restoring the saved scroll offset alone was not enough to make that highlight *visible*: the offset is clamped to `scrollState.maxValue`, which depends on layout that is frequently incomplete when the offset is applied, so the page landed short of where it was left with the highlighted row below the fold — the returning screen looked like it had lost focus entirely. Once the restore settles, the existing auto-scroll is re-run for the restored area, which positions it the same way the d-pad would and does not depend on layout timing.
+
+### Fixed: Searching inside Movies/Series browse returned the other media type and people
+
+- The browse screens search through the multi-search `search` endpoint, which mixes movies, series and people, and passed no type filter — so a title search on Movies surfaced series and cast members.
+- `debouncedSearch` now takes an optional media type; the browse screens pass their own and the Search screen keeps passing none. Because filtering a mixed page can leave only a couple of items — too short a grid to scroll, so `loadMore` would never fire — a filtered search pulls further pages until it has a usable batch, capped at 5 pages per load.
+
+### Fixed: Moving up to the Request button left the poster and overview off-screen
+
+- **Symptom** – Scrolling up from the carousels onto the Request button stopped short of the top of the page, so the poster image, title and overview stayed above the viewport.
+
+- **Root cause** – The auto-scroll anchored the page at the top only for the *first* action button and used a fixed 20% offset for everything below it. Any title with a Play button (anything already available) pushes Request off that first position, so it took the 20% branch — far enough down to cut off the header. The index was also computed over focus areas rather than rendered rows, so a split Request/Manage counted as two rows and pushed everything below it one row further down than it actually sits.
+
+- **Fix** – The buttons are grouped by rendered row, and focusing any of the top three rows anchors the page at the top, where the whole column is on screen anyway. Deeper rows in a long column keep the conservative offset, since there the button itself would fall below the fold.
+
+- The 4K half of a split Request was excluded from auto-scroll entirely, which is why the case with *no* other buttons still failed: moving up from the cast row lands on that half, and the exclusion left the page wherever it happened to be. The exclusion existed only because per-focus-area indexing gave the two halves different targets, so moving across the row jumped the page; grouping by row gives them the same target and the exclusion is no longer needed.
+
 ### Fixed: Playback retried the wrong media server on every launch (Jellyfin/Emby)
 
 - Jellyfin and Emby are frequently misconfigured as each other. The app already *detected* the correct type when a playback fallback succeeded — and saved it — but the saved value was never read: every playback re-tried the misconfigured type first and paid the fail-then-fallback latency again.
@@ -37,7 +91,7 @@ Full project inspection in Android Studio; every actionable finding verified aga
 
 ### Build tooling
 
-- Gradle 9.5.0 → 9.6.1; KSP 2.3.2 → 2.3.10, which properly supports AGP 9's built-in Kotlin — allowing removal of the experimental `android.disallowKotlinSourceSets=false` escape hatch (and its per-build warning) from `gradle.properties`.
+- Gradle 9.5.0 → 9.6.1; KSP 2.3.2 → 2.3.10, which properly supports AGP 9's built-in Kotlin — allowing removal of the experimental `android.disallowKotlinSourceSets=false` escape hatch (and its per-build warning) from `gradle.properties`. AGP 9.3.0 → 9.3.1.
 - detekt's lazy apply modernized to `pluginManager.apply(...)`; duplicate Compose BOM declaration dropped (`androidTestImplementation` extends `implementation`, so the androidTest classpath already gets the BOM constraints — verified by dependency resolution); `com.github.ben-manes.versions` 0.53.0 → 0.54.0.
 - IDE "Unstable API Usage" warnings suppressed with rationale comments: `dependencyResolutionManagement`/`RepositoriesMode` (settings.gradle.kts) and `enableSplit` (tv/build.gradle.kts) are `@Incubating` but are the standard/only APIs — the former is the Android Studio project template itself, the latter carries the 0.28.11 language fix.
 

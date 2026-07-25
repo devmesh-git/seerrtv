@@ -91,6 +91,9 @@ class MediaDiscoveryViewModel @Inject constructor(
     private var currentQuery: String = ""
     private var currentDiscoveryMode: DiscoveryMode = DiscoveryMode.NONE
     private var currentKeywordId: String = ""
+    // Restricts text-search results to a single media type. null = mixed results
+    // (movies + series + people), which is what the dedicated Search screen wants.
+    private var currentSearchMediaType: MediaType? = null
     private var lastLoadTimestamp: Long = 0
     private val cooldownPeriodMs = 0L // Completely disable cooldown for now
 
@@ -107,12 +110,20 @@ class MediaDiscoveryViewModel @Inject constructor(
         TV_BROWSE
     }
 
-    fun debouncedSearch(query: String) {
+    /**
+     * Runs a debounced text search against the `search` endpoint.
+     *
+     * @param mediaTypeFilter when set, only results of that type are kept. The Movies/Series
+     * browse screens pass their own type so a title search there never returns the other
+     * media type or people; the Search screen passes null to get all three.
+     */
+    fun debouncedSearch(query: String, mediaTypeFilter: MediaType? = null) {
         searchJob?.cancel()
         if (query.length >= 3) {
-            // Reset search state when query changes
-            if (query != currentQuery) {
+            // Reset search state when the query or the type filter changes
+            if (query != currentQuery || mediaTypeFilter != currentSearchMediaType) {
                 currentQuery = query
+                currentSearchMediaType = mediaTypeFilter
                 currentDiscoveryMode = DiscoveryMode.SEARCH
                 _searchResults.value = emptyList()
                 apiService.resetPaginationState("search")
@@ -134,47 +145,74 @@ class MediaDiscoveryViewModel @Inject constructor(
 
     private suspend fun search(query: String, loadMore: Boolean = false) {
         if (_isLoading.value) return
-        
-        _isLoading.value = true
-        
-        try {
-            when (val result = apiService.search(query, loadMore)) {
-                is ApiResult.Success -> {
-                    val newResults = result.data.results
-                    
-                    if (loadMore) {
-                        // Filter out any duplicates before appending to existing results
-                        val currentIds = _searchResults.value.map { it.id }.toSet()
-                        val uniqueNewResults = newResults.filter { it.id !in currentIds }
-                        
-                        if (BuildConfig.DEBUG) {
-                            if (uniqueNewResults.size < newResults.size) {
-                                Log.d("MediaDiscoveryViewModel", "⚠️ Filtered out ${newResults.size - uniqueNewResults.size} duplicate items from search")
-                            }
-                        }
 
-                        _searchResults.value += uniqueNewResults
-                    } else {
-                        _searchResults.value = newResults
+        _isLoading.value = true
+
+        try {
+            val typeFilter = currentSearchMediaType
+            val collected = mutableListOf<SearchResult>()
+            // Only the first request may reset pagination; every extra page in this call continues it.
+            var continuePaging = loadMore
+            var pagesFetched = 0
+            var hasMore = true
+            var failed = false
+
+            while (true) {
+                when (val result = apiService.search(query, continuePaging)) {
+                    is ApiResult.Success -> {
+                        pagesFetched++
+                        val pageResults = result.data.results
+                        collected += pageResults.filterByMediaType(typeFilter)
+                        hasMore = result.paginationInfo?.hasMorePages ?: pageResults.isNotEmpty()
+                        continuePaging = true
+
+                        // `search` is a multi-search: a single page mixes movies, series and people.
+                        // When we keep only one type a page can yield just a couple of items (or
+                        // none), leaving the grid too short to scroll — so loadMore would never fire.
+                        // Pull further pages until we have a usable batch.
+                        val needMore = typeFilter != null &&
+                            collected.size < MIN_FILTERED_SEARCH_RESULTS &&
+                            hasMore &&
+                            pagesFetched < MAX_SEARCH_PAGES_PER_LOAD
+                        if (!needMore) break
                     }
-                    
-                    // Update pagination state
-                    _hasMoreResults.value = result.paginationInfo?.hasMorePages ?: (newResults.isNotEmpty())
-                    
-                    // Debug logging
-                    Log.d("MediaDiscoveryViewModel", "Search results: loaded ${newResults.size} items, hasMore=${_hasMoreResults.value}")
-                }
-                is ApiResult.Error -> {
-                    if (handleApiError(result.exception, result.statusCode)) {
-                        authErrorState.showError()
+                    is ApiResult.Error -> {
+                        failed = true
+                        if (handleApiError(result.exception, result.statusCode)) {
+                            authErrorState.showError()
+                        }
+                        break
                     }
-                    if (!loadMore) {
-                        _searchResults.value = emptyList()
+                    is ApiResult.Loading -> break
+                }
+            }
+
+            if (failed && collected.isEmpty()) {
+                if (!loadMore) {
+                    _searchResults.value = emptyList()
+                }
+            } else {
+                if (loadMore) {
+                    // Filter out any duplicates before appending to existing results
+                    val currentIds = _searchResults.value.map { it.id }.toSet()
+                    val uniqueNewResults = collected.filter { it.id !in currentIds }
+
+                    if (BuildConfig.DEBUG) {
+                        if (uniqueNewResults.size < collected.size) {
+                            Log.d("MediaDiscoveryViewModel", "⚠️ Filtered out ${collected.size - uniqueNewResults.size} duplicate items from search")
+                        }
                     }
+
+                    _searchResults.value += uniqueNewResults
+                } else {
+                    _searchResults.value = collected
                 }
-                is ApiResult.Loading -> {
-                    // Loading state already set
-                }
+
+                // Update pagination state
+                _hasMoreResults.value = hasMore
+
+                // Debug logging
+                Log.d("MediaDiscoveryViewModel", "Search results: loaded ${collected.size} items from $pagesFetched page(s), typeFilter=$typeFilter, hasMore=$hasMore")
             }
         } finally {
             _isLoading.value = false
@@ -1086,5 +1124,23 @@ class MediaDiscoveryViewModel @Inject constructor(
 
     override fun onCleared() {
         searchJob?.cancel()
+    }
+
+    /**
+     * Keeps only the results matching [type]. Collections and people are dropped for a typed
+     * search; a null [type] keeps the multi-search results untouched.
+     */
+    private fun List<SearchResult>.filterByMediaType(type: MediaType?): List<SearchResult> =
+        when (type) {
+            null -> this
+            MediaType.MOVIE -> filter { it is Movie }
+            MediaType.TV -> filter { it is TV }
+        }
+
+    private companion object {
+        // Target number of items to accumulate for a type-filtered search before handing the
+        // page back to the grid, and the cap on how many multi-search pages one load may consume.
+        const val MIN_FILTERED_SEARCH_RESULTS = 12
+        const val MAX_SEARCH_PAGES_PER_LOAD = 5
     }
 }

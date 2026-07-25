@@ -23,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -973,18 +974,26 @@ class MainActivity : AppCompatActivity() {
                                     val navigationManager =
                                         rememberNavigationManager(scope, navController)
 
-                                    MediaDetails(
-                                        context = this@MainActivity,
-                                        imageLoader = SeerrTV.imageLoader,
-                                        mediaId = mediaId,
-                                        mediaType = mediaType,
-                                        navController = navController,
-                                        viewModel = sharedViewModel,
-                                        dpadController = dpadController,
-                                        appFocusManager = appFocusManager,
-                                        navigationManager = navigationManager,
-                                        initialShowRequestModal = showRequestModal
-                                    )
+                                    // Give every title its own positional identity. Without this,
+                                    // a details screen opened from Similar Movies lands in the
+                                    // same composition slot the previous one just vacated and
+                                    // restores its rememberSaveable state — including the
+                                    // "returning from navigation" flag the outgoing screen set on
+                                    // its way out, which left the new screen with no highlight.
+                                    key(mediaId, mediaType) {
+                                        MediaDetails(
+                                            context = this@MainActivity,
+                                            imageLoader = SeerrTV.imageLoader,
+                                            mediaId = mediaId,
+                                            mediaType = mediaType,
+                                            navController = navController,
+                                            viewModel = sharedViewModel,
+                                            dpadController = dpadController,
+                                            appFocusManager = appFocusManager,
+                                            navigationManager = navigationManager,
+                                            initialShowRequestModal = showRequestModal
+                                        )
+                                    }
                                 }
                                 composable(
                                     route = "settings",

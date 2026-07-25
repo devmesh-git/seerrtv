@@ -31,6 +31,9 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.zIndex
 import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import ca.devmesh.seerrtv.BuildConfig
@@ -182,6 +185,13 @@ private fun getEmbyPlayUrl(mediaInfo: MediaInfo): String? {
 private fun scrollTargetPercent(maxValue: Int, percent: Int): Int =
     (maxValue.toLong() * percent / 100L).toInt().coerceIn(0, maxValue)
 
+/**
+ * Highest action-button row index that still sits on screen with the details page scrolled to the
+ * top. Focusing one of these keeps the page anchored at the top so the poster, title and overview
+ * stay visible; below it the button itself would fall under the fold and the page has to scroll.
+ */
+private const val TOP_ANCHORED_BUTTON_ROWS = 2
+
 @Composable
 fun MediaDetails(
     context: Context,
@@ -237,6 +247,12 @@ fun MediaDetails(
 
     // First-entry control per media key: ensures we only auto-scroll/top and set default highlight once
     val detailsKey = remember(mediaId, mediaType) { "$mediaId:$mediaType" }
+    // These are saved under a key derived from composition position, which is identical for every
+    // title — so opening a title from Similar Movies used to restore the *previous* title's values
+    // into the new screen, including the isPending=true the outgoing screen had just set. The
+    // incoming screen then believed it was restoring a position, skipped seeding its focus, and
+    // came up with nothing highlighted. The call site wraps this composable in key(mediaId,
+    // mediaType) to give each title its own positional identity; keep it that way.
     var isFirstEntry by rememberSaveable(detailsKey) { mutableStateOf(true) }
 
     // State management for return from PersonScreen - persists across back stack pops
@@ -270,34 +286,10 @@ fun MediaDetails(
         }
     }
 
-    // Use the passed AppFocusManager instance for MediaDetails
-
-    // Helper function to convert FocusArea constants to DetailsFocusState
-    fun focusAreaToDetailsFocusState(focusArea: Int): DetailsFocusState {
-        return when (focusArea) {
-            FocusArea.NONE -> DetailsFocusState.Overview // No focus state
-            FocusArea.OVERVIEW -> DetailsFocusState.Overview
-            FocusArea.READ_MORE -> DetailsFocusState.ReadMore
-            FocusArea.TAGS -> DetailsFocusState.Tags
-            FocusArea.CAST -> DetailsFocusState.Cast
-            FocusArea.CREW -> DetailsFocusState.Crew
-            FocusArea.SIMILAR_MEDIA -> DetailsFocusState.SimilarMedia
-            FocusArea.FOURK_REGULAR_OPTION -> DetailsFocusState.FourKRegularOption
-            FocusArea.FOURK_4K_OPTION -> DetailsFocusState.FourK4KOption
-            FocusArea.PLAY -> DetailsFocusState.Play
-            FocusArea.REQUEST_HD -> DetailsFocusState.RequestHD
-            FocusArea.REQUEST_4K -> DetailsFocusState.Request4K
-            FocusArea.REQUEST_SINGLE -> DetailsFocusState.RequestSingle
-            FocusArea.MANAGE_HD -> DetailsFocusState.ManageHD
-            FocusArea.MANAGE_4K -> DetailsFocusState.Manage4K
-            FocusArea.MANAGE_SINGLE -> DetailsFocusState.ManageSingle
-            FocusArea.WATCHLIST_ACTION -> DetailsFocusState.WatchlistAction
-            FocusArea.TRAILER -> DetailsFocusState.Trailer
-            FocusArea.ISSUE -> DetailsFocusState.Issue
-
-            else -> DetailsFocusState.Overview
-        }
-    }
+    // Use the passed AppFocusManager instance for MediaDetails.
+    // FocusArea <-> DetailsFocusState translation lives in ui/focus/DetailsFocusMapping.kt, and
+    // assigning stateManager.currentFocusArea already writes through to AppFocusManager, so this
+    // screen no longer converts between the two vocabularies by hand.
 
     // Consolidated error handling utility
     class ErrorHandler {
@@ -330,7 +322,7 @@ fun MediaDetails(
     val errorHandler = remember(context) { ErrorHandler() }
 
     // Initialize centralized state manager
-    val stateManager = remember { MediaDetailsStateManager() }
+    val stateManager = remember(appFocusManager) { MediaDetailsStateManager(appFocusManager) }
 
     // Update state manager with current media details
     stateManager.mediaDetailsState = mediaDetailsState
@@ -854,6 +846,51 @@ fun MediaDetails(
 
     // Track if we just restored state to prevent auto-effects from interfering
     var hasJustRestored by remember { mutableStateOf(false) }
+
+    // Returning to the app (e.g. from the external YouTube trailer player) can leave the details
+    // screen with nothing highlighted: currentFocusArea is not saveable, so it resets to OVERVIEW —
+    // which draws no highlight — and the two focus sync effects race, so the initial-focus pick can
+    // be clobbered back to Overview before it is ever drawn. Reset to the screen's default action
+    // button on every return so a button always shows the focus ring.
+    var pendingFocusReset by remember { mutableStateOf(false) }
+
+    // Seeder bookkeeping (used by the focus seeder further down, which lives inside the loaded-
+    // details branch). Hoisted to the whole screen: kept inside that branch they would be
+    // discarded every time the details state dips back through Loading, and the seeder would think
+    // it had never run and re-seed the focus at the worst possible moment — while a back
+    // navigation is handing it to another screen.
+    //
+    // Tracked by media id rather than a boolean because opening a title from Similar Movies does
+    // not give us a new screen: this composable stays put and the shared view model swaps the
+    // details underneath it, carrying the previous title's focus (SimilarMedia) into a screen
+    // where it means nothing. Comparing against the media actually on display catches that, where
+    // a per-instance flag could not.
+    var seededForMediaId by remember { mutableStateOf<Int?>(null) }
+    var previousFocus by remember { mutableStateOf<AppFocusState?>(null) }
+    // Only a resume that follows a pause is a return to the app. Adding an observer to an
+    // already-resumed lifecycle immediately replays ON_RESUME to it, so without this every details
+    // screen created during ordinary navigation would look like a return from an external app and
+    // re-home the focus — overriding, for example, the position restored on the way back from
+    // keyword discovery.
+    var sawPause by remember { mutableStateOf(false) }
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_PAUSE -> sawPause = true
+                Lifecycle.Event.ON_RESUME -> if (sawPause) {
+                    sawPause = false
+                    pendingFocusReset = true
+                }
+
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
     
     // Clear returnState when navigating away from MediaDetails to prevent unwanted restoration
     DisposableEffect(Unit) {
@@ -870,38 +907,26 @@ fun MediaDetails(
         }
     }
     
-    // CRITICAL: Initialize stateManager from AppFocusManager on first composition
-    // This ensures that if we're returning from navigation, we immediately have the correct focus
+    // Detect a return from an in-app navigation that kept AppFocusManager pointed at the area we
+    // left from (PersonScreen, keyword discovery). The focus itself needs no restoring now that
+    // currentFocusArea projects AppFocusManager — but the carousel indices and scroll offset
+    // restored below do, and the focus seeder must not treat this as an undecided screen.
+    // returnState.isPending is what makes this a *return* rather than stale focus: it is saved
+    // against this title's key just before navigating away, so a pop back to the same title
+    // restores it as true. Opening a different title from Similar Movies also leaves
+    // AppFocusManager on DetailsScreen(SimilarMedia), but that new title's returnState is fresh —
+    // without this check the incoming screen mistook the previous title's position for its own and
+    // came up with nothing highlighted.
+    // Deliberately keyed off returnState.isPending alone, not off AppFocusManager. At this point in
+    // a back-stack pop the manager still reads the DetailsScreen(Overview) that PersonScreen left
+    // behind — the real position arrives moments later via restoreFocusState — so inspecting the
+    // focus here reports "no position to restore" for the one case that has one.
     val initialFocusRestored = remember {
-        val focus = appFocusManager.currentFocus
-        // Debug logging removed to reduce instruction count
-        if (focus is AppFocusState.DetailsScreen && focus.focus != DetailsFocusState.Overview) {
-            // We're returning from navigation - restore the focus immediately
-            val restoredFocusArea = when (focus.focus) {
-                DetailsFocusState.Cast -> FocusArea.CAST
-                DetailsFocusState.Crew -> FocusArea.CREW
-                DetailsFocusState.SimilarMedia -> FocusArea.SIMILAR_MEDIA
-                DetailsFocusState.Tags -> FocusArea.TAGS
-                DetailsFocusState.ReadMore -> FocusArea.READ_MORE
-                DetailsFocusState.Play -> FocusArea.PLAY
-                DetailsFocusState.RequestHD -> FocusArea.REQUEST_HD
-                DetailsFocusState.Request4K -> FocusArea.REQUEST_4K
-                DetailsFocusState.RequestSingle -> FocusArea.REQUEST_SINGLE
-                DetailsFocusState.ManageHD -> FocusArea.MANAGE_HD
-                DetailsFocusState.Manage4K -> FocusArea.MANAGE_4K
-                DetailsFocusState.ManageSingle -> FocusArea.MANAGE_SINGLE
-                DetailsFocusState.WatchlistAction -> FocusArea.WATCHLIST_ACTION
-                DetailsFocusState.Trailer -> FocusArea.TRAILER
-                DetailsFocusState.Issue -> FocusArea.ISSUE
-                else -> FocusArea.OVERVIEW
-            }
-            stateManager.currentFocusArea = restoredFocusArea
+        if (returnState.isPending) {
             hasJustRestored = true
             isFirstEntry = false
-            // Debug logging removed to reduce instruction count
             true
         } else {
-            // Debug logging removed to reduce instruction count
             false
         }
     }
@@ -909,7 +934,15 @@ fun MediaDetails(
     // Restore scroll position and carousel indices when returning from navigation
     LaunchedEffect(initialFocusRestored) {
         if (initialFocusRestored) {
-            // Debug logging removed to reduce instruction count
+            // Put the highlight back where this screen left it. returnState is the only record of
+            // that: AppFocusManager is app-wide and now holds whatever the screen we are returning
+            // *from* chose — coming back from a title opened via Similar Movies, that is its
+            // Request button, which sits off-screen above the restored scroll position and so
+            // reads as no highlight at all.
+            if (returnState.focusArea != FocusArea.NONE) {
+                stateManager.currentFocusArea = returnState.focusArea
+            }
+
             // Restore the active carousel index based on the focus area
             when (returnState.focusArea) {
                 FocusArea.CAST -> stateManager.selectedCastIndex = returnState.activeCarouselIndex
@@ -941,86 +974,11 @@ fun MediaDetails(
         }
     }
     
-    // Sync current focus area with AppFocusManager - only when focus actually changes
-    // Skip syncing if we just initialized from AppFocusManager to prevent circular updates
-    LaunchedEffect(stateManager.currentFocusArea) {
-        if (BuildConfig.DEBUG) {
-            Log.d(
-                "MediaDetails",
-                "🔄 Focus area changed to: $stateManager.currentFocusArea (TAGS=${FocusArea.TAGS})"
-            )
-        }
-        
-        // Skip the first sync if we initialized from AppFocusManager
-        if (initialFocusRestored && stateManager.currentFocusArea != FocusArea.OVERVIEW) {
-            // Already synced during initialization
-            return@LaunchedEffect
-        }
-        
-        // Only sync focus if we're not in a cleared state (FocusArea.NONE)
-        // This prevents overriding TopBar focus when we clear MediaDetails highlights
-        if (stateManager.currentFocusArea != FocusArea.NONE) {
-            val detailsFocusState = focusAreaToDetailsFocusState(stateManager.currentFocusArea)
-            appFocusManager.setFocus(AppFocusState.DetailsScreen(detailsFocusState))
-        }
-    }
-
-    // Sync AppFocusManager changes back to local stateManager.currentFocusArea - with debouncing
-    LaunchedEffect(appFocusManager.currentFocus) {
-        val focus = appFocusManager.currentFocus
-        
-        // Skip if we just initialized from AppFocusManager (on first composition)
-        if (initialFocusRestored && stateManager.currentFocusArea != FocusArea.OVERVIEW) {
-            return@LaunchedEffect
-        }
-        
-        // Debounce to avoid rapid fire updates
-        delay(10.milliseconds)
-
-        when (focus) {
-            is AppFocusState.DetailsScreen -> {
-                // Only update local focus area if we're not in a cleared state
-                // This prevents overriding FocusArea.NONE when TopBar has focus
-                if (stateManager.currentFocusArea != FocusArea.NONE) {
-                    val newFocusArea = when (focus.focus) {
-                        DetailsFocusState.Overview -> FocusArea.OVERVIEW
-                        DetailsFocusState.ReadMore -> FocusArea.READ_MORE
-                        DetailsFocusState.Tags -> FocusArea.TAGS
-                        DetailsFocusState.Cast -> FocusArea.CAST
-                        DetailsFocusState.Crew -> FocusArea.CREW
-                        DetailsFocusState.SimilarMedia -> FocusArea.SIMILAR_MEDIA
-                        DetailsFocusState.FourKRegularOption -> FocusArea.FOURK_REGULAR_OPTION
-                        DetailsFocusState.FourK4KOption -> FocusArea.FOURK_4K_OPTION
-                        DetailsFocusState.Play -> FocusArea.PLAY
-                        DetailsFocusState.RequestHD -> FocusArea.REQUEST_HD
-                        DetailsFocusState.Request4K -> FocusArea.REQUEST_4K
-                        DetailsFocusState.RequestSingle -> FocusArea.REQUEST_SINGLE
-                        DetailsFocusState.ManageHD -> FocusArea.MANAGE_HD
-                        DetailsFocusState.Manage4K -> FocusArea.MANAGE_4K
-                        DetailsFocusState.ManageSingle -> FocusArea.MANAGE_SINGLE
-                        DetailsFocusState.WatchlistAction -> FocusArea.WATCHLIST_ACTION
-                        DetailsFocusState.Trailer -> FocusArea.TRAILER
-                        DetailsFocusState.Issue -> FocusArea.ISSUE
-                        else -> FocusArea.OVERVIEW
-                    }
-                    if (newFocusArea != stateManager.currentFocusArea) {
-                        stateManager.currentFocusArea = newFocusArea
-                    }
-                }
-            }
-
-            is AppFocusState.TopBar -> {
-                // When TopBar gains focus, clear MediaDetails highlights
-                // This ensures no MediaDetails components remain highlighted
-                stateManager.currentFocusArea = FocusArea.NONE
-            }
-
-            else -> {
-                // Focus is on a different screen, clear MediaDetails highlights
-                stateManager.currentFocusArea = FocusArea.NONE
-            }
-        }
-    }
+    // The two effects that used to mirror stateManager.currentFocusArea and
+    // appFocusManager.currentFocus into each other are gone: currentFocusArea is now a projection
+    // of AppFocusManager (see MediaDetailsStateManager), so there is one owner, nothing to keep in
+    // step, and no echo for guard flags to suppress. Clearing the highlight when the top bar or
+    // another screen takes the focus is likewise automatic — the projection reads NONE.
 
 
     Box(
@@ -1159,6 +1117,15 @@ fun MediaDetails(
                         // Extended delay to ensure auto-scroll guard stays active during scroll restoration
                         delay(500.milliseconds)
                         hasJustRestored = false
+
+                        // Bring the restored highlight back into view. Replaying the saved pixel
+                        // offset is not enough on its own: it is clamped to scrollState.maxValue,
+                        // which depends on layout that is often incomplete when the offset is
+                        // applied, so the page lands short of where it was left — with the
+                        // highlighted row below the fold and no cursor anywhere on screen. The
+                        // auto-scroll below already knows where each area belongs, so re-run it
+                        // now that the screen has settled.
+                        stateManager.compositionTrigger++
                     }
                 }
 
@@ -1166,25 +1133,111 @@ fun MediaDetails(
                     focusManager.setButtonOrder(buttonFocusOrder)
                 }
 
-                // Handle returning from TopBar: automatically focus on first available action button
-                LaunchedEffect(appFocusManager.currentFocus, buttonFocusOrder) {
+                // The screen's single focus seeder, replacing the three effects that each handled
+                // one arrival path. It seeds in exactly three situations:
+                //
+                //  - this screen instance has never had a highlight and the focus still belongs to
+                //    whatever came before it: the first navigation in, or a process restored
+                //    straight onto the details route (the rebuilt AppFocusManager reads MainScreen)
+                //  - the highlighted action button no longer exists: buttonFocusOrder changes as
+                //    capabilities load, so REQUEST_SINGLE becomes the split REQUEST_HD/REQUEST_4K
+                //    pair and the old area draws no highlight at all
+                //  - pendingFocusReset: returning to the app always re-homes to the default
+                //
+                // What it must NOT do is treat every FocusArea.NONE as undecided. NONE only says
+                // the details screen does not hold the focus — which is also true while the top bar
+                // has it, and while a screen we are navigating to takes over. Seeding then would
+                // snatch the focus straight back.
+                LaunchedEffect(
+                    appFocusManager.currentFocus,
+                    buttonFocusOrder,
+                    pendingFocusReset,
+                    media.id,
+                    stateManager.hasCast,
+                    stateManager.hasCrew,
+                    stateManager.hasSimilarMedia
+                ) {
                     val focus = appFocusManager.currentFocus
-                    if (focus is AppFocusState.DetailsScreen &&
-                        focus.focus is DetailsFocusState.Overview &&
-                        stateManager.currentFocusArea == FocusArea.NONE &&
-                        !returnState.isPending
-                    ) {
-                        if (hasJustRestored) return@LaunchedEffect
-                        // Don't override initial focus setting on first entry
-                        if (isFirstEntry) return@LaunchedEffect
-                        // We're returning from TopBar (stateManager.currentFocusArea == NONE) 
-                        // and received Overview state - automatically focus on first available action button
-                        val targetArea = if (buttonFocusOrder.isNotEmpty()) buttonFocusOrder.first() else FocusArea.OVERVIEW
-                        stateManager.currentFocusArea = targetArea
-                        // Keep AppFocusManager in sync with the chosen target to avoid being overridden back to Overview
-                        val targetDetailsFocus = focusAreaToDetailsFocusState(targetArea)
-                        appFocusManager.setFocus(AppFocusState.DetailsScreen(targetDetailsFocus))
+                    // TopBarController hands control back with a bare DetailsScreen(Overview): it
+                    // means "the details screen has it again", not "the user picked the overview
+                    // text", so it has to be read together with where the focus came from.
+                    val handedBackFromTopBar = previousFocus is AppFocusState.TopBar
+                    previousFocus = focus
+
+                    // A position restored from the back stack is this media's highlight, so the
+                    // screen counts as seeded and must not be re-homed.
+                    //
+                    // Note this is the *only* way an inherited focus counts as ours. Marking the
+                    // screen seeded merely because AppFocusManager happens to read DetailsScreen is
+                    // wrong: opening a title from Similar Movies arrives with the previous title's
+                    // DetailsScreen(SimilarMedia) still set, and accepting that left the new screen
+                    // highlighting a carousel it never chose — which then dragged the auto-scroll
+                    // down to that carousel instead of opening at the top.
+                    if (initialFocusRestored) seededForMediaId = media.id
+
+                    if (returnState.isPending || hasJustRestored) return@LaunchedEffect
+
+                    // Only the destination actually on top may claim the focus. A details screen
+                    // being left behind still composes (and a recreated one may run this effect for
+                    // the first time) while the screen taking over is already current — seeding
+                    // then would drag the focus back out of it.
+                    if (navController.currentDestination?.route?.startsWith("details") != true) {
+                        return@LaunchedEffect
                     }
+
+                    // Never pull focus out from under an open overlay or modal
+                    if (stateManager.trailerOverlayVideoId != null ||
+                        modalManager.showRequestModal ||
+                        modalManager.showRequestActionModal ||
+                        modalManager.showIssueReport ||
+                        modalManager.showIssueDetails
+                    ) return@LaunchedEffect
+
+                    // The top bar owns the focus concurrently with this screen, by design.
+                    if (focus is AppFocusState.TopBar) return@LaunchedEffect
+
+                    val area = stateManager.currentFocusArea
+                    val focusedButtonIsGone =
+                        area in FocusArea.ACTION_BUTTONS && area !in buttonFocusOrder
+                    // No highlight has been established for the media currently on display.
+                    // Whatever AppFocusManager reads belongs to whatever came before it — the
+                    // screen we navigated from, the previous title when Similar Movies swapped the
+                    // details underneath us, or a process that died behind an external app.
+                    val neverSeeded = seededForMediaId != media.id
+                    val returnedFromTopBar = handedBackFromTopBar && area == FocusArea.OVERVIEW
+                    if (!pendingFocusReset && !focusedButtonIsGone && !neverSeeded &&
+                        !returnedFromTopBar
+                    ) {
+                        return@LaunchedEffect
+                    }
+
+                    // Top-most action button -> top-most carousel. Nothing focusable yet means the
+                    // capability-driven buttons are still resolving; the keys above re-run this
+                    // once they land, so leave the screen unhighlighted rather than settling on
+                    // the overview and never re-homing.
+                    when {
+                        buttonFocusOrder.isNotEmpty() ->
+                            stateManager.currentFocusArea = buttonFocusOrder.first()
+
+                        stateManager.hasCast -> {
+                            stateManager.selectedCastIndex = 0
+                            stateManager.currentFocusArea = FocusArea.CAST
+                        }
+
+                        stateManager.hasCrew -> {
+                            stateManager.selectedCrewIndex = 0
+                            stateManager.currentFocusArea = FocusArea.CREW
+                        }
+
+                        stateManager.hasSimilarMedia -> {
+                            stateManager.selectedSimilarMediaIndex = 0
+                            stateManager.currentFocusArea = FocusArea.SIMILAR_MEDIA
+                        }
+
+                        else -> return@LaunchedEffect
+                    }
+                    seededForMediaId = media.id
+                    pendingFocusReset = false
                 }
 
                 // Handle ISSUE button activation and modal routing (unified manager)
@@ -1390,10 +1443,9 @@ fun MediaDetails(
                         // Debug logging removed to reduce instruction count
                         if (currentFocus is AppFocusState.TopBar) {
                             // User is coming from TopBar, navigate to first available action button or Overview
-                            val targetArea = if (buttonFocusOrder.isNotEmpty()) buttonFocusOrder.first() else FocusArea.OVERVIEW
-                            stateManager.currentFocusArea = targetArea
-                            val targetDetailsFocus = focusAreaToDetailsFocusState(targetArea)
-                            appFocusManager.setFocus(AppFocusState.DetailsScreen(targetDetailsFocus))
+                            // (the assignment writes straight through to AppFocusManager)
+                            stateManager.currentFocusArea =
+                                if (buttonFocusOrder.isNotEmpty()) buttonFocusOrder.first() else FocusArea.OVERVIEW
                             return@createMediaDetailsDpadConfig
                         }
 
@@ -2043,9 +2095,13 @@ fun MediaDetails(
                                             activeCarouselIndex = stateManager.selectedSimilarMediaIndex
                                             // scrollOffset already saved by auto-scroll logic
                                         )
+                                        // Stack the new title on top of this one so Back returns
+                                        // here — and to the position saved in returnState above —
+                                        // rather than unwinding to the main menu.
                                         navigationManager.navigateToDetails(
                                             selectedMedia.id.toString(),
-                                            selectedMedia.mediaType
+                                            selectedMedia.mediaType,
+                                            singleTop = false
                                         )
                                     }
                                 } else {
@@ -2086,65 +2142,15 @@ fun MediaDetails(
                     dpadController.registerScreen(dpadConfig)
                 }
 
-                // Set initial focus/scroll ONLY on first entry (not when returning from PersonScreen)
-                LaunchedEffect(isFirstEntry, actionButtonStates, buttonFocusOrder) {
+                // First entry only: start at the top of the page. Choosing what to highlight — and
+                // correcting it when capability-driven buttons resolve, which this used to do on a
+                // fixed 150ms delay — belongs to the seeder above, which is driven by the button
+                // order actually changing rather than by a timer.
+                LaunchedEffect(isFirstEntry) {
                     if (!isFirstEntry) return@LaunchedEffect
                     if (returnState.isPending) return@LaunchedEffect
-                    if (hasJustRestored) return@LaunchedEffect
-                    if (initialFocusRestored) {
-                        // Debug logging removed to reduce instruction count
-                        return@LaunchedEffect
-                    }
-                    // Initial focus selection when nothing is highlighted: prefer topmost action -> topmost carousel -> overview
-                    if (stateManager.currentFocusArea == FocusArea.OVERVIEW ||
-                        stateManager.currentFocusArea == FocusArea.NONE) {
-                        when {
-                            // 1) Top-most action button (left half if split is already first in order)
-                            buttonFocusOrder.isNotEmpty() -> {
-                                val topButton = buttonFocusOrder.first()
-                                stateManager.currentFocusArea = topButton
-                                // Debug logging removed to reduce instruction count
-                            }
-                            // 2) First available carousel (top-most): CAST -> CREW -> SIMILAR_MEDIA
-                            stateManager.hasCast -> {
-                                stateManager.currentFocusArea = FocusArea.CAST
-                                stateManager.selectedCastIndex = 0
-                                // Debug logging removed to reduce instruction count
-                            }
-                            stateManager.hasCrew -> {
-                                stateManager.currentFocusArea = FocusArea.CREW
-                                stateManager.selectedCrewIndex = 0
-                                // Debug logging removed to reduce instruction count
-                            }
-                            stateManager.hasSimilarMedia -> {
-                                stateManager.currentFocusArea = FocusArea.SIMILAR_MEDIA
-                                stateManager.selectedSimilarMediaIndex = 0
-                                // Debug logging removed to reduce instruction count
-                            }
-                            // 3) Fallback to overview
-                            else -> {
-                                stateManager.currentFocusArea = FocusArea.OVERVIEW
-                                // Debug logging removed to reduce instruction count
-                            }
-                        }
-                    }
+                    if (hasJustRestored || initialFocusRestored) return@LaunchedEffect
 
-                    // Allow one brief correction pass for capability-driven UI changes (e.g., split request)
-                    // This ensures focus remains on the top-most visible action after recompute
-                    delay(150.milliseconds)
-                    val visibleActionsPost = buttonFocusOrder.toSet()
-                    val isRequestNowSplit = actionButtonStates["request"]?.isSplit == true
-                    if (
-                        (stateManager.currentFocusArea == FocusArea.REQUEST_SINGLE && isRequestNowSplit) ||
-                        !visibleActionsPost.contains(stateManager.currentFocusArea)
-                    ) {
-                        buttonFocusOrder.firstOrNull()?.let { correctedTop ->
-                            stateManager.currentFocusArea = correctedTop
-                            // Debug logging removed to reduce instruction count
-                        }
-                    }
-
-                    // Scroll to top on first entry
                     scrollState.scrollTo(0)
                     isFirstEntry = false
                 }
@@ -2370,38 +2376,59 @@ fun MediaDetails(
                         FocusArea.WATCHLIST_ACTION,
                         FocusArea.TRAILER,
                             -> {
-                            // Do not auto-scroll when focusing the 4K half of the split Request button
-                            if (stateManager.currentFocusArea == FocusArea.REQUEST_4K) {
-                                return@LaunchedEffect
-                            }
-                            val visibleButtons = buildList {
-                                if (actionButtonStates["play"]?.isVisible == true) add(FocusArea.PLAY)
+                            // The 4K half of a split Request used to be excluded from auto-scroll
+                            // altogether, because per-focus-area indexing gave it a different
+                            // target from the HD half and moving across the row jumped the page.
+                            // Row-based targeting below gives both halves the same target, so the
+                            // exclusion is no longer needed — and it was harmful: arriving on the
+                            // 4K half from the carousels below skipped the scroll entirely and left
+                            // the page wherever it was, with the header off-screen.
+                            //
+                            // Grouped by rendered row rather than by focus area: a split
+                            // Request/Manage is two focus areas sharing one row, and counting them
+                            // separately pushed everything below it a row further down than it
+                            // actually sits.
+                            val buttonRows = buildList {
+                                if (actionButtonStates["play"]?.isVisible == true) {
+                                    add(listOf(FocusArea.PLAY))
+                                }
                                 if (actionButtonStates["request"]?.isVisible == true) {
-                                    if (actionButtonStates["request"]?.isSplit == true) {
-                                        add(FocusArea.REQUEST_HD)
-                                        add(FocusArea.REQUEST_4K)
-                                    } else {
-                                        add(FocusArea.REQUEST_SINGLE)
-                                    }
+                                    add(
+                                        if (actionButtonStates["request"]?.isSplit == true) {
+                                            listOf(FocusArea.REQUEST_HD, FocusArea.REQUEST_4K)
+                                        } else {
+                                            listOf(FocusArea.REQUEST_SINGLE)
+                                        }
+                                    )
                                 }
-                                if (showWatchlistButton) add(FocusArea.WATCHLIST_ACTION)
+                                if (showWatchlistButton) add(listOf(FocusArea.WATCHLIST_ACTION))
                                 if (actionButtonStates["manage"]?.isVisible == true) {
-                                    if (actionButtonStates["manage"]?.isSplit == true) {
-                                        add(FocusArea.MANAGE_HD)
-                                        add(FocusArea.MANAGE_4K)
-                                    } else {
-                                        add(FocusArea.MANAGE_SINGLE)
-                                    }
+                                    add(
+                                        if (actionButtonStates["manage"]?.isSplit == true) {
+                                            listOf(FocusArea.MANAGE_HD, FocusArea.MANAGE_4K)
+                                        } else {
+                                            listOf(FocusArea.MANAGE_SINGLE)
+                                        }
+                                    )
                                 }
-                                if (actionButtonStates["trailer"]?.isVisible == true) add(FocusArea.TRAILER)
+                                if (actionButtonStates["trailer"]?.isVisible == true) {
+                                    add(listOf(FocusArea.TRAILER))
+                                }
                             }
-                            val idx = visibleButtons.indexOf(stateManager.currentFocusArea)
+                            val rowIndex = buttonRows
+                                .indexOfFirst { stateManager.currentFocusArea in it }
                                 .coerceAtLeast(0)
-                            if (idx == 0) {
-                                // Keep top-most button at top so title and issue button remain visible
+                            if (rowIndex <= TOP_ANCHORED_BUTTON_ROWS) {
+                                // The button column sits directly under the poster, so these rows
+                                // are all on screen with the page at the top. Anchor there instead
+                                // of scrolling the header away: moving up from the carousels onto a
+                                // Request button used to leave the poster, title and description
+                                // cut off above the viewport whenever a Play button pushed Request
+                                // off the first row.
                                 scrollState.animateScrollToCompat(0)
                             } else {
-                                // Scroll to a more conservative position to keep action buttons visible
+                                // Deeper in a long column the button itself would fall below the
+                                // fold at the top, so keep the conservative position.
                                 val target = scrollTargetPercent(scrollState.maxValue, 20)
                                 scrollState.animateScrollToCompat(target)
                             }
