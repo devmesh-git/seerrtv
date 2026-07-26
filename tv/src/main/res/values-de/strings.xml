@@ -267,7 +267,7 @@
     <string name="requestModal_selectServer">Server auswählen</string>
     <string name="requestModal_selectTags">Tags auswählen</string>
     <string name="requestModal_serverMenu">Server</string>
-    <string name="requestModal_submit">Absenden</string>
+    <string name="requestModal_submit">Anfragen</string>
     <string name="requestModal_success">@string/common_success</string>
     <string name="requestModal_tag">Tag</string>
     <string name="requestModal_tagsMenu">Tags</string>
