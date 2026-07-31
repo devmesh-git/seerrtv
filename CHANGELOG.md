@@ -1,5 +1,47 @@
 # Changelog
 
+## 0.28.14
+
+### Fixed: Studio and Network grids could become permanently unnavigable
+
+- **Symptom** – Open a studio, scroll down fast, and open a title whose poster hasn't loaded yet. Coming back, the grid no longer responds to the d-pad — no direction moves the highlight and Enter does nothing, though Back still leaves the screen. Reopening the app doesn't help; only rebooting the TV or clearing the app's cache restores it. Also reachable without fast scrolling by opening several titles whose posters hadn't loaded, and applies equally to Networks. Reported against 0.28.13.
+
+- **Root cause** – The discovery grid has no individually focusable cells: the whole screen is a single focus host and every d-pad press is routed by hand, reading its starting row/column back out of `GridPositionManager` and moving only if `requestPositionChange` approves the result. That manager is a process-wide object keyed per screen, while the results behind it belong to one activity-scoped discovery ViewModel that refetches from page 1 whenever another target uses it. A selection saved deep in a 100-item studio therefore outlives the list it described, and against the 20 items that came back every direction computed a row that failed the bounds check — each key silently doing nothing, with no path back to a valid cell. Nothing ever invalidated the entry (`clearScreenState` was never called from anywhere), so it survived activity restarts and only died with the process.
+
+  Two paths fed it. The "load more" spinner is a real grid item, so while a page is in flight `firstVisibleItemIndex` can point past the last result — which is precisely the moment a poster hasn't loaded — and the save on the way to the details screen was refused outright, leaving the screen flagged as "returning from details" with nothing to return to. On the way back, the two restore branches that handle a position they can't use updated only local state and cleared neither that flag nor `pendingScrollRestore`, so the stale selection stayed authoritative while the sticky flags separately suppressed the initial grid focus, the focus-manager sync and the data reload — a deadlock, since restoring needed more items, more items needed scrolling, and scrolling needed focus.
+
+- **Fix** –
+  - `requestPositionChange` clamps an out-of-range position instead of refusing it, and refuses only when the screen genuinely has no items. Silent refusal was the failure mode, not the guard.
+  - New `getValidSelection` returns the stored selection clamped to what the current list can address — accounting for a short last row — and repairs the stored entry as it goes. Every d-pad handler now resolves its starting point through it, so a stale entry self-heals on the first keypress rather than wedging the screen.
+  - The selection is written through to the manager whenever the grid highlight moves, so the highlight and the navigation can no longer disagree about where the cursor is.
+  - The position saved on the way out skips the loading spinner, and the screen is flagged as "returning from details" only when a position was actually saved.
+  - Every restore branch now terminates: the ones that can't use the saved position fall back to the top of the grid through the manager and clear both flags. The immediate-restore path no longer declares success against a list that hasn't loaded yet.
+  - Covered by `GridPositionManagerTest`.
+
+### Fixed: Returning from details lost the discovery grid's scroll position
+
+- **Symptom** – Open a studio (e.g. Walt Disney), scroll down five to ten rows, open a title, then press Back. The grid comes back somewhere else entirely, with the selected title off screen and no visible highlight.
+
+- **Root cause** – `GridPositionManager`'s "returning from details" flag had two consumers with different lifetimes. The restore effect *clears* it as soon as it has restored; the effect that decides whether to (re)load results *reads* it afterwards to answer "am I re-entering the same category?". The restore always won, so the load condition saw `false` and refetched. A non-paged fetch assigns rather than appends, so an 80-item studio collapsed back to page 1 — 20 items — which put the grid's restored scroll index (42) past the end of the list. `LazyVerticalGrid` clamped it to the end of the short list, pagination then rebuilt 40, 60, 80 items behind it, and nothing re-applied the saved position because `pendingScrollRestore` had already been cleared too.
+
+  Confirmed on a Google TV emulator: `🔄 Cleared returning flag for studio_2` → `Initial results loaded: 80 items` → `Movie studio search: loaded 20 items` → `Initial results loaded: 20 items`.
+
+- **Fix** –
+  - New `MediaDiscoveryViewModel.isShowingResultsFor(discoveryType, keyword)` answers "am I already showing this target?" from the mode and keyword the ViewModel actually loaded with. The screen's load condition uses that instead of the transient flag, so re-entering the same studio never refetches while switching category still does. Authoritative state, no ordering dependency.
+  - The saved position and selection are only applied when the screen is genuinely returning from details, read at composition time before any effect consumes the flag. Entering fresh from the main screen can legitimately refetch from page 1, and a position saved deep in a previous visit would land out of range — the same clamp, reached a different way.
+
+- **Verified on a Google TV emulator**, not by analysis alone: the grid now returns to the exact frame it left, selected title still highlighted, and d-pad navigation continues to work afterwards.
+
+### Fixed: Browse could draw no highlight after its result set shrank
+
+The same stale-selection class as above, found while fixing it. Browse never locked up — it keeps its selection in screen-local state and its Down handler clamps to the last row, so pressing Down always recovered — but the window before that was still wrong.
+
+- **Symptom** – After the browse list was refetched from page 1 (changing filters or sort, or another screen repointing the shared discovery ViewModel), a selection made deep in the previous list pointed at a cell that no longer existed: no visible highlight, and Enter did nothing, until Down was pressed.
+
+- **Fix** –
+  - The selection is clamped against the current list whenever the result count changes, so the highlight is never left on a cell that isn't there. Restoring from details validates the saved selection through `getValidSelection` for the same reason — the saved position is a scroll index and doesn't vouch for the stored row/column.
+  - The restore path that finds nothing saved now clears the "returning from details" flag. Leaving it set made that effect re-run on every result and loading change, asking for another page each time, and let a later fresh entry believe it was returning and restore a stale scroll position instead of starting at the top.
+
 ## 0.28.13
 
 ### Fixed: Stale user/server state after process death (external trailer player)

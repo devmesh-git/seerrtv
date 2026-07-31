@@ -105,9 +105,19 @@ fun MediaDiscoveryScreen(
         }
     }
 
-    // Get saved position and selection
-    val savedPosition = remember(screenKey) { GridPositionManager.getSavedPosition(screenKey) }
-    val savedSelection = remember(screenKey) { GridPositionManager.getSavedSelection(screenKey) }
+    // Get saved position and selection - only when actually coming back from details.
+    // Read at composition time, before any effect consumes the flag. Entering fresh from the main
+    // screen can refetch the list from page 1, and a position saved deep in a previous visit would
+    // then be out of range: the grid clamps to the end of the short list instead of the top.
+    val isReturningToThisScreen = remember(screenKey) {
+        GridPositionManager.isReturningFromDetails(screenKey)
+    }
+    val savedPosition = remember(screenKey) {
+        if (isReturningToThisScreen) GridPositionManager.getSavedPosition(screenKey) else null
+    }
+    val savedSelection = remember(screenKey) {
+        if (isReturningToThisScreen) GridPositionManager.getSavedSelection(screenKey) else null
+    }
 
     // Initialize selection state from saved values
     LaunchedEffect(savedSelection) {
@@ -155,7 +165,13 @@ fun MediaDiscoveryScreen(
 
             // Only update position in GridPositionManager if we're moving to grid
             if (newFocus == FocusedItem.Grid) {
-                // Update local state since position change was already approved in key handler
+                // Write the selection through to the manager. The DPAD handlers read their
+                // starting point from there, so a local-only update leaves the highlight and the
+                // navigation disagreeing about where the cursor is — and the recovery paths below
+                // reach here without having gone through requestPositionChange first.
+                if (searchResults.isNotEmpty()) {
+                    GridPositionManager.saveSelection(screenKey, newRow, newColumn)
+                }
                 focusedItem = newFocus
                 selectedRow = newRow
                 selectedColumn = newColumn
@@ -204,6 +220,40 @@ fun MediaDiscoveryScreen(
     var isReturningFromDetails by remember { mutableStateOf(false) }
     var pendingScrollRestore by remember { mutableStateOf(false) }
 
+    // Shared recovery path for every restore that can't complete. Puts the highlight on the first
+    // item, publishes it, and clears the returning flags so the screen behaves like a fresh entry.
+    // Leaving either flag set wedges the screen: the returning flag suppresses the initial grid
+    // focus and the data reload, and pendingScrollRestore blocks the AppFocusManager sync.
+    val restoreToGridTop: suspend () -> Unit = {
+        GridPositionManager.requestPositionChange(
+            screenKey = screenKey,
+            position = 0,
+            offset = 0,
+            row = 0,
+            column = 0,
+            totalItems = searchResults.size
+        )
+        updateFocusAndSelection(FocusedItem.Grid, 0, 0)
+        currentFocusedItem.value = FocusedItem.Grid
+        isInitialLoad = false
+        gridState.scrollToItem(0)
+        pendingScrollRestore = false
+        GridPositionManager.clearReturningFlag(screenKey)
+        controllerFocusRequester.requestFocus()
+    }
+
+    // Resolve the DPAD's starting point, always in range. No grid cell is individually focusable —
+    // the screen is a single focus host routing DPAD by hand — so a handler that fails to resolve
+    // a selection does not fall back to Compose's focus search, it simply does nothing.
+    val resolveSelection: () -> Pair<Int, Int>? = {
+        if (searchResults.isEmpty()) {
+            null
+        } else {
+            GridPositionManager.getValidSelection(screenKey, searchResults.size, numberOfColumns)
+                ?: Pair(0, 0).also { GridPositionManager.saveSelection(screenKey, 0, 0) }
+        }
+    }
+
     // Update isReturningFromDetails from GridPositionManager (more stable across recompositions)
     LaunchedEffect(Unit) {
         // Check if we're returning from details using the more stable GridPositionManager
@@ -236,9 +286,18 @@ fun MediaDiscoveryScreen(
                 )
             }
 
-            if (savedPosition != null && savedSelection != null) {
-                // Restore selection from manager using centralized updater
-                updateFocusAndSelection(FocusedItem.Grid, savedSelection.first, savedSelection.second)
+            // Only take the fast path when the saved position addresses an item in the list we
+            // actually have right now. On a cold entry the results arrive later; restoring (and
+            // clearing the flags) against an empty or refetched list would strand the highlight
+            // on a cell that doesn't exist and skip the data-driven restore below.
+            if (savedPosition != null && savedSelection != null &&
+                savedPosition.first < searchResults.size
+            ) {
+                // Restore selection from manager using centralized updater. Position and selection
+                // are stored in different coordinate spaces (scroll index vs row/column), so the
+                // bounds check above doesn't vouch for the selection — validate it separately.
+                val validSelection = resolveSelection() ?: savedSelection
+                updateFocusAndSelection(FocusedItem.Grid, validSelection.first, validSelection.second)
                 currentFocusedItem.value = FocusedItem.Grid
                 // Make sure we don't reset this selection
                 isInitialLoad = false
@@ -259,32 +318,34 @@ fun MediaDiscoveryScreen(
     // Update the DisposableEffect to mark when we're returning from details
     DisposableEffect(Unit) {
         onDispose {
-            // Set returning flag in the more stable GridPositionManager
-            GridPositionManager.markReturningFromDetails(screenKey, true)
-            isReturningFromDetails = true
-            pendingScrollRestore = true
-
-            if (BuildConfig.DEBUG) {
-                Log.d(
-                    "MediaDiscoveryScreen",
-                    "💾 Saving position before navigation: row=$selectedRow, col=$selectedColumn, firstVisibleIndex=${gridState.firstVisibleItemIndex}"
-                )
-            }
+            // The "load more" spinner is a real grid item (DiscoveryGrid), so while a page is in
+            // flight firstVisibleItemIndex can point past the last result — exactly the window a
+            // user hits when scrolling fast and opening a title whose poster hasn't loaded. Save
+            // the last addressable item instead of a position that describes no result.
+            val visibleIndex = gridState.firstVisibleItemIndex
+            val savedIndex = visibleIndex.coerceIn(0, (searchResults.size - 1).coerceAtLeast(0))
 
             // Request position change through manager
-            GridPositionManager.requestPositionChange(
+            val saved = GridPositionManager.requestPositionChange(
                 screenKey = screenKey,
-                position = gridState.firstVisibleItemIndex,
-                offset = gridState.firstVisibleItemScrollOffset,
+                position = savedIndex,
+                offset = if (savedIndex == visibleIndex) gridState.firstVisibleItemScrollOffset else 0,
                 row = selectedRow,
                 column = selectedColumn,
                 totalItems = searchResults.size
             )
 
+            // Only claim we're returning from details when there is something to return to.
+            // Flagging the screen as "returning" with nothing saved suppresses both the initial
+            // grid focus and the data reload on the way back in.
+            GridPositionManager.markReturningFromDetails(screenKey, saved)
+            isReturningFromDetails = saved
+            pendingScrollRestore = saved
+
             if (BuildConfig.DEBUG) {
                 Log.d(
                     "MediaDiscoveryScreen",
-                    "💾 Saved grid state for $screenKey at index ${gridState.firstVisibleItemIndex}"
+                    "💾 Saved grid state for $screenKey: row=$selectedRow, col=$selectedColumn, index=$savedIndex (visible=$visibleIndex), saved=$saved"
                 )
             }
         }
@@ -360,8 +421,10 @@ fun MediaDiscoveryScreen(
             if (savedPosition != null && savedSelection != null) {
                 // Only restore if we have enough items
                 if (savedPosition.first < searchResults.size) {
-                    // Restore selection and focus centrally
-                    updateFocusAndSelection(FocusedItem.Grid, savedSelection.first, savedSelection.second)
+                    // Restore selection and focus centrally, validating the selection separately:
+                    // it is stored in row/column, the position in scroll-index terms.
+                    val validSelection = resolveSelection() ?: savedSelection
+                    updateFocusAndSelection(FocusedItem.Grid, validSelection.first, validSelection.second)
                     currentFocusedItem.value = FocusedItem.Grid
 
                     // Ensure isInitialLoad is false to prevent overrides
@@ -388,19 +451,28 @@ fun MediaDiscoveryScreen(
                     // Ensure DPAD host is focused after restoration
                     controllerFocusRequester.requestFocus()
                 } else {
-                    // If saved index is out of bounds due to paged data, set a minimal restore
-                    updateFocusAndSelection(FocusedItem.Grid, 0, 0)
-                    controllerFocusRequester.requestFocus()
-                }
-            } else {
-                    // If we don't have enough items yet, trigger load more
+                    // The saved index is no longer addressable — the list was refetched from
+                    // page 1 while this screen was away. Fall back to the top of the grid, and go
+                    // through the manager: updating only the local state leaves the DPAD handlers
+                    // reading the stale deep selection, where every move silently no-ops.
                     if (BuildConfig.DEBUG) {
                         Log.d(
                             "MediaDiscoveryScreen",
-                            "⏳ Waiting for more items before restoring position..."
+                            "↩️ Saved index ${savedPosition.first} exceeds ${searchResults.size} items - restoring to top"
                         )
                     }
-                    viewModel.loadMore()
+                    restoreToGridTop()
+                }
+            } else {
+                // Nothing was saved to restore to. Recover to the top rather than staying
+                // "returning" forever with no path back to a focused item.
+                if (BuildConfig.DEBUG) {
+                    Log.d(
+                        "MediaDiscoveryScreen",
+                        "↩️ No saved position for $screenKey - restoring to top"
+                    )
+                }
+                restoreToGridTop()
             }
         }
     }
@@ -506,10 +578,15 @@ fun MediaDiscoveryScreen(
     }
 
     LaunchedEffect(discoveryType, initialKeyword, timestamp) {
-        // Load when: no results yet, OR we navigated to a different category (e.g. switched genres).
-        // Skip load only when returning from details to the same category (preserves scroll position).
-        val isReturningFromDetailsForThisScreen = GridPositionManager.isReturningFromDetails(screenKey)
-        if (searchResults.isEmpty() || !isReturningFromDetailsForThisScreen) {
+        // Load unless the ViewModel is already showing this exact target — switching category
+        // fetches, re-entering the same one does not.
+        //
+        // This used to ask GridPositionManager.isReturningFromDetails, which is a race: the restore
+        // effects clear that flag, so whichever of them ran first left this read seeing false. The
+        // refetch then replaced the whole list with page 1 (80 items down to 20), which put the
+        // grid's restored scroll position out of range — it clamped to the end of the short list,
+        // and the selected title was nowhere near the viewport once pagination refilled it.
+        if (!viewModel.isShowingResultsFor(discoveryType, initialKeyword)) {
             if (discoveryType != DiscoveryType.SEARCH) {
                 // Mark as initial load when switching to keyword discovery
                 isInitialLoad = true
@@ -882,7 +959,7 @@ fun MediaDiscoveryScreen(
             focusManager = appFocusManager,
             onUp = {
                 // Up within discovery: move up a row, or go to TopBar if at first row in search mode
-                val selection = GridPositionManager.getSavedSelection(screenKey)
+                val selection = resolveSelection()
                 if (focusedItem == FocusedItem.Grid && selection != null) {
                     val (row, col) = selection
                     if (row > 0) {
@@ -966,7 +1043,7 @@ fun MediaDiscoveryScreen(
                     updateFocusAndSelection(FocusedItem.Grid, 0, 0)
                 }
                 if (focusedItem == FocusedItem.Grid && searchResults.isNotEmpty()) {
-                    val selection = GridPositionManager.getSavedSelection(screenKey)
+                    val selection = resolveSelection()
                     if (selection != null) {
                         val (row, col) = selection
                         val maxRow = (searchResults.size - 1) / numberOfColumns
@@ -1026,7 +1103,7 @@ fun MediaDiscoveryScreen(
             },
             onLeft = {
                 if (focusedItem == FocusedItem.Grid) {
-                    val current = GridPositionManager.getSavedSelection(screenKey)
+                    val current = resolveSelection()
                     if (current != null) {
                         val (row, col) = current
                         if (col > 0) {
@@ -1051,7 +1128,7 @@ fun MediaDiscoveryScreen(
             },
             onRight = {
                 if (focusedItem == FocusedItem.Grid) {
-                    val current = GridPositionManager.getSavedSelection(screenKey)
+                    val current = resolveSelection()
                     if (current != null) {
                         val (row, col) = current
                         val nextIndex = row * numberOfColumns + col + 1
@@ -1091,7 +1168,7 @@ fun MediaDiscoveryScreen(
                     // Request keyboard focus in the search field
                     searchKeyboardTrigger += 1
                 } else if (focusedItem == FocusedItem.Grid) {
-                    val selection = GridPositionManager.getSavedSelection(screenKey)
+                    val selection = resolveSelection()
                     if (selection != null) {
                         val (row, column) = selection
                         val index = row * numberOfColumns + column
@@ -1139,16 +1216,7 @@ private fun ensureRowIsVisible(
     screenKey: String
 ) {
     if (BuildConfig.DEBUG) {
-        logDiscovery("🎯 ensureRowIsVisible called for row $row")
-    }
-
-    // Get current selection to preserve column
-    val currentSelection = GridPositionManager.getSavedSelection(screenKey)
-    if (currentSelection == null) {
-        if (BuildConfig.DEBUG) {
-            logDiscovery("❌ No saved selection found in ensureRowIsVisible")
-        }
-        return
+        logDiscovery("🎯 ensureRowIsVisible called for row $row on $screenKey")
     }
 
     // Calculate item index for the start of this row

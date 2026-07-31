@@ -355,6 +355,33 @@ class MediaDiscoveryViewModel @Inject constructor(
         }
     }
 
+    /**
+     * True when this ViewModel already holds results for exactly this target.
+     *
+     * Re-entering a screen must not refetch what is already loaded: a non-paged fetch replaces the
+     * whole list with page 1, collapsing an 80-item studio back to 20 and leaving the grid's
+     * restored scroll position out of range. The screens used to ask
+     * `GridPositionManager.isReturningFromDetails` instead, but that flag is consumed by whichever
+     * restore path runs first, so a later read saw false and refetched.
+     */
+    fun isShowingResultsFor(discoveryType: DiscoveryType, keyword: String): Boolean {
+        if (_searchResults.value.isEmpty()) return false
+
+        val mode = when (discoveryType) {
+            DiscoveryType.SEARCH -> DiscoveryMode.SEARCH
+            DiscoveryType.MOVIE_KEYWORDS -> DiscoveryMode.MOVIE_KEYWORDS
+            DiscoveryType.TV_KEYWORDS -> DiscoveryMode.TV_KEYWORDS
+            DiscoveryType.MOVIE_GENRE -> DiscoveryMode.MOVIE_GENRE
+            DiscoveryType.SERIES_GENRE -> DiscoveryMode.SERIES_GENRE
+            DiscoveryType.STUDIO -> DiscoveryMode.STUDIO
+            DiscoveryType.NETWORK -> DiscoveryMode.NETWORK
+        }
+        if (currentDiscoveryMode != mode) return false
+
+        // Search is keyed by the live query; every other mode by the keyword/id it was loaded with.
+        return if (mode == DiscoveryMode.SEARCH) currentQuery == keyword else currentKeywordId == keyword
+    }
+
     fun loadMore() {
         if (!_hasMoreResults.value) {
             Log.d("MediaDiscoveryViewModel", "❌ LOAD MORE SKIPPED: No more results available (hasMoreResults=false)")

@@ -176,11 +176,16 @@ fun MediaBrowseScreen(
         if (currentSavedPosition != null && currentSavedSelection != null) {
             // Only restore if we have enough items
             if (currentSavedPosition.first < searchResults.size) {
-                // Restore selection and focus
-                selectedRow = currentSavedSelection.first
-                selectedColumn = currentSavedSelection.second
+                // Restore selection and focus. Position and selection are stored in different
+                // coordinate spaces (scroll index vs row/column), so the bounds check above
+                // doesn't vouch for the selection — validate it against the list we have.
+                val validSelection = GridPositionManager
+                    .getValidSelection(screenKey, searchResults.size, numberOfColumns)
+                    ?: currentSavedSelection
+                selectedRow = validSelection.first
+                selectedColumn = validSelection.second
                 focusedItem = BrowseFocusedItem.Grid
-                appFocusManager.focusBrowseScreen(BrowseFocusState.Grid(currentSavedSelection.first, currentSavedSelection.second))
+                appFocusManager.focusBrowseScreen(BrowseFocusState.Grid(validSelection.first, validSelection.second))
 
                 // Restore scroll position with a slight delay to ensure layout is ready
                 coroutineScope.launch {
@@ -213,10 +218,14 @@ fun MediaBrowseScreen(
                 GridPositionManager.clearReturningFlag(screenKey)
             }
         } else {
-            // If we don't have enough items yet, trigger load more
+            // Nothing was saved to restore to. Clear the flag rather than leaving the screen
+            // "returning" forever: this effect re-runs on every result/loading change, so the flag
+            // would keep it asking for another page, and a later fresh entry would still believe
+            // it was returning and restore a stale scroll position instead of starting at the top.
             if (BuildConfig.DEBUG) {
-                Log.d("MediaBrowseScreen", "⏳ Waiting for more items before restoring position...")
+                Log.d("MediaBrowseScreen", "⏳ No saved position to restore - loading more and clearing return state")
             }
+            GridPositionManager.clearReturningFlag(screenKey)
             viewModel.loadMore()
         }
     }
@@ -585,6 +594,35 @@ fun MediaBrowseScreen(
             dpadController.unregisterScreen(screenKey)
             if (BuildConfig.DEBUG) {
                 Log.d("MediaBrowseScreen", "📱 Unregistered MediaBrowse from DPAD controller (disposed)")
+            }
+        }
+    }
+
+    // Keep the selection inside the list it points at. selectedRow/-Column are rememberSaveable,
+    // while the results behind them are refetched from page 1 whenever filters, sort or another
+    // target repoint the shared discovery ViewModel — so a selection made deep in the previous
+    // list survives into a shorter one, where it draws no highlight and Enter does nothing.
+    LaunchedEffect(searchResults.size) {
+        if (focusedItem == BrowseFocusedItem.Grid && searchResults.isNotEmpty()) {
+            val maxRow = (searchResults.size - 1) / numberOfColumns
+            val clampedRow = selectedRow.coerceIn(0, maxRow)
+            val clampedColumn = adjustColumnForRow(
+                selectedColumn.coerceAtLeast(0),
+                clampedRow,
+                searchResults.size,
+                numberOfColumns
+            ).coerceAtLeast(0)
+
+            if (clampedRow != selectedRow || clampedColumn != selectedColumn) {
+                if (BuildConfig.DEBUG) {
+                    Log.d(
+                        "MediaBrowseScreen",
+                        "✂️ Clamped selection ($selectedRow, $selectedColumn) -> ($clampedRow, $clampedColumn) for ${searchResults.size} items"
+                    )
+                }
+                selectedRow = clampedRow
+                selectedColumn = clampedColumn
+                appFocusManager.focusBrowseScreen(BrowseFocusState.Grid(clampedRow, clampedColumn))
             }
         }
     }

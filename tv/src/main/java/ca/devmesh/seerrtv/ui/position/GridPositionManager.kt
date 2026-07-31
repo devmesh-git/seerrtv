@@ -23,7 +23,13 @@ object GridPositionManager {
     private val browseSorts = mutableMapOf<String, BrowseModels.SortOption>()
     
     /**
-     * Request a position change. Returns true if the change is valid and was applied.
+     * Request a position change. Returns true unless the screen has nothing to select.
+     *
+     * An out-of-range [position] is clamped rather than refused. Refusal used to be silent and
+     * unrecoverable: MediaDiscoveryScreen's DPAD handlers only move when this returns true, so a
+     * selection saved against a longer list — the shared discovery ViewModel resets itself to
+     * page 1 whenever another target uses it — made every direction reject its own move and left
+     * the grid unnavigable until the process was killed.
      */
     fun requestPositionChange(
         screenKey: String,
@@ -33,21 +39,28 @@ object GridPositionManager {
         column: Int,
         totalItems: Int
     ): Boolean {
-        // Validate the position
-        if (position >= totalItems) {
+        if (totalItems <= 0) {
             if (BuildConfig.DEBUG) {
-                Log.d("GridPositionManager", "❌ Position change rejected: position $position exceeds total items $totalItems")
+                Log.d("GridPositionManager", "❌ Position change rejected: $screenKey has no items")
             }
             return false
         }
 
+        val safePosition = position.coerceIn(0, totalItems - 1)
+        // A clamped position no longer refers to the item the offset was measured against.
+        val safeOffset = if (safePosition == position) offset else 0
+
+        if (BuildConfig.DEBUG && safePosition != position) {
+            Log.d("GridPositionManager", "✂️ Clamped position $position to $safePosition for $screenKey ($totalItems items)")
+        }
+
         // Save the new position and selection
         // Store actual row position instead of hardcoding to 0
-        gridPositions[screenKey] = Pair(position, offset)
-        gridSelections[screenKey] = Pair(row, column)
+        gridPositions[screenKey] = Pair(safePosition, safeOffset)
+        gridSelections[screenKey] = Pair(row.coerceAtLeast(0), column.coerceAtLeast(0))
 
         if (BuildConfig.DEBUG) {
-            Log.d("GridPositionManager", "✅ Position change approved for $screenKey: pos=$position, offset=$offset, row=$row, col=$column")
+            Log.d("GridPositionManager", "✅ Position change approved for $screenKey: pos=$safePosition, offset=$safeOffset, row=$row, col=$column")
         }
 
         return true
@@ -89,6 +102,39 @@ object GridPositionManager {
      * Get the saved selection state
      */
     fun getSavedSelection(screenKey: String): Pair<Int, Int>? = gridSelections[screenKey]
+
+    /**
+     * Get the saved selection clamped to what [totalItems] can actually address, repairing the
+     * stored entry when it has drifted out of range.
+     *
+     * Selections outlive the list they were made against: this manager is a process-wide object
+     * keyed per screen, while the results behind it are refetched from page 1 whenever the shared
+     * discovery ViewModel is pointed at another target. Reading an unvalidated selection is what
+     * left the studio/network grids unnavigable — every DPAD handler computed a move from a row
+     * that no longer existed, failed its own bounds check, and did nothing.
+     */
+    fun getValidSelection(screenKey: String, totalItems: Int, numberOfColumns: Int): Pair<Int, Int>? {
+        if (totalItems <= 0 || numberOfColumns <= 0) return null
+        val saved = gridSelections[screenKey] ?: return null
+
+        val maxRow = (totalItems - 1) / numberOfColumns
+        val row = saved.first.coerceIn(0, maxRow)
+        // The last row is usually short, so the column ceiling depends on the row we landed on.
+        val itemsInRow = if (row == maxRow) totalItems - row * numberOfColumns else numberOfColumns
+        val column = saved.second.coerceIn(0, itemsInRow - 1)
+
+        val valid = Pair(row, column)
+        if (valid != saved) {
+            gridSelections[screenKey] = valid
+            // The stored scroll index was measured against the same stale list.
+            gridPositions[screenKey] = Pair((row * numberOfColumns).coerceIn(0, totalItems - 1), 0)
+            if (BuildConfig.DEBUG) {
+                Log.d("GridPositionManager", "✂️ Repaired stale selection for $screenKey: $saved -> $valid ($totalItems items)")
+            }
+        }
+
+        return valid
+    }
     
     /**
      * Save selection state for a screen
