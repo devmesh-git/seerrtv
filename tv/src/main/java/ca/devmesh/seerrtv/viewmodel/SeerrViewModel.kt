@@ -421,6 +421,58 @@ class SeerrViewModel @Inject constructor(
     private val _watchlistMembership = MutableStateFlow<Set<String>>(emptySet())
     val watchlistMembership: StateFlow<Set<String>> = _watchlistMembership.asStateFlow()
 
+    /** The Seerr user these caches were filled for, or null before the first authentication. */
+    private var cachesFilledForUserId: Int? = null
+
+    /**
+     * Drops every per-user cache the moment the API service reports a different connection — a
+     * profile switch, a different server, or new credentials.
+     *
+     * This ViewModel outlives a profile switch: `activateProfile` calls `Activity.recreate()`,
+     * which preserves the ViewModel store, so the rows otherwise stayed exactly as the previous
+     * account left them. That became visible once results were filtered per user *before* being
+     * cached — blocklisted titles are dropped for accounts that may not see them, so switching to
+     * an account holding blocklist permission kept showing the filtered rows until the 5 minute
+     * cache expired or the user forced a refresh by scrolling up past the top.
+     *
+     * It has to be push-based rather than checked on the next load: `MainScreen` only calls
+     * [loadAllCategories] while [isInitialLoad] is true, so after a switch nothing ever asks to
+     * load again and a lazy check would never run. Resetting [isInitialLoad] makes that screen's
+     * `LaunchedEffect` fire again against the now-empty caches.
+     */
+    init {
+        viewModelScope.launch {
+            apiService.authenticatedUserId.filterNotNull().collect { userId ->
+                val previousUserId = cachesFilledForUserId
+                if (previousUserId == userId) return@collect
+                cachesFilledForUserId = userId
+                if (previousUserId == null) return@collect
+
+                Log.d("SeerrTV", "Signed in as a different user; discarding cached rows, sliders and category cards")
+                discardCachesForNewConnection()
+                // `loadAllCategories` is a no-op once `initialLoadDone` is set, and `MainScreen`
+                // only calls it while `isInitialLoad` is true — both have to be reopened or the
+                // cleared rows would simply stay empty.
+                initialLoadDone = false
+                _needsRefresh.value = true
+                _isInitialLoad.value = true
+                loadAllCategories()
+            }
+        }
+    }
+
+    private fun discardCachesForNewConnection() {
+        _categoryData.value = emptyMap()
+        cacheTimestamps.clear()
+        categoryMediaLists.clear()
+        _categoryCardData.value = emptyMap()
+        categoryCardLists.clear()
+        _customSliderData.value = emptyMap()
+        customSliderCacheTimestamps.clear()
+        _mediaDetailsCache.value = emptyMap()
+        _watchlistMembership.value = emptySet()
+    }
+
     private val customSliderMediaLists = mutableMapOf<Int, MutableList<Media>>()
     private val customSliderLoadingState = mutableStateMapOf<Int, Boolean>()
     private val customSliderCacheTimestamps = mutableMapOf<Int, Long>()

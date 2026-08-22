@@ -2,6 +2,17 @@
 
 ## 0.29.0
 
+### Fixed: Switching profiles kept showing the previous account's rows
+
+- **Symptom** – Browse as a regular user, switch to an admin, and the home rows still showed exactly what the regular user could see — a blocklisted title stayed hidden until you scrolled up past the top to force a refresh, or waited out the 5 minute cache. Found while testing the blocklist change.
+
+- **Root cause** – The home rows are cached in `SeerrViewModel` behind a 5 minute TTL keyed only on the category, with no notion of *whose* results they hold, and that ViewModel outlives a profile switch: `activateProfile` calls `Activity.recreate()`, which preserves the ViewModel store. The caches were always shared this way, but it was invisible until results started being filtered per user before being cached — a list with the blocklisted titles already removed is not reusable by an account that may see them. Nothing re-requested a load either: `MainScreen` only calls `loadAllCategories` while `isInitialLoad` is true, and that function is itself a no-op once `initialLoadDone` is set.
+
+- **Fix** –
+  - `SeerrApiService` publishes `authenticatedUserId`, set only after `auth/me` answers. `SeerrViewModel` keys its caches on it and discards rows, sliders, category cards, media details and watchlist membership when it changes, then reopens `initialLoadDone` / `isInitialLoad` and reloads.
+  - Keying on the authenticated user rather than the config change matters for ordering: the config is swapped ~2s before the new session logs in, so refetching at that point would run against a session that has not authenticated yet.
+  - `updateConfig` also clears the API service's pagination cursors, which described the previous account's already-filtered result set.
+
 ### Fixed: Adding a profile relabelled the profile you already had
 
 - **Symptom** – Add a second profile (e.g. an admin account alongside a regular one) and the profile picker shows two entries with the *same* name and the *same* avatar, with no way to tell them apart. Found on an emulator while testing the blocklist change against an admin account.

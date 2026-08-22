@@ -647,6 +647,9 @@ class SeerrApiService @Inject constructor(
             resolvedPermissions,
             remoteAvatarUrl
         )
+        // Published last: consumers keyed on this refetch per-user-filtered data, so it must only
+        // change once the session is fully authenticated as this user.
+        _authenticatedUserId.value = user.id
     }
 
     fun getAuthType(): AuthType = config.getAuthType()
@@ -745,6 +748,30 @@ class SeerrApiService @Inject constructor(
     }
 
     private var serverType: ServerType = ServerType.UNKNOWN
+
+    /**
+     * Bumped every time [updateConfig] switches to a different Seerr connection — another server,
+     * another profile, or new credentials.
+     *
+     * Consumers that cache per-user results (discover rows, sliders, category cards) compare this
+     * against the generation their cache was filled under, so a profile switch cannot serve one
+     * account's results to another. That matters because results are filtered per user before they
+     * are cached: blocklisted titles are dropped for a user who may not see them, and a switch to
+     * an account that may see them would otherwise keep showing the filtered list until the 5
+     * minute cache expired or the user manually refreshed.
+     */
+    private val _authenticatedUserId = kotlinx.coroutines.flow.MutableStateFlow<Int?>(null)
+
+    /**
+     * The Seerr user id the current session is authenticated as, or null while unauthenticated.
+     *
+     * Consumers that cache per-user results (discover rows, sliders, category cards) key their
+     * caches on this, because results are filtered per user *before* being cached: blocklisted
+     * titles are dropped for accounts that may not see them. It is published only once `auth/me`
+     * has answered, so a consumer reacting to it can safely refetch — reacting to the config
+     * change instead would refetch against a session that has not logged in yet.
+     */
+    val authenticatedUserId: kotlinx.coroutines.flow.StateFlow<Int?> = _authenticatedUserId
 
     @Serializable
     data class JellyfinTestRequest(
@@ -2376,8 +2403,14 @@ class SeerrApiService @Inject constructor(
         apiKeyXsrfToken = null
 
         if (!sameConnection) {
+            _authenticatedUserId.value = null
             currentAuthToken = null
             currentUserInfoState = null
+            // Page cursors belong to the previous account's (already filtered) result set.
+            paginationStates.clear()
+            // Re-read on the next authentication; the persisted copies are cleared just below.
+            serverHideAvailable = false
+            serverHideBlocklisted = false
             // Also drop the persisted copies so a process restart can never seed the in-memory
             // user or service caches from a different server (see restoreSavedUserInfo /
             // restoreSavedRadarrData / restoreSavedSonarrData).
