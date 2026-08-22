@@ -401,6 +401,7 @@ On first run, the app will guide you through the configuration process:
 
 For detailed configuration guides, see:
 - [Cloudflare Access Configuration Guide](docs/CLOUDFLARE_CONFIGURATION.md) - Setting up Cloudflare Zero Trust protection
+- [Backend Support: Seerr, Jellyseerr, Overseerr](docs/SEERR_BACKEND_SUPPORT.md) - Which backend SeerrTV targets, and how blocklist / "hide available" visibility works
 
 ## User Guides
 

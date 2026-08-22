@@ -17,6 +17,7 @@ import ca.devmesh.seerrtv.model.SonarrLookupResult
 import ca.devmesh.seerrtv.model.Discover
 import ca.devmesh.seerrtv.model.Media
 import ca.devmesh.seerrtv.model.MediaDetails
+import ca.devmesh.seerrtv.model.MediaInfo
 import ca.devmesh.seerrtv.model.MediaRequestBody
 import ca.devmesh.seerrtv.model.MediaServerType
 import ca.devmesh.seerrtv.model.Movie
@@ -35,6 +36,7 @@ import ca.devmesh.seerrtv.model.RequestResponse
 import ca.devmesh.seerrtv.model.RottenTomatoesRating
 import ca.devmesh.seerrtv.model.SearchResponse
 import ca.devmesh.seerrtv.model.SearchResult
+import ca.devmesh.seerrtv.model.SimilarMediaItem
 import ca.devmesh.seerrtv.model.SimilarMediaResponse
 import ca.devmesh.seerrtv.model.Sonarr
 import ca.devmesh.seerrtv.model.SonarrResult
@@ -45,6 +47,7 @@ import ca.devmesh.seerrtv.model.Keyword
 import ca.devmesh.seerrtv.model.ContentRating
 import ca.devmesh.seerrtv.model.Provider
 import ca.devmesh.seerrtv.util.DiagnosticsLog
+import ca.devmesh.seerrtv.util.Permission
 import ca.devmesh.seerrtv.util.SharedPreferencesUtil
 import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.HttpClient
@@ -209,6 +212,10 @@ class SeerrApiService @Inject constructor(
     
     private companion object {
         const val DEFAULT_PAGE_SIZE = 20
+        /** Visible items a paged load aims for before it stops topping up (see [fetchSinglePage]). */
+        const val MIN_VISIBLE_RESULTS_PER_LOAD = 12
+        /** Upper bound on server round-trips for a single paged load. */
+        const val MAX_PAGES_PER_LOAD = 5
         const val COOKIE_CONNECT_SID = "connect.sid"
         const val COOKIE_CSRF = "_csrf"
         const val COOKIE_XSRF = "XSRF-TOKEN"
@@ -339,6 +346,89 @@ class SeerrApiService @Inject constructor(
     fun resetPaginationState(endpoint: String) {
         paginationStates[endpoint] = MutablePaginationInfo()
     }
+
+    // --- Content visibility (Seerr blocklist / "hide available") --------------------------------
+    // Seerr returns blocklisted and already-available titles to every API caller and hides them in
+    // its web client instead, so SeerrTV has to apply the same rules itself. See
+    // [MediaVisibility] for the exact rules this mirrors.
+
+    /** Server-side "Hide Available Items" / "Hide Blocklisted Items", from /settings/public. */
+    private var serverHideAvailable: Boolean = SharedPreferencesUtil.getServerHideAvailable(context)
+    private var serverHideBlocklisted: Boolean = SharedPreferencesUtil.getServerHideBlocklisted(context)
+
+    /** Current user's visibility rules; recomputed per call so a permissions refresh takes effect. */
+    internal fun currentVisibility(): MediaVisibility {
+        val permissions = currentUserInfoState?.permissions
+            ?: SharedPreferencesUtil.getSavedUserId(context)
+                ?.let { SharedPreferencesUtil.getSavedUserPermissions(context, it) }
+            ?: Permission.NONE.value
+        return MediaVisibility(
+            userPermissions = permissions,
+            hideAvailable = serverHideAvailable,
+            hideBlocklisted = serverHideBlocklisted
+        )
+    }
+
+    /**
+     * Refreshes the cached public settings. Called after a successful authentication; failures are
+     * non-fatal and simply keep the last known (or default: hide nothing) values.
+     */
+    suspend fun refreshContentVisibilitySettings() {
+        when (val result = executeApiCall<PublicSettingsResponse>("settings/public")) {
+            is ApiResult.Success -> {
+                val data = result.data
+                serverHideAvailable = data.hideAvailable ?: false
+                serverHideBlocklisted = data.hideBlocklisted ?: data.hideBlacklisted ?: false
+                SharedPreferencesUtil.saveServerContentVisibility(
+                    context,
+                    hideAvailable = serverHideAvailable,
+                    hideBlocklisted = serverHideBlocklisted
+                )
+                Log.d(
+                    "SeerrApiService",
+                    "Content visibility settings: hideAvailable=$serverHideAvailable, hideBlocklisted=$serverHideBlocklisted"
+                )
+            }
+            else -> Log.d("SeerrApiService", "Could not read /settings/public; keeping cached content visibility")
+        }
+    }
+
+    private fun MediaInfo?.isHiddenBy(visibility: MediaVisibility, policy: VisibilityPolicy, mediaType: String?): Boolean =
+        visibility.isHidden(this?.status, this?.status4k, mediaType ?: this?.mediaType, policy)
+
+    /** Drops titles the current user must not see. Mirrors Seerr's ListView/MediaSlider/useDiscover. */
+    private fun List<Media>.applyVisibility(policy: VisibilityPolicy = VisibilityPolicy.DISCOVER): List<Media> {
+        val visibility = currentVisibility()
+        if (policy == VisibilityPolicy.NONE || visibility.hidesNothing()) return this
+        return filterNot { media ->
+            visibility.isHidden(
+                status = media.mediaInfo?.status ?: media.status,
+                status4k = media.mediaInfo?.status4k ?: media.status4k,
+                mediaType = media.mediaType,
+                policy = policy
+            )
+        }
+    }
+
+    @JvmName("applyVisibilityToSearchResults")
+    private fun List<SearchResult>.applyVisibility(policy: VisibilityPolicy = VisibilityPolicy.SEARCH): List<SearchResult> {
+        val visibility = currentVisibility()
+        if (policy == VisibilityPolicy.NONE || visibility.hidesNothing()) return this
+        return filterNot { it.mediaInfo.isHiddenBy(visibility, policy, it.mediaType) }
+    }
+
+    @JvmName("applyVisibilityToSimilarMedia")
+    private fun List<SimilarMediaItem>.applyVisibility(policy: VisibilityPolicy = VisibilityPolicy.DISCOVER): List<SimilarMediaItem> {
+        val visibility = currentVisibility()
+        if (policy == VisibilityPolicy.NONE || visibility.hidesNothing()) return this
+        return filterNot { it.mediaInfo.isHiddenBy(visibility, policy, it.mediaType) }
+    }
+
+    private fun Discover.withVisibleResults(policy: VisibilityPolicy = VisibilityPolicy.DISCOVER): Discover =
+        copy(results = results.applyVisibility(policy))
+
+    private fun SimilarMediaResponse.withVisibleResults(policy: VisibilityPolicy = VisibilityPolicy.DISCOVER): SimilarMediaResponse =
+        copy(results = results.applyVisibility(policy))
 
     /**
      * Returns a copy of the config with hostname and protocol sanitized for API use.
@@ -779,6 +869,21 @@ class SeerrApiService @Inject constructor(
             // Fix connection pool issues that cause "Max send count exceeded" errors
             .connectionPool(ConnectionPool(maxIdleConnections = 5, keepAliveDuration = 5, java.util.concurrent.TimeUnit.MINUTES))
             .retryOnConnectionFailure(false) // Disable automatic retries to prevent accumulation
+            // Ktor's OkHttp engine enqueues its calls, so a non-IOException escaping the call
+            // (e.g. HttpUrl.Builder.host rejecting a host at connection time) is rethrown by
+            // AsyncCall.run onto a dispatcher thread and kills the process. See
+            // [resilientDispatchExecutor]. Request limits stay at OkHttp's defaults.
+            .dispatcher(
+                okhttp3.Dispatcher(
+                    resilientDispatchExecutor(
+                        context = context,
+                        threadName = "SeerrTV API Dispatcher",
+                        diagnosticsCategory = context.getString(R.string.diagnostics_categoryServerRequest),
+                        diagnosticsContext = "A server request failed on a network thread. " +
+                            "The request was abandoned; the app kept running."
+                    )
+                )
+            )
             .build()
         return HttpClient(OkHttp) {
             engine {
@@ -1539,44 +1644,66 @@ class SeerrApiService @Inject constructor(
         }.awaitAll()
     }
 
+    /**
+     * Reads the next page of a paginated discover endpoint, applying [filter] and the current
+     * user's content visibility rules.
+     *
+     * Filtering thins pages, so this tops up across a few pages until it has enough visible items
+     * (or runs out) rather than handing back a near-empty row. A page that filters down to nothing
+     * still advances the page counter — otherwise the same page would be re-requested forever.
+     */
     private suspend fun fetchSinglePage(
         endpoint: String,
         filter: ((Media) -> Boolean)? = null
     ): ApiResult<Discover> {
         val state = getOrCreatePaginationState(endpoint)
-        
-        return when (val result = fetchMediaListPage(endpoint, state.currentPage)) {
-            is ApiResult.Success -> {
-                val data = result.data
-                val filteredResults = if (filter != null) {
-                    data.results.filter(filter)
-                } else {
-                    data.results
-                }
+        val collected = mutableListOf<Media>()
+        var failure: ApiResult<Discover>? = null
+        var pagesRead = 0
 
-                // Update pagination state
-                state.totalPages = data.totalPages
-                state.totalResults = data.totalResults
-                state.hasMorePages = state.currentPage < state.totalPages
-                
-                // Only increment the page counter after a successful API call with results
-                if (state.hasMorePages && filteredResults.isNotEmpty()) {
-                    state.currentPage++
-                }
+        while (pagesRead < MAX_PAGES_PER_LOAD) {
+            when (val result = fetchMediaListPage(endpoint, state.currentPage)) {
+                is ApiResult.Success -> {
+                    val data = result.data
+                    pagesRead++
 
-                ApiResult.Success(
-                    data = Discover(
-                        page = state.currentPage - 1,
-                        totalPages = state.totalPages,
-                        totalResults = state.totalResults,
-                        results = filteredResults
-                    ),
-                    paginationInfo = state.toImmutable()
-                )
+                    collected += data.results
+                        .let { results -> if (filter != null) results.filter(filter) else results }
+                        .applyVisibility()
+
+                    // Update pagination state
+                    state.totalPages = data.totalPages
+                    state.totalResults = data.totalResults
+                    state.hasMorePages = state.currentPage < state.totalPages
+
+                    if (state.hasMorePages) {
+                        state.currentPage++
+                    }
+
+                    if (collected.size >= MIN_VISIBLE_RESULTS_PER_LOAD || !state.hasMorePages) break
+                }
+                is ApiResult.Error -> {
+                    failure = result
+                    break
+                }
+                is ApiResult.Loading -> {
+                    failure = result
+                    break
+                }
             }
-            is ApiResult.Error -> result
-            is ApiResult.Loading -> result
         }
+
+        failure?.let { if (collected.isEmpty()) return it }
+
+        return ApiResult.Success(
+            data = Discover(
+                page = state.currentPage - 1,
+                totalPages = state.totalPages,
+                totalResults = state.totalResults,
+                results = collected
+            ),
+            paginationInfo = state.toImmutable()
+        )
     }
 
     suspend fun getMovieDetails(id: String): ApiResult<MediaDetails> {
@@ -1600,7 +1727,7 @@ class SeerrApiService @Inject constructor(
         val pageEndpoint = "movie/$movieId/similar?page=$page"
         // append locale if not english
         val localizedEndpoint = appendDisplayLocale(pageEndpoint, locale)
-        return executeApiCall(localizedEndpoint)
+        return executeApiCall<SimilarMediaResponse>(localizedEndpoint).mapData { it.withVisibleResults() }
     }
 
     suspend fun getSimilarTVShows(tvId: Int, page: Int = 1): ApiResult<SimilarMediaResponse> {
@@ -1608,7 +1735,7 @@ class SeerrApiService @Inject constructor(
         val pageEndpoint = "tv/$tvId/similar?page=$page"
         // append locale if not english
         val localizedEndpoint = appendDisplayLocale(pageEndpoint, locale)
-        return executeApiCall(localizedEndpoint)
+        return executeApiCall<SimilarMediaResponse>(localizedEndpoint).mapData { it.withVisibleResults() }
     }
 
     suspend fun getRecentlyAdded(reset: Boolean = false): ApiResult<PaginatedMediaResponse> {
@@ -1680,7 +1807,10 @@ class SeerrApiService @Inject constructor(
                     }
                 }
 
-                ApiResult.Success(result.data, state.toImmutable())
+                ApiResult.Success(
+                    result.data.copy(results = result.data.results.applyVisibility(VisibilityPolicy.SEARCH)),
+                    state.toImmutable()
+                )
             }
             is ApiResult.Error -> result
             is ApiResult.Loading -> result
@@ -1751,7 +1881,7 @@ class SeerrApiService @Inject constructor(
                     }
                 }
                 
-                ApiResult.Success(result.data, state.toImmutable())
+                ApiResult.Success(result.data.withVisibleResults(), state.toImmutable())
             }
             is ApiResult.Error -> result
             is ApiResult.Loading -> result
@@ -1787,7 +1917,7 @@ class SeerrApiService @Inject constructor(
                     }
                 }
                 
-                ApiResult.Success(result.data, state.toImmutable())
+                ApiResult.Success(result.data.withVisibleResults(), state.toImmutable())
             }
             is ApiResult.Error -> result
             is ApiResult.Loading -> result
@@ -2113,6 +2243,8 @@ class SeerrApiService @Inject constructor(
                                 
                                 // Detect media server type after successful authentication
                                 detectMediaServerType()
+                                // Blocklist / "hide available" visibility is client-side in Seerr.
+                                refreshContentVisibilitySettings()
                                 
                                 return@withContext ApiValidationResult.Success(serverType)
                             }
@@ -3103,7 +3235,7 @@ class SeerrApiService @Inject constructor(
                     }
                 }
                 
-                ApiResult.Success(result.data, state.toImmutable())
+                ApiResult.Success(result.data.withVisibleResults(), state.toImmutable())
             }
             is ApiResult.Error -> result
             is ApiResult.Loading -> result
@@ -3148,7 +3280,7 @@ class SeerrApiService @Inject constructor(
                     }
                 }
                 
-                ApiResult.Success(result.data, state.toImmutable())
+                ApiResult.Success(result.data.withVisibleResults(), state.toImmutable())
             }
             is ApiResult.Error -> result
             is ApiResult.Loading -> result
@@ -3193,7 +3325,7 @@ class SeerrApiService @Inject constructor(
                     }
                 }
                 
-                ApiResult.Success(result.data, state.toImmutable())
+                ApiResult.Success(result.data.withVisibleResults(), state.toImmutable())
             }
             is ApiResult.Error -> result
             is ApiResult.Loading -> result
@@ -3238,7 +3370,7 @@ class SeerrApiService @Inject constructor(
                     }
                 }
                 
-                ApiResult.Success(result.data, state.toImmutable())
+                ApiResult.Success(result.data.withVisibleResults(), state.toImmutable())
             }
             is ApiResult.Error -> result
             is ApiResult.Loading -> result
@@ -3247,7 +3379,11 @@ class SeerrApiService @Inject constructor(
 
     @Serializable
     private data class PublicSettingsResponse(
-        @SerialName("mediaServerType") val mediaServerType: Int? = null
+        @SerialName("mediaServerType") val mediaServerType: Int? = null,
+        val hideAvailable: Boolean? = null,
+        val hideBlocklisted: Boolean? = null,
+        // Jellyseerr 2.x spelling, kept for the legacy backends (Seerr migrated the key).
+        val hideBlacklisted: Boolean? = null
     )
 
     @Serializable
@@ -3453,7 +3589,10 @@ class SeerrApiService @Inject constructor(
         val result = login()
         if (result is ApiResult.Success) {
             when (val user = executeApiCall<ca.devmesh.seerrtv.model.User>("auth/me")) {
-                is ApiResult.Success -> persistAuthenticatedUser(user.data)
+                is ApiResult.Success -> {
+                    persistAuthenticatedUser(user.data)
+                    refreshContentVisibilitySettings()
+                }
                 else -> { /* keep the seeded/last-known user info */ }
             }
         }
@@ -3618,7 +3757,7 @@ class SeerrApiService @Inject constructor(
                         "results=${data.results.size}, hasMore=${state.hasMorePages}")
                 }
                 
-                ApiResult.Success(data, state.toImmutable())
+                ApiResult.Success(data.withVisibleResults(), state.toImmutable())
             }
             is ApiResult.Error -> result
             is ApiResult.Loading -> result
@@ -3809,7 +3948,7 @@ class SeerrApiService @Inject constructor(
                 if (state.hasMorePages && result.data.results.isNotEmpty()) {
                     state.currentPage++
                 }
-                ApiResult.Success(result.data, state.toImmutable())
+                ApiResult.Success(result.data.withVisibleResults(), state.toImmutable())
             }
             is ApiResult.Error -> result
             is ApiResult.Loading -> result

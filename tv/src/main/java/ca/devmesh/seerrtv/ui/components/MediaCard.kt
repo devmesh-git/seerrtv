@@ -9,6 +9,9 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -634,10 +637,10 @@ private fun getMediaInfoIcon(mediaInfo: MediaInfo): @Composable (Modifier) -> Un
     val fourKStatus = mediaInfo.status4k
     
     // Determine the highest priority status between regular and 4K
-    // Priority: Deleted (7) > Blacklisted (6) > Available (5) > Partially Available (4) > Pending (2,3) > Not Requested (0,1)
+    // Priority: Deleted (7) > Blocklisted (6) > Available (5) > Partially Available (4) > Pending (2,3) > Not Requested (0,1)
     val effectiveStatus = when {
         regularStatus == 7 || fourKStatus == 7 -> 7 // Deleted
-        regularStatus == 6 || fourKStatus == 6 -> 6 // Blacklisted
+        regularStatus == 6 || fourKStatus == 6 -> 6 // Blocklisted
         regularStatus == 5 || fourKStatus == 5 -> 5 // Available
         regularStatus == 4 || fourKStatus == 4 -> 4 // Partially Available
         regularStatus in listOf(2, 3) || fourKStatus in listOf(2, 3) -> {
@@ -655,7 +658,7 @@ private fun getMediaInfoIcon(mediaInfo: MediaInfo): @Composable (Modifier) -> Un
         3 -> { modifier -> CustomClockIcon(modifier) } // Pending
         4 -> { modifier -> CustomDashIcon(modifier) } // Partially Available
         5 -> { modifier -> CustomCheckmarkIcon(modifier) } // Available
-        6 -> { modifier -> CustomBlockedIcon(modifier) } // Blacklisted
+        6 -> { modifier -> CustomBlockedIcon(modifier) } // Blocklisted
         7 -> { modifier -> CustomTrashIcon(modifier) } // Deleted
         else -> { {} }
     }
@@ -812,49 +815,22 @@ internal fun CustomTrashIcon(modifier: Modifier = Modifier) {
 
 @Composable
 internal fun CustomBlockedIcon(modifier: Modifier = Modifier) {
-    Canvas(modifier = modifier) {
-        val outerCircleColor = Color(0xFF000000)
-        val innerCircleColor = Color(0xFF1F1F1F)
-        val innerFillColor = Color(0xFFF3F4F6)
-        val blockedColor = Color(0xFF000000)
-        
-        val outerRadius = size.minDimension / 2
-        val innerRadius = outerRadius * 0.85f
-        val center = Offset(size.width / 2, size.height / 2)
-        
-        // Draw outer circle
-        drawCircle(outerCircleColor, radius = outerRadius, center = center)
-        
-        // Draw inner circle
-        drawCircle(innerCircleColor, radius = innerRadius, center = center)
-        
-        // Draw innermost fill
-        drawCircle(innerFillColor, radius = innerRadius * 0.75f, center = center)
-        
-        // Draw prohibition symbol (circle with diagonal line)
-        val prohibitionRadius = innerRadius * 0.4f
-        val lineWidth = innerRadius * 0.12f
-        
-        // Draw the diagonal prohibition line
-        val lineLength = prohibitionRadius * 1.8f
-        val lineStart = Offset(
-            center.x - lineLength / 2,
-            center.y - lineLength / 2
+    // Mirrors Seerr's blocklisted badge (src/components/Common/StatusBadgeMini): a red-500 disc
+    // with a white ring and a white eye-slash glyph. Only users allowed to see blocklisted titles
+    // ever reach this badge — for everyone else the card is filtered out upstream by
+    // [ca.devmesh.seerrtv.data.MediaVisibility].
+    Box(
+        modifier = modifier
+            .clip(CircleShape)
+            .background(Color(0xFFEF4444))
+            .border(1.dp, Color.White, CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.Filled.VisibilityOff,
+            contentDescription = stringResource(R.string.requestStatus_blacklisted),
+            tint = Color.White,
+            modifier = Modifier.fillMaxSize(0.68f)
         )
-        val lineEnd = Offset(
-            center.x + lineLength / 2,
-            center.y + lineLength / 2
-        )
-        
-        drawLine(
-            color = blockedColor,
-            start = lineStart,
-            end = lineEnd,
-            strokeWidth = lineWidth
-        )
-        
-        // Draw small circles at the ends of the line for better visibility
-        drawCircle(blockedColor, radius = lineWidth / 2, center = lineStart)
-        drawCircle(blockedColor, radius = lineWidth / 2, center = lineEnd)
     }
-} 
+}

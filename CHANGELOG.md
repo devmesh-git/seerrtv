@@ -1,5 +1,49 @@
 # Changelog
 
+## 0.29.0
+
+### Fixed: Adding a profile relabelled the profile you already had
+
+- **Symptom** – Add a second profile (e.g. an admin account alongside a regular one) and the profile picker shows two entries with the *same* name and the *same* avatar, with no way to tell them apart. Found on an emulator while testing the blocklist change against an admin account.
+
+- **Root cause** – `ConfigViewModel.validateAndSaveConfig` authenticates first and creates the profile second: `testAuth()` persists the new account's `auth/me` identity, and only afterwards does `appendNewProfileWithValidatedConfig` create the profile and make it active. `syncActiveProfileWithServerUser` wrote that identity to the raw active-profile id — which, during that window, is still the *previous* profile. So the old profile was stamped with the new account's name, initials and remote avatar, and the new profile was then named from the same freshly-saved display name. Credentials were never touched; only the display fields were overwritten, which is why both entries still signed in as different users.
+
+- **Fix** –
+  - New `resolveIdentitySyncTargetProfileId` decides where an `auth/me` identity may be written, and returns null while a new-profile creation is pending — that identity belongs to the profile that does not exist yet.
+  - Outside that window it resolves through the existing `resolveSettingsTargetProfileId`, so the sync now matches every other profile-scoped write and a stale or missing active id falls back to the first profile instead of skipping silently.
+  - The newly created profile now carries the remote avatar explicitly rather than inheriting the global fallback.
+  - Profile *switching* was never affected — it sets the active id before authenticating.
+  - Covered by `IdentitySyncTargetProfileTest`.
+
+### Fixed: ANR and crash hardening on the startup and resume paths
+
+Carried in this release from earlier troubleshooting work; verified on a Google TV emulator alongside the changes above.
+
+- **Polling kept running while backgrounded** – `MediaDownloadStatus` only stopped its 15-30s download-status poll on `ON_DESTROY`, and a backgrounded details screen is not destroyed, so the app kept hitting the API indefinitely after the user left. It now stops on `ON_STOP` and resumes on `ON_START`. `pause`/`resume` are still deliberately ignored so an external player, trailer, or dialog does not tear the loop down. A `pausedByStop` flag guards against the `ON_START` that `LifecycleRegistry` replays when the observer is registered — without it, polling would start early and the seeding `LaunchedEffect` would no-op against the duplicate-start guard, dropping `initialMediaDetails` and flickering the render.
+- **Non-`IOException`s from OkHttp killed the process** – OkHttp's `AsyncCall.run` rethrows a non-`IOException` after it has already delivered `onFailure`, so it reaches the default handler and takes the app down even though the caller was told. The dispatch executor that already handled this for image loading is now a shared `resilientDispatchExecutor` used by both Coil and the Ktor/OkHttp API client; swallowed throwables are recorded to `DiagnosticsLog` rather than dropped.
+- **Installed-apps scan ran on the main thread** – each entry costs `loadLabel` + `loadIcon` (opening the other APK and decoding a drawable) plus a binder round trip, and the scan ran on every resume from an external app — precisely during window re-add and focus handoff. `loadInstalledTvAppsWithSavedOrder` now runs it on `Dispatchers.IO`, and the refresh/resume sites launch it separately so it neither blocks nor serialises ahead of the category reload.
+- **Media logos never loaded** – `logoPath` is a bare TMDB path and was passed to Coil unprefixed, producing a schemeless URI that matched no fetcher. Also fixes two adjacent string templates that interpolated the object and appended a literal `.logoPath`.
+
+### Added: SeerrTV now honours the server's blocklist and "Hide Available Items"
+
+- **Symptom** – Content on the Seerr blocklist was hidden in the web UI when browsing as a restricted user, but SeerrTV showed it on every row, grid and search result. Force-stopping the app and clearing its cache and data made no difference. Reported by a community member against 0.28.14.
+
+- **Root cause** – Not a configuration problem, and nothing the server could fix: **Seerr filters blocklisted media entirely in its web client.** `/api/v1/discover/*` and `/api/v1/search` return blocklisted titles to every caller, and `ListView`/`MediaSlider`/`useDiscover` drop them before rendering. Two independent layers do it — an always-on permission gate (users without *Manage Blocklist* or *View Blocklist* never see status `BLOCKLISTED`), and the `hideBlocklisted` public setting, which additionally hides them from blocklist managers. Every client has to reproduce both. SeerrTV had never implemented either, so it faithfully displayed everything the API sent — its only acknowledgement of the feature was the "blocked" badge on the card. The sibling `hideAvailable` setting was ignored for the same reason.
+
+- **Fix** –
+  - New `MediaVisibility` resolves the current user's rules from their Seerr permissions and the server's public settings, mirroring Seerr's web client one-for-one, including its two asymmetries: search applies only the permission layer, and the settings layer only touches `movie`/`tv` entries.
+  - `GET /api/v1/settings/public` is now read for `hideAvailable` / `hideBlocklisted` (falling back to Jellyseerr's legacy `hideBlacklisted` key) after each successful authentication, cached per connection and cleared with the other service caches on a profile or connection change so one user's visibility can never leak to another.
+  - The filter is applied in the API layer as results are unwrapped — discover rows, browse grids, genre/keyword/studio/network, custom sliders, similar titles, watchlist and search. Recently Added and the requests list are left untouched, matching the web.
+  - Paged loads top up across a few pages when filtering thins a page, and a page that filters down to nothing now advances the page counter instead of being re-requested forever. Search's existing top-up is no longer gated on a media-type filter, since visibility filtering shortens pages the same way.
+  - The details screen no longer offers Request (or 4K Request) for a blocklisted title reached by deep link — Seerr rejects such requests server-side, so the button could only ever fail.
+  - `Permission.MANAGE_BLACKLIST` / `VIEW_BLACKLIST` renamed to `MANAGE_BLOCKLIST` / `VIEW_BLOCKLIST`, matching Seerr's current naming. Bit values are unchanged.
+  - The blocklisted card badge now matches the web app: a red disc with a white ring and a white eye-slash, replacing the old black-and-white prohibition circle (Seerr's `StatusBadgeMini`). Only users allowed to see blocklisted titles ever reach it, since the card is filtered out upstream for everyone else.
+  - Covered by `MediaVisibilityFilterTest`.
+
+- **Note for API-key connections** – An API key authenticates as the Seerr admin, and admins legitimately see blocklisted titles in the web UI too. Connect with a per-user login (Local, Jellyfin/Emby or Plex) for per-user blocklist visibility.
+
+- **Overseerr and Jellyseerr** – Overseerr has no blocklist, so the filter is a no-op there. Jellyseerr's legacy `hideBlacklisted` setting key is read as a fallback.
+
 ## 0.28.14
 
 ### Fixed: Studio and Network grids could become permanently unnavigable

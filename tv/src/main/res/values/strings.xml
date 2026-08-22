@@ -288,7 +288,9 @@
     <!-- Request Status Strings -->
     <string name="requestStatus_approved">Approved</string>
     <string name="requestStatus_available">Available</string>
-    <string name="requestStatus_blacklisted">Blacklisted</string>
+    <!-- Seerr renamed "blacklist" to "blocklist"; the resource key is kept so the 25 translated
+         locales keep resolving. Only the English copy follows the new naming. -->
+    <string name="requestStatus_blacklisted">Blocklisted</string>
     <string name="requestStatus_completed">Completed</string>
     <string name="requestStatus_declined">Declined</string>
     <string name="requestStatus_deleted">Deleted</string>

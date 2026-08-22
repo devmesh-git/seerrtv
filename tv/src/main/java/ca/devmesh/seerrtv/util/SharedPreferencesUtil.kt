@@ -119,6 +119,8 @@ object SharedPreferencesUtil {
     private const val KEY_MEDIA_SERVER_TYPE = "media_server_type"
     private const val KEY_DETECTED_MEDIA_SERVER_TYPE = "detected_media_server_type"
     private const val KEY_USER_PERMISSIONS = "user_permissions"
+    private const val KEY_HIDE_AVAILABLE = "server_hide_available"
+    private const val KEY_HIDE_BLOCKLISTED = "server_hide_blocklisted"
     private const val KEY_CACHED_RADARR_SERVERS = "cached_radarr_servers"
     private const val KEY_CACHED_SONARR_SERVERS = "cached_sonarr_servers"
     private const val KEY_USER_ID = "user_id"
@@ -307,6 +309,10 @@ object SharedPreferencesUtil {
             email = emailCandidate,
             avatarInitials = resolvedInitials,
             avatarColor = AvatarColor.PURPLE.key,
+            // Carried explicitly: the identity sync deliberately skips this window (see
+            // [resolveIdentitySyncTargetProfileId]), so the new profile takes the avatar from the
+            // auth/me values saved moments ago rather than inheriting the global fallback.
+            remoteAvatarUrl = getRemoteAvatarUrl(context),
             pinHash = "",
             config = embeddedConfig,
             settings = profileSettings
@@ -622,6 +628,26 @@ object SharedPreferencesUtil {
         activeId: String?
     ): String? = profiles.firstOrNull { it.id == activeId }?.id ?: profiles.firstOrNull()?.id
 
+    /**
+     * Which profile an `auth/me` identity (display name, initials, remote avatar) may be written to.
+     *
+     * Returns null while a new profile is being created, because at that moment the credentials
+     * just validated belong to the profile that does not exist yet — [appendNewProfileWithValidatedConfig]
+     * runs *after* [ca.devmesh.seerrtv.viewmodel.ConfigViewModel.validateAndSaveConfig] authenticates,
+     * and it names the new profile from the same freshly-saved display name. Writing during that
+     * window stamped the still-active *previous* profile with the new account's name and avatar,
+     * leaving two identically-labelled profiles and no way to tell them apart in the picker.
+     *
+     * Otherwise resolves the same way every other profile-scoped write does, via
+     * [resolveSettingsTargetProfileId], so a stale or missing active id falls back to the first
+     * profile instead of silently skipping the sync.
+     */
+    internal fun resolveIdentitySyncTargetProfileId(
+        profiles: List<UserProfile>,
+        activeId: String?,
+        pendingNewProfileCreation: Boolean
+    ): String? = if (pendingNewProfileCreation) null else resolveSettingsTargetProfileId(profiles, activeId)
+
     fun updateActiveProfileAvatarColor(context: Context, colorKey: String): Boolean {
         val profiles = getProfiles(context)
         val activeId = getActiveProfileId(context) ?: return false
@@ -890,6 +916,10 @@ object SharedPreferencesUtil {
 
     fun setProfileSelectionTargetPostActivationRoute(context: Context, route: String?) {
         val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        // MainActivity.onCreate calls this on every launch, before setContent. `commit()` rewrites
+        // and fsyncs the whole prefs file on the main thread while the window is being added, so
+        // skip it when the stored value already matches — the steady state after the first run.
+        if (sharedPrefs.getString(KEY_PROFILE_SELECTION_TARGET_POST_ACTIVATION_ROUTE, null) == route) return
         sharedPrefs.edit(commit = true) {
             if (route == null) {
                 remove(KEY_PROFILE_SELECTION_TARGET_POST_ACTIVATION_ROUTE)
@@ -912,6 +942,11 @@ object SharedPreferencesUtil {
 
     fun setProfileSelectionCompleted(context: Context, completed: Boolean) {
         val sharedPrefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        // Same as above: called unconditionally from MainActivity.onCreate, so avoid a main-thread
+        // fsync when the value is unchanged.
+        val unchanged = sharedPrefs.contains(KEY_PROFILE_SELECTION_COMPLETED) &&
+            sharedPrefs.getBoolean(KEY_PROFILE_SELECTION_COMPLETED, false) == completed
+        if (unchanged) return
         sharedPrefs.edit(commit = true) {
             putBoolean(KEY_PROFILE_SELECTION_COMPLETED, completed)
         }
@@ -1128,8 +1163,31 @@ object SharedPreferencesUtil {
         sharedPrefs.edit(commit = true) {
             remove(KEY_CACHED_RADARR_SERVERS)
             remove(KEY_CACHED_SONARR_SERVERS)
+            remove(KEY_HIDE_AVAILABLE)
+            remove(KEY_HIDE_BLOCKLISTED)
         }
     }
+
+    // --- Seerr public settings ------------------------------------------------------------------
+    // "Hide Available Items" / "Hide Blocklisted Items" from GET /api/v1/settings/public. Seerr
+    // applies both in its web client only, so SeerrTV has to filter for itself; cached here so
+    // the filter stays synchronous and survives a restore-after-process-death. Cleared with the
+    // service caches on connection/profile change so one user's visibility never leaks to another.
+
+    fun saveServerContentVisibility(context: Context, hideAvailable: Boolean, hideBlocklisted: Boolean) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit {
+            putBoolean(KEY_HIDE_AVAILABLE, hideAvailable)
+            putBoolean(KEY_HIDE_BLOCKLISTED, hideBlocklisted)
+        }
+    }
+
+    fun getServerHideAvailable(context: Context): Boolean =
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getBoolean(KEY_HIDE_AVAILABLE, false)
+
+    fun getServerHideBlocklisted(context: Context): Boolean =
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getBoolean(KEY_HIDE_BLOCKLISTED, false)
 
     /**
      * Keeps the active local profile name, initials, and remote avatar aligned with [auth/me] after login.
@@ -1147,7 +1205,11 @@ object SharedPreferencesUtil {
         val profiles = runCatching { json.decodeFromString<List<UserProfile>>(profilesJson) }
             .getOrElse { return }
         if (profiles.isEmpty()) return
-        val activeId = getActiveProfileId(context) ?: return
+        val activeId = resolveIdentitySyncTargetProfileId(
+            profiles = profiles,
+            activeId = getActiveProfileId(context),
+            pendingNewProfileCreation = isPendingNewProfileCreation(context)
+        ) ?: return
 
         val emailFromProfile: (UserProfile) -> String? = { p ->
             p.config.jellyfinEmail.takeIf { it.isNotBlank() }

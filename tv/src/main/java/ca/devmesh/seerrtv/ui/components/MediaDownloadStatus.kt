@@ -70,18 +70,42 @@ fun MediaDownloadStatus(
             viewModel.startPollingMediaDetails(tmdbId, mediaType, initialMediaDetails)
         }
         
-        // Handle lifecycle events - only stop polling on destroy, not on pause/resume
+        // Polling follows start/stop, and deliberately still ignores pause/resume: a transient
+        // pause — an external player or the YouTube trailer coming up over us, a system dialog —
+        // would otherwise tear the loop down and rebuild it for nothing. ON_STOP is where the app
+        // is genuinely backgrounded. Running past it meant a details screen kept calling the API
+        // every 15-30s forever, since a backgrounded activity is not destroyed and ON_DESTROY was
+        // the only thing that stopped the loop.
         DisposableEffect(lifecycleOwner, stableKey) {
+            // Set when ON_STOP tore the loop down, so ON_START only resumes polling we ourselves
+            // paused. Without it, the ON_START that LifecycleRegistry replays the instant this
+            // observer is registered would start the loop early, making the LaunchedEffect above
+            // a no-op against startPollingMediaDetails' duplicate-start guard — dropping the
+            // initialMediaDetails seed the UI depends on to render without flicker.
+            var pausedByStop = false
             val observer = LifecycleEventObserver { _, event ->
                 when (event) {
+                    Lifecycle.Event.ON_START -> if (pausedByStop) {
+                        pausedByStop = false
+                        Log.d(TAG, "▶️ Foregrounded, resuming polling for $tmdbId")
+                        // No initial details on purpose: the cache already holds a newer snapshot
+                        // than the one captured when this observer was created, and replaying the
+                        // stale one would overwrite it on every return to the foreground.
+                        viewModel.startPollingMediaDetails(tmdbId, mediaType, null)
+                    }
+                    Lifecycle.Event.ON_STOP -> {
+                        pausedByStop = true
+                        Log.d(TAG, "⏹️ Backgrounded, pausing polling for $tmdbId")
+                        viewModel.stopPollingMediaDetails()
+                    }
                     Lifecycle.Event.ON_DESTROY -> {
                         Log.d(TAG, "💀 Lifecycle destroyed, stopping polling for $tmdbId")
                         viewModel.stopPollingMediaDetails()
                     }
-                    else -> { /* ignore other events to avoid frequent stop/start */ }
+                    else -> { /* pause/resume ignored on purpose - see above */ }
                 }
             }
-            
+
             lifecycleOwner.lifecycle.addObserver(observer)
             
             onDispose {

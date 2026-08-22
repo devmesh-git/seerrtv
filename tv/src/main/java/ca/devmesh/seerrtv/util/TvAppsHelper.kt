@@ -8,6 +8,8 @@ import android.graphics.drawable.Drawable
 import android.util.Log
 import ca.devmesh.seerrtv.BuildConfig
 import androidx.core.content.edit
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 private const val PREFS_NAME_APP_ROW = "app_row_order"
 private const val KEY_ORDER = "package_order"
@@ -112,6 +114,18 @@ fun applyAppRowOrder(fullList: List<TvAppInfo>, savedOrder: List<String>?): List
  * Returns the installed TV app list with saved order applied. If the effective order
  * changed (e.g. some saved packages were uninstalled, or new apps were installed),
  * re-saves the order so persisted state stays in sync.
+ */
+suspend fun loadInstalledTvAppsWithSavedOrder(context: Context): List<TvAppInfo> =
+    withContext(Dispatchers.IO) { getInstalledTvAppsWithSavedOrder(context) }
+
+/**
+ * Blocking variant of [loadInstalledTvAppsWithSavedOrder]. Never call this on the main thread:
+ * every entry costs a `loadLabel` + `loadIcon` (which opens the other app's APK and decodes a
+ * drawable) plus a `getLeanbackLaunchIntentForPackage` binder round trip, so a TV box with a few
+ * dozen apps spends seconds in here. The launcher build reloads the row on every resume, which is
+ * exactly when the window is being re-added and focused — a main thread parked in package-manager
+ * work at that moment is what turns a key press into an "Input dispatching timed out (No focused
+ * window)" ANR.
  */
 fun getInstalledTvAppsWithSavedOrder(context: Context): List<TvAppInfo> {
     val full = getInstalledTvApps(context)

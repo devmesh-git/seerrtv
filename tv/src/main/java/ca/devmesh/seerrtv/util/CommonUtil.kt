@@ -36,8 +36,8 @@ enum class Permission(val value: Int) {
     AUTO_REQUEST_TV(33554432),
     RECENT_VIEW(67108864),
     WATCHLIST_VIEW(134217728),      // Jellyseerr Only
-    MANAGE_BLACKLIST(268435456),    // Jellyseerr Only
-    VIEW_BLACKLIST(1073741824)      // Jellyseerr Only
+    MANAGE_BLOCKLIST(268435456),    // Seerr / Jellyseerr only
+    VIEW_BLOCKLIST(1073741824)      // Seerr / Jellyseerr only
 }
 
 object CommonUtil {

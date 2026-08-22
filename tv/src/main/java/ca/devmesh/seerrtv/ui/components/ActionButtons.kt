@@ -24,6 +24,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import ca.devmesh.seerrtv.data.MediaVisibility
 import ca.devmesh.seerrtv.R
 import ca.devmesh.seerrtv.model.MediaDetails
 import ca.devmesh.seerrtv.model.MediaServerType
@@ -729,6 +730,11 @@ fun getActionButtonStates(
 
     val isRegularAvailable = regularStatus == 5
     val isFourKAvailable = fourKStatus == 5
+    // Seerr refuses requests for blocklisted media and hides the Request button for it, so a
+    // title reached by deep link (or from a row we deliberately don't filter) must not offer a
+    // request the server will reject. See MediaVisibility for the matching list-level rules.
+    val isRegularBlocklisted = regularStatus == MediaVisibility.STATUS_BLOCKLISTED
+    val isFourKBlocklisted = fourKStatus == MediaVisibility.STATUS_BLOCKLISTED
     val isRegularPartiallyAvailable = regularStatus == 4
     val isFourKPartiallyAvailable = fourKStatus == 4
     val isRegularRequested = regularRequest != null
@@ -744,6 +750,7 @@ fun getActionButtonStates(
         "MediaDetailsButtons",
         "computeStates: mediaId=${media.id} canRequest=${canRequest} has4k=${has4kCapability} hasTrailer=${hasTrailer} " +
             "status{hd=${regularStatus} 4k=${fourKStatus}} requested{hd=${isRegularRequested} 4k=${isFourKRequested}} " +
+            "blocklisted{hd=${isRegularBlocklisted} 4k=${isFourKBlocklisted}} " +
             "playable=${hasAnyPlayableContent} requests=${hasAnyRequests} bothAvailable=${bothAvailable}"
     )
 
@@ -758,26 +765,30 @@ fun getActionButtonStates(
 
     // Determine REQUEST button visibility according to requirements matrix
     // REQUEST: visible when user can request and corresponding tier is not fully available
-    val needsRequestMore = shouldShowRequestMore(media, viewModel, false) || shouldShowRequestMore(media, viewModel, true)
-    val canRequestRegular = canRequest && !isRegularRequested && !isRegularAvailable
-    val canRequestFourK = has4kCapability && canRequest && !isFourKRequested && !isFourKAvailable
+    val needsRequestMore =
+        (shouldShowRequestMore(media, viewModel, false) && !isRegularBlocklisted) ||
+            (shouldShowRequestMore(media, viewModel, true) && !isFourKBlocklisted)
+    val canRequestRegular = canRequest && !isRegularRequested && !isRegularAvailable && !isRegularBlocklisted
+    val canRequestFourK =
+        has4kCapability && canRequest && !isFourKRequested && !isFourKAvailable && !isFourKBlocklisted
     
     // REQUEST button should be visible if ANY tier can be requested
     val requestVisible = canRequestRegular || canRequestFourK || needsRequestMore
 
     // Determine REQUEST button split/single logic according to requirements matrix
     val requestLeftTier = when {
-        shouldShowRequestMore(media, viewModel, false) -> TierState.REQUEST_MORE
+        shouldShowRequestMore(media, viewModel, false) && !isRegularBlocklisted -> TierState.REQUEST_MORE
         canRequestRegular -> TierState.REQUEST
         else -> null
     }
     val requestRightTier = when {
-        shouldShowRequestMore(media, viewModel, true) -> TierState.REQUEST_MORE
+        shouldShowRequestMore(media, viewModel, true) && !isFourKBlocklisted -> TierState.REQUEST_MORE
         canRequestFourK -> TierState.REQUEST
         else -> null
     }
     val requestSingleTier = when {
-        !has4kCapability && shouldShowRequestMore(media, viewModel, false) -> TierState.REQUEST_MORE
+        !has4kCapability && shouldShowRequestMore(media, viewModel, false) && !isRegularBlocklisted ->
+            TierState.REQUEST_MORE
         !has4kCapability && canRequestRegular -> TierState.REQUEST
         else -> null
     }

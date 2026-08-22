@@ -37,7 +37,7 @@ object RequestStatus {
 
     // MediaStatus enum values for both Overseerr and Jellyseerr
     //  Overseerr: (UNKNOWN = 1, PENDING = 2, PROCESSING = 3, PARTIALLY_AVAILABLE = 4, AVAILABLE = 5)
-    // Jellyseerr: (UNKNOWN = 1, PENDING = 2, PROCESSING = 3, PARTIALLY_AVAILABLE = 4, AVAILABLE = 5, BLACKLISTED = 6, DELETED = 7)
+    // Seerr: (UNKNOWN = 1, PENDING = 2, PROCESSING = 3, PARTIALLY_AVAILABLE = 4, AVAILABLE = 5, BLOCKLISTED = 6, DELETED = 7)
 
     // We also handle null/0 as "not requested"
     private val mediaStatusMap = mapOf(

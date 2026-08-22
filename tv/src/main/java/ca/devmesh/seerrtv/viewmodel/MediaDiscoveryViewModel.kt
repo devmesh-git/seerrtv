@@ -169,9 +169,10 @@ class MediaDiscoveryViewModel @Inject constructor(
                         // `search` is a multi-search: a single page mixes movies, series and people.
                         // When we keep only one type a page can yield just a couple of items (or
                         // none), leaving the grid too short to scroll — so loadMore would never fire.
-                        // Pull further pages until we have a usable batch.
-                        val needMore = typeFilter != null &&
-                            collected.size < MIN_FILTERED_SEARCH_RESULTS &&
+                        // Blocklisted titles the user may not see are dropped in the API layer and
+                        // thin a page the same way, which is why this is no longer gated on a type
+                        // filter. Pull further pages until we have a usable batch.
+                        val needMore = collected.size < MIN_FILTERED_SEARCH_RESULTS &&
                             hasMore &&
                             pagesFetched < MAX_SEARCH_PAGES_PER_LOAD
                         if (!needMore) break

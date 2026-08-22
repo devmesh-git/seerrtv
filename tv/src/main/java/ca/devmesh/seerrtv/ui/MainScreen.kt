@@ -69,7 +69,7 @@ import ca.devmesh.seerrtv.ui.position.ScrollPositionManager
 import ca.devmesh.seerrtv.util.CommonUtil
 import ca.devmesh.seerrtv.util.Permission
 import ca.devmesh.seerrtv.util.TvAppInfo
-import ca.devmesh.seerrtv.util.getInstalledTvAppsWithSavedOrder
+import ca.devmesh.seerrtv.util.loadInstalledTvAppsWithSavedOrder
 import ca.devmesh.seerrtv.util.saveAppRowOrder
 import ca.devmesh.seerrtv.util.SharedPreferencesUtil
 import ca.devmesh.seerrtv.ui.focus.AppFocusManager
@@ -466,8 +466,9 @@ fun MainScreen(
     val installedApps = remember { mutableStateListOf<TvAppInfo>() }
     LaunchedEffect(context, BuildConfig.IS_LAUNCHER_BUILD) {
         if (BuildConfig.IS_LAUNCHER_BUILD) {
+            val apps = loadInstalledTvAppsWithSavedOrder(context)
             installedApps.clear()
-            installedApps.addAll(getInstalledTvAppsWithSavedOrder(context))
+            installedApps.addAll(apps)
         } else {
             installedApps.clear()
         }
@@ -978,10 +979,15 @@ fun MainScreen(
             uiState.showRefreshHint = false
             uiState.isRefreshRowVisible = true
 
-            // Launcher: reload installed apps so new/removed apps appear
+            // Launcher: reload installed apps so new/removed apps appear. Off the main thread and
+            // in its own coroutine so the package-manager scan neither janks the refresh nor
+            // delays the category reload below.
             if (BuildConfig.IS_LAUNCHER_BUILD) {
-                installedApps.clear()
-                installedApps.addAll(getInstalledTvAppsWithSavedOrder(context))
+                coroutineScope.launch {
+                    val apps = loadInstalledTvAppsWithSavedOrder(context)
+                    installedApps.clear()
+                    installedApps.addAll(apps)
+                }
             }
 
             // Trigger the actual refresh (spinner shows while isRefreshing=true)
@@ -1696,10 +1702,17 @@ fun MainScreen(
                     // Also reset any UI state that might be blocking navigation
                     uiState.ignoreKeyEvents = false
 
-                    // Launcher: reload installed apps so newly installed/removed apps appear
+                    // Launcher: reload installed apps so newly installed/removed apps appear.
+                    // This runs on every resume, i.e. every time the user comes home from another
+                    // app — the exact moment the window is being re-added and focused. Scanning
+                    // PackageManager here synchronously blocked the main thread through that
+                    // handoff; keep it on IO and publish the result when it lands.
                     if (BuildConfig.IS_LAUNCHER_BUILD) {
-                        installedApps.clear()
-                        installedApps.addAll(getInstalledTvAppsWithSavedOrder(context))
+                        coroutineScope.launch {
+                            val apps = loadInstalledTvAppsWithSavedOrder(context)
+                            installedApps.clear()
+                            installedApps.addAll(apps)
+                        }
                     }
 
                     if (BuildConfig.DEBUG) {
@@ -2190,11 +2203,13 @@ fun MediaBackdrop(context: Context, media: Media?, imageLoader: ImageLoader) {
                 .crossfade(true)
                 .build()
         } else if (isSpecialCategory && media?.logoPath != null) {
-            // If it's a special category with a logo path, use that instead
+            // If it's a special category with a logo path, use that instead. logoPath is a bare
+            // TMDB path ("/abc.png"), like every other imagePath — handing it to Coil unprefixed
+            // produced a schemeless URI that matched no fetcher, so the logo never loaded.
             ImageRequest.Builder(context)
-                .data(media.logoPath)
-                .memoryCacheKey("backdrop_$media.logoPath")
-                .diskCacheKey("backdrop_$media.logoPath")
+                .data("https://image.tmdb.org/t/p/w500${media.logoPath}")
+                .memoryCacheKey("backdrop_${media.logoPath}")
+                .diskCacheKey("backdrop_${media.logoPath}")
                 .crossfade(true)
                 .build()
         } else null
