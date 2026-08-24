@@ -199,7 +199,6 @@ dependencies {
     // Material Design & TV Components
     implementation(libs.androidx.material3)
     implementation(libs.androidx.material.icons.core)
-    implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.tv.foundation)
     implementation(libs.androidx.foundation)
 

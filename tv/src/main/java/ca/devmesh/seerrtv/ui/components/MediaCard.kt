@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -827,7 +826,7 @@ internal fun CustomBlockedIcon(modifier: Modifier = Modifier) {
         contentAlignment = Alignment.Center
     ) {
         Icon(
-            imageVector = Icons.Filled.VisibilityOff,
+            imageVector = AppIcons.VisibilityOff,
             contentDescription = stringResource(R.string.requestStatus_blacklisted),
             tint = Color.White,
             modifier = Modifier.fillMaxSize(0.68f)

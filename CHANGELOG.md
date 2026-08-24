@@ -2,6 +2,25 @@
 
 ## 0.29.0
 
+### Changed: Dependency updates
+
+- Android Gradle Plugin 9.3.1 → 9.3.2
+- androidx.appcompat 1.7.1 → 1.8.0
+- Compose BOM 2026.06.01 → 2026.08.00
+- Ktor 3.5.1 → 3.5.2
+
+Kotlin stays on 2.4.10, so the `ScrollStateCompat` workaround for the 2.4 suspend `Unit`/`Float` crash is still required — scroll animations must keep going through `animateScrollToCompat` rather than `ScrollState.animateScrollTo`.
+
+### Changed: Dropped material-icons-extended — 4.1 MB smaller APK
+
+- **Why** – `material-icons-extended` is a 34 MB artifact carrying several thousand icons, and release builds run with `isMinifyEnabled = false`, so every one of them shipped. The app uses twelve icons in total, and only five of them were not already in `material-icons-core`: Bookmark, Movie, Remove, Tv and VisibilityOff.
+
+- **Change** – Those five now live in `AppIcons`, with their vector data copied verbatim from the AndroidX sources (Apache License 2.0) and still built through `materialIcon`/`materialPath` from core, so they render identically. The extended dependency is gone; core is now declared in its own right rather than arriving transitively.
+
+- **Result** – APK 17,960,550 → 13,815,102 bytes (−4.1 MB, −23%); uncompressed dex 57.0 MB → 35.0 MB; `material/icons` references in `classes.dex` 45,574 → 1,153.
+
+- **Adding an icon later** – copy its `materialPath` block from `androidx.compose.material.icons.filled.<Name>` into `AppIcons` rather than reintroducing the dependency.
+
 ### Fixed: Switching profiles kept showing the previous account's rows
 
 - **Symptom** – Browse as a regular user, switch to an admin, and the home rows still showed exactly what the regular user could see — a blocklisted title stayed hidden until you scrolled up past the top to force a refresh, or waited out the 5 minute cache. Found while testing the blocklist change.

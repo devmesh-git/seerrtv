@@ -11,8 +11,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Movie
-import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -124,7 +122,7 @@ fun MainTopBar(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Tv,
+                        imageVector = AppIcons.Tv,
                         contentDescription = "Series",
                         tint = Color.White,
                         modifier = Modifier.size(24.dp)
@@ -147,7 +145,7 @@ fun MainTopBar(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Movie,
+                        imageVector = AppIcons.Movie,
                         contentDescription = "Movies",
                         tint = Color.White,
                         modifier = Modifier.size(24.dp)

@@ -10,9 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -527,7 +525,7 @@ fun ActionWatchlistButton(
     } else {
         context.getString(R.string.action_add_to_watchlist)
     }
-    val buttonIcon = if (isInWatchlist) Icons.Default.Remove else Icons.Default.Bookmark
+    val buttonIcon = if (isInWatchlist) AppIcons.Remove else AppIcons.Bookmark
     val buttonColor = if (isInWatchlist) Color(0xFF9D29BC) else Color(0xFF5B21B6)
 
     Box(
