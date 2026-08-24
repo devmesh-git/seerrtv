@@ -2,24 +2,25 @@
 
 ## 0.29.0
 
-### Changed: Dependency updates
+### Added: SeerrTV now honours the server's blocklist and "Hide Available Items"
 
-- Android Gradle Plugin 9.3.1 → 9.3.2
-- androidx.appcompat 1.7.1 → 1.8.0
-- Compose BOM 2026.06.01 → 2026.08.00
-- Ktor 3.5.1 → 3.5.2
+- **Symptom** – Content on the Seerr blocklist was hidden in the web UI when browsing as a restricted user, but SeerrTV showed it on every row, grid and search result. Force-stopping the app and clearing its cache and data made no difference. Reported by a community member against 0.28.14.
 
-Kotlin stays on 2.4.10, so the `ScrollStateCompat` workaround for the 2.4 suspend `Unit`/`Float` crash is still required — scroll animations must keep going through `animateScrollToCompat` rather than `ScrollState.animateScrollTo`.
+- **Root cause** – Not a configuration problem, and nothing the server could fix: **Seerr filters blocklisted media entirely in its web client.** `/api/v1/discover/*` and `/api/v1/search` return blocklisted titles to every caller, and `ListView`/`MediaSlider`/`useDiscover` drop them before rendering. Two independent layers do it — an always-on permission gate (users without *Manage Blocklist* or *View Blocklist* never see status `BLOCKLISTED`), and the `hideBlocklisted` public setting, which additionally hides them from blocklist managers. Every client has to reproduce both. SeerrTV had never implemented either, so it faithfully displayed everything the API sent — its only acknowledgement of the feature was the "blocked" badge on the card. The sibling `hideAvailable` setting was ignored for the same reason.
 
-### Changed: Dropped material-icons-extended — 4.1 MB smaller APK
+- **Fix** –
+  - New `MediaVisibility` resolves the current user's rules from their Seerr permissions and the server's public settings, mirroring Seerr's web client one-for-one, including its two asymmetries: search applies only the permission layer, and the settings layer only touches `movie`/`tv` entries.
+  - `GET /api/v1/settings/public` is now read for `hideAvailable` / `hideBlocklisted` (falling back to Jellyseerr's legacy `hideBlacklisted` key) after each successful authentication, cached per connection and cleared with the other service caches on a profile or connection change so one user's visibility can never leak to another.
+  - The filter is applied in the API layer as results are unwrapped — discover rows, browse grids, genre/keyword/studio/network, custom sliders, similar titles, watchlist and search. Recently Added and the requests list are left untouched, matching the web.
+  - Paged loads top up across a few pages when filtering thins a page, and a page that filters down to nothing now advances the page counter instead of being re-requested forever. Search's existing top-up is no longer gated on a media-type filter, since visibility filtering shortens pages the same way.
+  - The details screen no longer offers Request (or 4K Request) for a blocklisted title reached by deep link — Seerr rejects such requests server-side, so the button could only ever fail.
+  - `Permission.MANAGE_BLACKLIST` / `VIEW_BLACKLIST` renamed to `MANAGE_BLOCKLIST` / `VIEW_BLOCKLIST`, matching Seerr's current naming. Bit values are unchanged.
+  - The blocklisted card badge now matches the web app: a red disc with a white ring and a white eye-slash, replacing the old black-and-white prohibition circle (Seerr's `StatusBadgeMini`). Only users allowed to see blocklisted titles ever reach it, since the card is filtered out upstream for everyone else.
+  - Covered by `MediaVisibilityFilterTest`.
 
-- **Why** – `material-icons-extended` is a 34 MB artifact carrying several thousand icons, and release builds run with `isMinifyEnabled = false`, so every one of them shipped. The app uses twelve icons in total, and only five of them were not already in `material-icons-core`: Bookmark, Movie, Remove, Tv and VisibilityOff.
+- **Note for API-key connections** – An API key authenticates as the Seerr admin, and admins legitimately see blocklisted titles in the web UI too. Connect with a per-user login (Local, Jellyfin/Emby or Plex) for per-user blocklist visibility.
 
-- **Change** – Those five now live in `AppIcons`, with their vector data copied verbatim from the AndroidX sources (Apache License 2.0) and still built through `materialIcon`/`materialPath` from core, so they render identically. The extended dependency is gone; core is now declared in its own right rather than arriving transitively.
-
-- **Result** – APK 17,960,550 → 13,815,102 bytes (−4.1 MB, −23%); uncompressed dex 57.0 MB → 35.0 MB; `material/icons` references in `classes.dex` 45,574 → 1,153.
-
-- **Adding an icon later** – copy its `materialPath` block from `androidx.compose.material.icons.filled.<Name>` into `AppIcons` rather than reintroducing the dependency.
+- **Overseerr and Jellyseerr** – Overseerr has no blocklist, so the filter is a no-op there. Jellyseerr's legacy `hideBlacklisted` setting key is read as a fallback.
 
 ### Fixed: Switching profiles kept showing the previous account's rows
 
@@ -54,25 +55,24 @@ Carried in this release from earlier troubleshooting work; verified on a Google 
 - **Installed-apps scan ran on the main thread** – each entry costs `loadLabel` + `loadIcon` (opening the other APK and decoding a drawable) plus a binder round trip, and the scan ran on every resume from an external app — precisely during window re-add and focus handoff. `loadInstalledTvAppsWithSavedOrder` now runs it on `Dispatchers.IO`, and the refresh/resume sites launch it separately so it neither blocks nor serialises ahead of the category reload.
 - **Media logos never loaded** – `logoPath` is a bare TMDB path and was passed to Coil unprefixed, producing a schemeless URI that matched no fetcher. Also fixes two adjacent string templates that interpolated the object and appended a literal `.logoPath`.
 
-### Added: SeerrTV now honours the server's blocklist and "Hide Available Items"
+### Changed: Dropped material-icons-extended — 4.1 MB smaller APK
 
-- **Symptom** – Content on the Seerr blocklist was hidden in the web UI when browsing as a restricted user, but SeerrTV showed it on every row, grid and search result. Force-stopping the app and clearing its cache and data made no difference. Reported by a community member against 0.28.14.
+- **Why** – `material-icons-extended` is a 34 MB artifact carrying several thousand icons, and release builds run with `isMinifyEnabled = false`, so every one of them shipped. The app uses twelve icons in total, and only five of them were not already in `material-icons-core`: Bookmark, Movie, Remove, Tv and VisibilityOff.
 
-- **Root cause** – Not a configuration problem, and nothing the server could fix: **Seerr filters blocklisted media entirely in its web client.** `/api/v1/discover/*` and `/api/v1/search` return blocklisted titles to every caller, and `ListView`/`MediaSlider`/`useDiscover` drop them before rendering. Two independent layers do it — an always-on permission gate (users without *Manage Blocklist* or *View Blocklist* never see status `BLOCKLISTED`), and the `hideBlocklisted` public setting, which additionally hides them from blocklist managers. Every client has to reproduce both. SeerrTV had never implemented either, so it faithfully displayed everything the API sent — its only acknowledgement of the feature was the "blocked" badge on the card. The sibling `hideAvailable` setting was ignored for the same reason.
+- **Change** – Those five now live in `AppIcons`, with their vector data copied verbatim from the AndroidX sources (Apache License 2.0) and still built through `materialIcon`/`materialPath` from core, so they render identically. The extended dependency is gone; core is now declared in its own right rather than arriving transitively.
 
-- **Fix** –
-  - New `MediaVisibility` resolves the current user's rules from their Seerr permissions and the server's public settings, mirroring Seerr's web client one-for-one, including its two asymmetries: search applies only the permission layer, and the settings layer only touches `movie`/`tv` entries.
-  - `GET /api/v1/settings/public` is now read for `hideAvailable` / `hideBlocklisted` (falling back to Jellyseerr's legacy `hideBlacklisted` key) after each successful authentication, cached per connection and cleared with the other service caches on a profile or connection change so one user's visibility can never leak to another.
-  - The filter is applied in the API layer as results are unwrapped — discover rows, browse grids, genre/keyword/studio/network, custom sliders, similar titles, watchlist and search. Recently Added and the requests list are left untouched, matching the web.
-  - Paged loads top up across a few pages when filtering thins a page, and a page that filters down to nothing now advances the page counter instead of being re-requested forever. Search's existing top-up is no longer gated on a media-type filter, since visibility filtering shortens pages the same way.
-  - The details screen no longer offers Request (or 4K Request) for a blocklisted title reached by deep link — Seerr rejects such requests server-side, so the button could only ever fail.
-  - `Permission.MANAGE_BLACKLIST` / `VIEW_BLACKLIST` renamed to `MANAGE_BLOCKLIST` / `VIEW_BLOCKLIST`, matching Seerr's current naming. Bit values are unchanged.
-  - The blocklisted card badge now matches the web app: a red disc with a white ring and a white eye-slash, replacing the old black-and-white prohibition circle (Seerr's `StatusBadgeMini`). Only users allowed to see blocklisted titles ever reach it, since the card is filtered out upstream for everyone else.
-  - Covered by `MediaVisibilityFilterTest`.
+- **Result** – APK 17,960,550 → 13,815,102 bytes (−4.1 MB, −23%); uncompressed dex 57.0 MB → 35.0 MB; `material/icons` references in `classes.dex` 45,574 → 1,153.
 
-- **Note for API-key connections** – An API key authenticates as the Seerr admin, and admins legitimately see blocklisted titles in the web UI too. Connect with a per-user login (Local, Jellyfin/Emby or Plex) for per-user blocklist visibility.
+- **Adding an icon later** – copy its `materialPath` block from `androidx.compose.material.icons.filled.<Name>` into `AppIcons` rather than reintroducing the dependency.
 
-- **Overseerr and Jellyseerr** – Overseerr has no blocklist, so the filter is a no-op there. Jellyseerr's legacy `hideBlacklisted` setting key is read as a fallback.
+### Changed: Dependency updates
+
+- Android Gradle Plugin 9.3.1 → 9.3.2
+- androidx.appcompat 1.7.1 → 1.8.0
+- Compose BOM 2026.06.01 → 2026.08.00
+- Ktor 3.5.1 → 3.5.2
+
+Kotlin stays on 2.4.10, so the `ScrollStateCompat` workaround for the 2.4 suspend `Unit`/`Float` crash is still required — scroll animations must keep going through `animateScrollToCompat` rather than `ScrollState.animateScrollTo`.
 
 ## 0.28.14
 
