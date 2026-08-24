@@ -247,7 +247,7 @@ dependencies {
 
     // Unit Testing
     testImplementation(libs.junit)
-    testImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:${libs.versions.kotlinxSerializationJson.get()}")
+    testImplementation(libs.kotlinx.serialization.json)
     testImplementation("io.ktor:ktor-client-mock:${libs.versions.ktor.get()}")
 }
 

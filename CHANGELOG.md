@@ -67,10 +67,15 @@ Carried in this release from earlier troubleshooting work; verified on a Google 
 
 ### Changed: Dependency updates
 
+- Gradle wrapper 9.6.1 → 9.7.1
 - Android Gradle Plugin 9.3.1 → 9.3.2
+- KSP 2.3.10 → 2.3.11
 - androidx.appcompat 1.7.1 → 1.8.0
 - Compose BOM 2026.06.01 → 2026.08.00
 - Ktor 3.5.1 → 3.5.2
+- Gradle Versions Plugin 0.54.0 → 0.61.0, which also moved coordinates from `com.github.ben-manes.versions` to `io.github.ben-manes.versions`
+
+Build-file tidying alongside: the `material-icons-extended` alias is gone from the version catalog now that nothing declares it, and the kotlinx-serialization test dependency uses its catalog alias rather than an interpolated version string.
 
 Kotlin stays on 2.4.10, so the `ScrollStateCompat` workaround for the 2.4 suspend `Unit`/`Float` crash is still required — scroll animations must keep going through `animateScrollToCompat` rather than `ScrollState.animateScrollTo`.
 

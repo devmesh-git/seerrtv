@@ -3,14 +3,13 @@ agp = "9.3.2"
 coilKtCoilCompose = "3.5.0"
 coilNetworkOkhttp = "3.5.0"
 core = "3.5.4"
-
 coreVersion = "13.0.0"
 hiltAndroid = "2.60.1"
 hiltCompiler = "2.60.1"
 hiltNavigationCompose = "1.4.0"
 junit = "4.13.2"
 kotlin = "2.4.10"
-ksp = "2.3.10"
+ksp = "2.3.11"
 coreKtx = "1.19.0"
 appcompat = "1.8.0"
 composeBom = "2026.08.00"
@@ -36,7 +35,6 @@ androidx-foundation = { module = "androidx.compose.foundation:foundation" }
 androidx-hilt-navigation-compose = { module = "androidx.hilt:hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycleRuntimeKtx" }
 androidx-material-icons-core = { module = "androidx.compose.material:material-icons-core" }
-androidx-material-icons-extended = { module = "androidx.compose.material:material-icons-extended" }
 androidx-material3 = { module = "androidx.compose.material3:material3" }
 androidx-tv-foundation = { group = "androidx.tv", name = "tv-foundation", version.ref = "tvFoundation" }
 androidx-ui = { module = "androidx.compose.ui:ui" }

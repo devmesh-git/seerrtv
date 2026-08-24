@@ -5,7 +5,7 @@ plugins {
     alias(libs.plugins.ksp) apply false
     alias(libs.plugins.compose.compiler) apply false
     id("org.jetbrains.kotlin.plugin.serialization") version libs.versions.kotlin.get() apply false
-    id("com.github.ben-manes.versions") version "0.54.0"
+    id("io.github.ben-manes.versions") version "0.61.0"
 }
 
 // Set project-wide Kotlin version (using extra properties instead of deprecated ext block)
