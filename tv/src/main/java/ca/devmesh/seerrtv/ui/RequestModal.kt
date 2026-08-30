@@ -1,6 +1,7 @@
 package ca.devmesh.seerrtv.ui
 
 import android.content.Context
+import android.text.format.Formatter
 import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -32,6 +33,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.input.key.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -1700,6 +1702,7 @@ fun RootFolderSelection(
 ) {
     val listState = rememberLazyListState()
     val visibleItemsCount = 7
+    val context = LocalContext.current
 
     LaunchedEffect(focusedIndex) {
         if (focusedIndex >= 0) {
@@ -1744,7 +1747,17 @@ fun RootFolderSelection(
                         )
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text(folder.path, color = Color.White)
+                    Column {
+                        Text(folder.path, color = Color.White)
+                        Text(
+                            text = stringResource(
+                                R.string.requestModal_freeSpace,
+                                Formatter.formatFileSize(context, folder.freeSpace)
+                            ),
+                            color = Color.LightGray,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
                 }
             }
         }

@@ -262,6 +262,7 @@
     <string name="requestModal_errorLookingUpSeries">Error looking up series: %1$s</string>
     <string name="requestModal_errorSubmittingRequest">Error submitting request</string>
     <string name="requestModal_folderMenu">Root Folder</string>
+    <string name="requestModal_freeSpace">%1$s free</string>
     <string name="requestModal_lookupError">Error looking up series</string>
     <string name="requestModal_lookupLoading">Looking up series...</string>
     <string name="requestModal_noSeriesFound">No series found</string>
