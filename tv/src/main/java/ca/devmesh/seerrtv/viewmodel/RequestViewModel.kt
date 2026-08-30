@@ -9,6 +9,7 @@ import ca.devmesh.seerrtv.model.SonarrLookupResult
 import ca.devmesh.seerrtv.model.AuthType
 import ca.devmesh.seerrtv.model.MediaRequestBody
 import ca.devmesh.seerrtv.model.MediaType
+import ca.devmesh.seerrtv.model.RootFolderOption
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.delay
@@ -107,12 +108,25 @@ class RequestViewModel @Inject constructor(
         }
     }
 
-    fun getRootFolders(mediaType: String, is4kRequest: Boolean): List<ca.devmesh.seerrtv.model.SonarrRootFolder> {
+    fun getRootFolders(mediaType: String, is4kRequest: Boolean): List<RootFolderOption> {
         return when (mediaType.uppercase()) {
+            "MOVIE" -> {
+                val radarrData = mainViewModel?.radarrData?.value
+                radarrData?.allServers?.filter { it.server.is4k == is4kRequest }
+                    ?.flatMap { server ->
+                        server.rootFolders.map { folder ->
+                            RootFolderOption(folder.id, folder.freeSpace, folder.path)
+                        }
+                    } ?: emptyList()
+            }
             "TV" -> {
                 val sonarrData = mainViewModel?.sonarrData?.value
                 sonarrData?.allServers?.filter { it.server.is4k == is4kRequest }
-                    ?.flatMap { it.rootFolders } ?: emptyList()
+                    ?.flatMap { server ->
+                        server.rootFolders.map { folder ->
+                            RootFolderOption(folder.id, folder.freeSpace, folder.path)
+                        }
+                    } ?: emptyList()
             }
             else -> emptyList()
         }
@@ -140,8 +154,7 @@ class RequestViewModel @Inject constructor(
         
         // Check if root folder selection is needed
         val rootFolders = getRootFolders(mediaType, is4kRequest)
-        val needsFolderSelection = mediaDetails.mediaType == MediaType.TV &&
-            rootFolders.size > 1 && isFolderSelectionEnabled
+        val needsFolderSelection = rootFolders.size > 1 && isFolderSelectionEnabled
         
         // ADD DEBUG LOGGING HERE:
         Log.d("MediaDetailsButtons", "requestVM.shouldShowModal:")
@@ -224,6 +237,11 @@ class RequestViewModel @Inject constructor(
             request["serverId"] = availableServers.first().id
         }
 
+        val folders = getRootFolders(mediaType, is4kRequest)
+        if (folders.size == 1) {
+            request["rootFolder"] = folders.first().path
+        }
+
         when (mediaDetails.mediaType) {
             MediaType.MOVIE -> {
                 // mediaId already carries the TMDB id for movies; omit duplicate tmdbId field
@@ -251,11 +269,6 @@ class RequestViewModel @Inject constructor(
                 val profiles = getQualityProfiles(mediaType, is4kRequest)
                 if (profiles.size == 1) {
                     request["profileId"] = profiles.first().id
-                }
-                // Use first root folder if only one available
-                val folders = getRootFolders(mediaType, is4kRequest)
-                if (folders.size == 1) {
-                    request["rootFolder"] = folders.first().path
                 }
                 // Select all available seasons - 4K-aware
                 val availableSeasons = mediaDetails.seasons?.filter { season ->

@@ -49,7 +49,7 @@ import ca.devmesh.seerrtv.model.AuthType
 import ca.devmesh.seerrtv.model.MediaDetails
 import ca.devmesh.seerrtv.model.MediaType
 import ca.devmesh.seerrtv.model.Profile
-import ca.devmesh.seerrtv.model.SonarrRootFolder
+import ca.devmesh.seerrtv.model.RootFolderOption
 import ca.devmesh.seerrtv.navigation.NavigationManager
 import ca.devmesh.seerrtv.R
 import ca.devmesh.seerrtv.model.Tag
@@ -77,7 +77,7 @@ enum class ServerType { RADARR, SONARR }
 sealed class ModalSelection {
     data class Seasons(val selectedSeasons: Set<Int>) : ModalSelection()
     data class QualityProfile(val profile: Profile) : ModalSelection()
-    data class RootFolder(val folder: SonarrRootFolder) : ModalSelection()
+    data class RootFolder(val folder: RootFolderOption) : ModalSelection()
     data class Tags(val selectedTags: Set<Int>) : ModalSelection()
 }
 
@@ -104,7 +104,7 @@ class RequestModalController(
     var selectedOption by mutableStateOf<String?>(null)
     var selectedSeasons by mutableStateOf(emptySet<Int>())
     var selectedQualityProfile by mutableStateOf<Profile?>(null)
-    var selectedRootFolder by mutableStateOf<SonarrRootFolder?>(null)
+    var selectedRootFolder by mutableStateOf<RootFolderOption?>(null)
     var selectedTags by mutableStateOf<Set<Int>>(emptySet())
     var requestStatus by mutableStateOf<RequestStatus>(RequestStatus.Idle)
     private val _isLoading = MutableStateFlow(true)
@@ -112,8 +112,8 @@ class RequestModalController(
     val selectedServer: StateFlow<ServerOption?> = _selectedServer
     private val _qualityProfiles = MutableStateFlow<List<Profile>>(emptyList())
     val qualityProfiles: StateFlow<List<Profile>> = _qualityProfiles
-    private val _rootFolders = MutableStateFlow<List<SonarrRootFolder>>(emptyList())
-    val rootFolders: StateFlow<List<SonarrRootFolder>> = _rootFolders
+    private val _rootFolders = MutableStateFlow<List<RootFolderOption>>(emptyList())
+    val rootFolders: StateFlow<List<RootFolderOption>> = _rootFolders
     private val _availableTags = MutableStateFlow<List<Tag>>(emptyList())
     val availableTags: StateFlow<List<Tag>> = _availableTags
     var showMessage by mutableStateOf<Pair<String, Boolean>?>(null)
@@ -153,7 +153,7 @@ class RequestModalController(
         val shouldShowServer = shouldShowServerSelection(is4kRequest)
         val shouldShowSeasons = mediaDetails.mediaType == MediaType.TV && mediaDetails.seasons?.isNotEmpty() == true
         val shouldShowQuality = profileCount > 1
-        val shouldShowFolder = mediaDetails.mediaType == MediaType.TV && folderCount > 1 && isFolderSelectionEnabled
+        val shouldShowFolder = folderCount > 1 && isFolderSelectionEnabled
         val shouldShowTags = tagsCount > 0
 
         return items.filter {
@@ -922,7 +922,7 @@ class RequestModalController(
                     }
                     
                     // If no root folder is selected yet but there's only one available, auto-select it
-                    if (selectedRootFolder == null && rootFolders.value.size == 1 && mediaDetails.mediaType == MediaType.TV) {
+                    if (selectedRootFolder == null && rootFolders.value.size == 1) {
                         selectedRootFolder = rootFolders.value.first()
                     }
                     
@@ -1028,15 +1028,15 @@ class RequestModalController(
                 if (qualityProfiles.value.size > 1) {
                     selectedQualityProfile?.let { request["profileId"] = it.id }
                 }
-                // Only include rootFolder if folder selection is enabled and there is more than one folder
-                if (isFolderSelectionEnabled && rootFolders.value.size > 1) {
-                    selectedRootFolder?.let { request["rootFolder"] = it.path }
-                }
                 if (selectedSeasons.isNotEmpty()) {
                     request["seasons"] = selectedSeasons.toList() // Remove the +1 mapping
                 }
             }
             null -> {}
+        }
+
+        if (isFolderSelectionEnabled && rootFolders.value.size > 1) {
+            selectedRootFolder?.let { request["rootFolder"] = it.path }
         }
 
         // Implement tier-based server selection logic
@@ -1086,26 +1086,33 @@ class RequestModalController(
                     ServerType.RADARR -> {
                         mainViewModel.radarrData.value?.allServers?.find { radarr -> radarr.server.id == it.id }?.let { radarr ->
                             _qualityProfiles.value = radarr.profiles
-                            _rootFolders.value = emptyList()
+                            _rootFolders.value = radarr.rootFolders.map { folder ->
+                                RootFolderOption(folder.id, folder.freeSpace, folder.path)
+                            }
                             _availableTags.value = radarr.tags ?: emptyList()
 
-                            Log.d("RequestModalController", "RADARR server ${it.name}: ${radarr.profiles.size} quality profiles, ${radarr.tags?.size ?: 0} tags")
+                            Log.d("RequestModalController", "RADARR server ${it.name}: ${radarr.profiles.size} quality profiles, ${radarr.rootFolders.size} root folders, ${radarr.tags?.size ?: 0} tags")
 
                             // Set the active profile from the server configuration or the first available profile
                             selectedQualityProfile = radarr.profiles.find { profile ->
                                 profile.id == radarr.server.activeProfileId
                             } ?: radarr.profiles.firstOrNull()
+                            selectedRootFolder = _rootFolders.value.find { folder ->
+                                folder.path == radarr.server.activeDirectory
+                            } ?: _rootFolders.value.firstOrNull()
 
                             // Don't auto-select tags by default
                             selectedTags = emptySet()
 
-                            Log.d("RequestModalController", "Selected quality profile: ${selectedQualityProfile?.name ?: "NONE"}, tags: ${selectedTags.size}")
+                            Log.d("RequestModalController", "Selected quality profile: ${selectedQualityProfile?.name ?: "NONE"}, root folder: ${selectedRootFolder?.path ?: "NONE"}, tags: ${selectedTags.size}")
                         }
                     }
                     ServerType.SONARR -> {
                         mainViewModel.sonarrData.value?.allServers?.find { sonarr -> sonarr.server.id == it.id }?.let { sonarr ->
                             _qualityProfiles.value = sonarr.profiles
-                            _rootFolders.value = sonarr.rootFolders
+                            _rootFolders.value = sonarr.rootFolders.map { folder ->
+                                RootFolderOption(folder.id, folder.freeSpace, folder.path)
+                            }
                             _availableTags.value = sonarr.tags
 
                             Log.d("RequestModalController", "SONARR server ${it.name}: ${sonarr.profiles.size} quality profiles, ${sonarr.rootFolders.size} root folders, ${sonarr.tags.size} tags")
@@ -1115,8 +1122,9 @@ class RequestModalController(
                                 profile.id == sonarr.server.activeProfileId
                             } ?: sonarr.profiles.firstOrNull()
 
-                            // Always select the first root folder if available
-                            selectedRootFolder = sonarr.rootFolders.firstOrNull()
+                            selectedRootFolder = _rootFolders.value.find { folder ->
+                                folder.path == sonarr.server.activeDirectory
+                            } ?: _rootFolders.value.firstOrNull()
 
                             // Don't auto-select tags by default
                             selectedTags = emptySet()
@@ -1695,10 +1703,10 @@ fun QualityProfileSelection(
 
 @Composable
 fun RootFolderSelection(
-    folders: List<SonarrRootFolder>,
-    selectedFolder: SonarrRootFolder?,
+    folders: List<RootFolderOption>,
+    selectedFolder: RootFolderOption?,
     focusedIndex: Int,
-    onFolderSelected: (SonarrRootFolder) -> Unit
+    onFolderSelected: (RootFolderOption) -> Unit
 ) {
     val listState = rememberLazyListState()
     val visibleItemsCount = 7
