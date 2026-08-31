@@ -2993,6 +2993,21 @@ class SeerrViewModel @Inject constructor(
     }
 
     /**
+     * Resets carousel position for ordinary row navigation without emitting fake data changes.
+     * The selection/scroll reset and animation are identical to forceCarouselReset, but the
+     * underlying item list is untouched because Up/Down navigation does not change its data.
+     */
+    fun resetCarouselForNavigation(category: MediaCategory, animate: Boolean = true) {
+        viewModelScope.launch {
+            ScrollPositionManager.resetPositionFor("${category.name}_index")
+            ScrollPositionManager.resetPositionFor("${category.name}_scroll")
+            _carouselResetEvents.value = Pair(category, animate)
+            delay(100.milliseconds)
+            _carouselResetEvents.value = null
+        }
+    }
+
+    /**
      * Forces a reset of carousel display state for a category
      * This is used to ensure the carousel is properly refreshed after data changes
      */
