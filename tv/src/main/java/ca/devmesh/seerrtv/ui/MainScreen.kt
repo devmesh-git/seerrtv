@@ -571,7 +571,7 @@ fun MainScreen(
                 selectedCategory.value = row.category
                 ScrollPositionManager.clearStoredIndex("${row.category.name}_index")
                 ScrollPositionManager.saveScrollPosition("${row.category.name}_scroll", 0)
-                viewModel.forceCarouselReset(row.category, animate = true)
+                viewModel.resetCarouselForNavigation(row.category, animate = true)
                 updateSelectedIndex(selectedCategory, selectedMediaIndex, 0, force = true)
                 appFocusManager.setFocus(
                     AppFocusState.MainScreen(MainScreenFocusState.CategoryRow(row.category))
