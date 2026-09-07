@@ -36,6 +36,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.Alignment
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.rememberNavController
@@ -190,8 +192,55 @@ data class TopBarFocusState(
     val isRefreshRowVisible: Boolean
 )
 
+private sealed class SeerrTvDeepLink {
+    abstract fun navRoute(): String
+
+    data class Details(
+        val mediaId: String,
+        val mediaType: String,
+        val showRequestModal: Boolean
+    ) : SeerrTvDeepLink() {
+        override fun navRoute(): String =
+            "details/$mediaId/$mediaType?showRequestModal=$showRequestModal"
+    }
+
+    data class Search(val query: String) : SeerrTvDeepLink() {
+        override fun navRoute(): String = "search?query=${Uri.encode(query)}"
+    }
+}
+
+private fun parseSeerrTvDeepLink(intent: Intent?): SeerrTvDeepLink? {
+    val uri = intent?.data ?: return null
+    if (uri.scheme != "seerrtv") return null
+
+    return when (uri.host) {
+        "details" -> {
+            val mediaType = uri.pathSegments.getOrNull(0)
+            val mediaId = uri.pathSegments.getOrNull(1)
+            val validMediaType = mediaType?.takeIf { it == "movie" || it == "tv" }
+            val validMediaId = mediaId?.takeIf { it.toIntOrNull() != null }
+            if (validMediaType != null && validMediaId != null) {
+                SeerrTvDeepLink.Details(
+                    mediaId = validMediaId,
+                    mediaType = validMediaType,
+                    showRequestModal = uri.getQueryParameter("showRequestModal") == "true"
+                )
+            } else {
+                null
+            }
+        }
+
+        "search" -> uri.getQueryParameter("query")?.trim()?.takeIf { it.isNotEmpty() }
+            ?.let(SeerrTvDeepLink::Search)
+
+        else -> null
+    }
+}
+
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
+    private var pendingDeepLink by mutableStateOf<SeerrTvDeepLink?>(null)
+
     override fun attachBaseContext(newBase: Context) {
         // Enforce the selected app language (resolving migration if needed)
         super.attachBaseContext(LocaleContextWrapper.wrap(newBase))
@@ -551,6 +600,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        pendingDeepLink = parseSeerrTvDeepLink(intent)
 
         // Register lifecycle observer for token refresh
         lifecycle.addObserver(lifecycleObserver)
@@ -987,10 +1037,17 @@ class MainActivity : AppCompatActivity() {
                                     )
                                 }
                                 composable(
-                                    route = "search",
+                                    route = "search?query={query}",
+                                    arguments = listOf(
+                                        navArgument("query") {
+                                            type = NavType.StringType
+                                            defaultValue = ""
+                                        }
+                                    ),
                                     exitTransition = { fadeOut(animationSpec = tween(300)) },
                                     popEnterTransition = { fadeIn(animationSpec = tween(300)) }
-                                ) {
+                                ) { backStackEntry ->
+                                    val query = backStackEntry.arguments?.getString("query").orEmpty()
                                     Log.d(
                                         "MainActivity",
                                         "Composing MediaDiscoveryScreen for Search"
@@ -1006,7 +1063,7 @@ class MainActivity : AppCompatActivity() {
                                         imageLoader = SeerrTV.imageLoader,
                                         context = this@MainActivity,
                                         discoveryType = DiscoveryType.SEARCH,
-                                        initialKeyword = "",
+                                        initialKeyword = query,
                                         keywordText = "",
                                         timestamp = 0L,
                                         navigationManager = navigationManager,
@@ -1176,6 +1233,27 @@ class MainActivity : AppCompatActivity() {
                             }
                         }
 
+                        // Deep links from the Anime Discovery app wait until SeerrTV has
+                        // authenticated and reached a usable screen. This also handles a new
+                        // deep link delivered to an already-running activity.
+                        LaunchedEffect(
+                            pendingDeepLink,
+                            showSplash,
+                            isAuthenticationComplete,
+                            currentRouteForValidation
+                        ) {
+                            val deepLink = pendingDeepLink ?: return@LaunchedEffect
+                            if (showSplash || !isAuthenticationComplete) return@LaunchedEffect
+                            if (currentRouteForValidation in setOf("splash", "config", "profile_select")) {
+                                return@LaunchedEffect
+                            }
+
+                            pendingDeepLink = null
+                            navController.navigate(deepLink.navRoute()) {
+                                launchSingleTop = true
+                            }
+                        }
+
                         // Trigger navigation when splash completes
                         LaunchedEffect(
                             showSplash,
@@ -1252,6 +1330,12 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        pendingDeepLink = parseSeerrTvDeepLink(intent)
     }
 
     override fun onDestroy() {
