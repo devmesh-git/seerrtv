@@ -77,6 +77,7 @@ fun MediaDiscoveryScreen(
     keywordText: String,
     timestamp: Long,
     image: String? = null,
+    onExternalBack: (() -> Boolean)? = null,
     navigationManager: NavigationManager = rememberNavigationManager(
         scope = rememberCoroutineScope(),
         navController = LocalNavController.current
@@ -1184,7 +1185,9 @@ fun MediaDiscoveryScreen(
                 }
             },
             onBack = {
-                navigationManager.navigateBack()
+                if (onExternalBack?.invoke() != true) {
+                    navigationManager.navigateBack()
+                }
             }
         )
 

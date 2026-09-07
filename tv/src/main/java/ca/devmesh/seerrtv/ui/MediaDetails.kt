@@ -206,7 +206,8 @@ fun MediaDetails(
         scope = rememberCoroutineScope(),
         navController = navController
     ),
-    initialShowRequestModal: Boolean = false
+    initialShowRequestModal: Boolean = false,
+    onExternalBack: (() -> Boolean)? = null
 ) {
     val coroutineScope = rememberCoroutineScope()
     val refreshManager = remember { RefreshManager() }
@@ -2132,7 +2133,9 @@ fun MediaDetails(
                             // This prevents unwanted state restoration when returning to MediaDetails from MainScreen
                             appFocusManager.clearSavedStates()
                             // Debug logging removed to reduce instruction count
-                            navController.popBackStack()
+                            if (onExternalBack?.invoke() != true) {
+                                navController.popBackStack()
+                            }
                         }
                         // Note: Issue modals handle their own BACK button events via BackHandler
                     }

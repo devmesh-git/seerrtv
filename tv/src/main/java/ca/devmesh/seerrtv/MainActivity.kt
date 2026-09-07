@@ -240,6 +240,7 @@ private fun parseSeerrTvDeepLink(intent: Intent?): SeerrTvDeepLink? {
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
     private var pendingDeepLink by mutableStateOf<SeerrTvDeepLink?>(null)
+    private var externalDeepLinkActive by mutableStateOf(false)
 
     override fun attachBaseContext(newBase: Context) {
         // Enforce the selected app language (resolving migration if needed)
@@ -601,6 +602,7 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         pendingDeepLink = parseSeerrTvDeepLink(intent)
+        externalDeepLinkActive = pendingDeepLink != null
 
         // Register lifecycle observer for token refresh
         lifecycle.addObserver(lifecycleObserver)
@@ -1010,7 +1012,8 @@ class MainActivity : AppCompatActivity() {
                                             dpadController = dpadController,
                                             appFocusManager = appFocusManager,
                                             navigationManager = navigationManager,
-                                            initialShowRequestModal = showRequestModal
+                                            initialShowRequestModal = showRequestModal,
+                                            onExternalBack = externalBackHandler(navController)
                                         )
                                     }
                                 }
@@ -1067,6 +1070,7 @@ class MainActivity : AppCompatActivity() {
                                         keywordText = "",
                                         timestamp = 0L,
                                         navigationManager = navigationManager,
+                                        onExternalBack = externalBackHandler(navController),
                                     )
                                 }
                                 composable(
@@ -1251,6 +1255,7 @@ class MainActivity : AppCompatActivity() {
                             pendingDeepLink = null
                             navController.navigate(deepLink.navRoute()) {
                                 launchSingleTop = true
+                                popUpTo("main") { inclusive = false }
                             }
                         }
 
@@ -1336,6 +1341,21 @@ class MainActivity : AppCompatActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         pendingDeepLink = parseSeerrTvDeepLink(intent)
+        externalDeepLinkActive = pendingDeepLink != null
+    }
+
+    private fun externalBackHandler(navController: NavController): (() -> Boolean)? {
+        if (!externalDeepLinkActive) return null
+        return {
+            val previousRoute = navController.previousBackStackEntry?.destination?.route
+            if (previousRoute?.startsWith("main") == true) {
+                // Keep SeerrTV warm while returning to the calling app.
+                moveTaskToBack(true)
+                true
+            } else {
+                false
+            }
+        }
     }
 
     override fun onDestroy() {
