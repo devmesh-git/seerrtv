@@ -240,7 +240,16 @@ private fun parseSeerrTvDeepLink(intent: Intent?): SeerrTvDeepLink? {
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
     private var pendingDeepLink by mutableStateOf<SeerrTvDeepLink?>(null)
-    private var externalDeepLinkActive by mutableStateOf(false)
+
+    /**
+     * Back stack entry id of the screen opened by an external deep link, or null when the current
+     * screen was not reached that way. Identifying the exact entry — rather than tracking "a deep
+     * link happened at some point" — is what keeps the external-back behaviour scoped to the one
+     * screen the caller asked for. The app is single-activity, so every screen is a destination
+     * within this one back stack and ordinary in-app navigation produces entries that will never
+     * match this id.
+     */
+    private var externalDeepLinkEntryId by mutableStateOf<String?>(null)
 
     override fun attachBaseContext(newBase: Context) {
         // Enforce the selected app language (resolving migration if needed)
@@ -602,7 +611,6 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         pendingDeepLink = parseSeerrTvDeepLink(intent)
-        externalDeepLinkActive = pendingDeepLink != null
 
         // Register lifecycle observer for token refresh
         lifecycle.addObserver(lifecycleObserver)
@@ -1237,9 +1245,9 @@ class MainActivity : AppCompatActivity() {
                             }
                         }
 
-                        // Deep links from the Anime Discovery app wait until SeerrTV has
-                        // authenticated and reached a usable screen. This also handles a new
-                        // deep link delivered to an already-running activity.
+                        // An external deep link waits until SeerrTV has authenticated and reached
+                        // a usable screen before it navigates. This also handles a new deep link
+                        // delivered to an already-running activity.
                         LaunchedEffect(
                             pendingDeepLink,
                             showSplash,
@@ -1257,6 +1265,9 @@ class MainActivity : AppCompatActivity() {
                                 launchSingleTop = true
                                 popUpTo("main") { inclusive = false }
                             }
+                            // Remember which entry the caller actually opened. navigate() updates
+                            // the back stack synchronously, so this is the destination above.
+                            externalDeepLinkEntryId = navController.currentBackStackEntry?.id
                         }
 
                         // Trigger navigation when splash completes
@@ -1340,15 +1351,29 @@ class MainActivity : AppCompatActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        pendingDeepLink = parseSeerrTvDeepLink(intent)
-        externalDeepLinkActive = pendingDeepLink != null
+        val deepLink = parseSeerrTvDeepLink(intent)
+        pendingDeepLink = deepLink
+        if (deepLink == null) {
+            // Relaunched from the launcher rather than by a caller; any screen still marked as
+            // externally opened no longer is.
+            externalDeepLinkEntryId = null
+        }
     }
 
+    /**
+     * Back behaviour for a screen opened by an external caller: return to that caller and leave
+     * SeerrTV warm in the background, rather than popping to the main screen of an app the user
+     * never opened directly.
+     *
+     * Scoped to the exact back stack entry the deep link created and consumed on first use, so it
+     * can only ever fire for that one screen. Anything else — a title opened from the main rows,
+     * a second visit to the same title later in the session — falls through to normal navigation.
+     */
     private fun externalBackHandler(navController: NavController): (() -> Boolean)? {
-        if (!externalDeepLinkActive) return null
+        val entryId = externalDeepLinkEntryId ?: return null
         return {
-            val previousRoute = navController.previousBackStackEntry?.destination?.route
-            if (previousRoute?.startsWith("main") == true) {
+            if (navController.currentBackStackEntry?.id == entryId) {
+                externalDeepLinkEntryId = null
                 // Keep SeerrTV warm while returning to the calling app.
                 moveTaskToBack(true)
                 true

@@ -2,6 +2,24 @@
 
 ## 0.30.0
 
+### Added: External deep links into a title or a search
+
+- **What changed** – Other apps on the device can now open SeerrTV directly on a title or a search:
+  - `seerrtv://details/movie/{tmdbId}` and `seerrtv://details/tv/{tmdbId}`, with an optional `?showRequestModal=true` to open the request modal on arrival
+  - `seerrtv://search?query={encodedTitle}`
+
+  Media type and id are validated, empty searches are rejected, and a link that arrives during splash, configuration or profile selection is held until SeerrTV has authenticated and reached a usable screen — so a cold start works the same as a warm one.
+
+- **Back returns to the caller** – Pressing Back on a screen that was opened by another app returns to that app and leaves SeerrTV running in the background, rather than dropping the user onto the main screen of an app they never opened. This is scoped to the exact screen the link opened and applies once; a title opened from the main rows always behaves normally.
+
+- **Launcher builds** – The launcher flavour replaces the whole activity declaration, so the deep link filters are declared in both manifests. Without that they resolve only in the app flavour.
+
+- **`singleTop`, not `singleTask`** – SeerrTV is a single-activity app, so `singleTop` is all that is needed for a repeated link to reach the running instance through `onNewIntent` instead of stacking a second copy. It avoids the task-affinity and task-clearing semantics `singleTask` would have introduced app-wide, which matter for the launcher build in particular.
+
+- **Anyone can send these links** – The filters are `BROWSABLE`, so any app or web page can open one, `showRequestModal=true` included. That modal still requires the user to confirm before anything is requested, and no link can submit a request on its own.
+
+- Credits to [@sp71](https://github.com/sp71) ([#12](https://github.com/devmesh-git/seerrtv/pull/12)), closing [#11](https://github.com/devmesh-git/seerrtv/issues/11).
+
 ### Added: Root folders show their free space, and movies can now choose one
 
 - **What changed** – Every entry in the request modal's Root Folder list now shows how much space is available on that folder, formatted with `Formatter.formatFileSize` so the unit and separator follow the device locale. Root folder selection also works for movies for the first time — it was previously gated to TV.
