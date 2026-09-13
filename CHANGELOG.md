@@ -10,13 +10,17 @@
 
   Media type and id are validated, empty searches are rejected, and a link that arrives during splash, configuration or profile selection is held until SeerrTV has authenticated and reached a usable screen — so a cold start works the same as a warm one.
 
-- **Back returns to the caller** – Pressing Back on a screen that was opened by another app returns to that app and leaves SeerrTV running in the background, rather than dropping the user onto the main screen of an app they never opened. This is scoped to the exact screen the link opened and applies once; a title opened from the main rows always behaves normally.
+- **Back returns to the caller** – In the standard app build, pressing Back on a screen that was opened by another app returns to that app and leaves SeerrTV running in the background, rather than dropping the user onto the main screen of an app they never opened. This is scoped to the exact screen the link opened and applies once; a title opened from the main rows always behaves normally.
 
-- **Launcher builds** – The launcher flavour replaces the whole activity declaration, so the deep link filters are declared in both manifests. Without that they resolve only in the app flavour.
+- **Launcher builds** – Two differences, both because the launcher flavour is the device's home screen rather than an app sitting on top of one:
+  - The launcher manifest replaces the whole activity declaration, so the deep link filters and launch mode are declared there as well. Without that, links resolve only in the app flavour.
+  - Back does *not* return to a caller. A home screen sits at the bottom of the task stack, so there is nothing to return to — backgrounding it would surface whatever unrelated app happened to be behind. Back simply returns to the SeerrTV home rows, which in that build are the home screen.
 
 - **`singleTop`, not `singleTask`** – SeerrTV is a single-activity app, so `singleTop` is all that is needed for a repeated link to reach the running instance through `onNewIntent` instead of stacking a second copy. It avoids the task-affinity and task-clearing semantics `singleTask` would have introduced app-wide, which matter for the launcher build in particular.
 
 - **Anyone can send these links** – The filters are `BROWSABLE`, so any app or web page can open one, `showRequestModal=true` included. That modal still requires the user to confirm before anything is requested, and no link can submit a request on its own.
+
+- **Verified on a Google TV emulator**, both flavours: cold start into a title, a link delivered to an already-running app, a search link, Back from a deep-linked screen, Back from an ordinary screen afterwards, and invalid links (bad media type, non-numeric id, empty query) being ignored. The launcher flavour was additionally exercised as the device's actual home screen.
 
 - Credits to [@sp71](https://github.com/sp71) ([#12](https://github.com/devmesh-git/seerrtv/pull/12)), closing [#11](https://github.com/devmesh-git/seerrtv/issues/11).
 

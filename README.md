@@ -121,7 +121,17 @@ SeerrTV is an Android TV application that provides a comprehensive media browsin
   - Sonarr server integration for TV series management
   - Radarr server integration for movie management
   - Multi-server support for both HD and 4K quality tiers
-  - Server-specific quality profiles and root folder selection
+  - Server-specific quality profiles and root folder selection, with available free space shown per folder
+- **Deep Links** - other apps on the device can open SeerrTV directly on a title or a search:
+
+  | Link | Opens |
+  | --- | --- |
+  | `seerrtv://details/movie/{tmdbId}` | that movie's details |
+  | `seerrtv://details/tv/{tmdbId}` | that series' details |
+  | `seerrtv://details/movie/{tmdbId}?showRequestModal=true` | details with the request modal open |
+  | `seerrtv://search?query={encodedTitle}` | search, prefilled |
+
+  Links sent before SeerrTV has finished starting up or signing in are held until it is ready, so a cold start behaves the same as a link sent to an already-running app. A request modal opened this way still needs the user to confirm — a link can never submit a request on its own.
 
 ## Quick Start
 
