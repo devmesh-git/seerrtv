@@ -1255,7 +1255,13 @@ class MainActivity : AppCompatActivity() {
                             currentRouteForValidation
                         ) {
                             val deepLink = pendingDeepLink ?: return@LaunchedEffect
-                            if (showSplash || !isAuthenticationComplete) return@LaunchedEffect
+                            // Readiness is judged by the current route alone. showSplash and
+                            // isAuthenticationComplete describe the cold startup sequence and are
+                            // only driven to their settled values while that sequence runs; in a
+                            // process that is already past startup they read as "still starting"
+                            // and never change again, so gating on them drops warm deep links
+                            // entirely. The route is accurate in both cases — it only leaves
+                            // "splash" once authentication has actually succeeded.
                             if (currentRouteForValidation in setOf("splash", "config", "profile_select")) {
                                 return@LaunchedEffect
                             }
