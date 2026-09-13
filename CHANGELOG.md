@@ -38,6 +38,22 @@
 
 - Credits to [@brandonp2412](https://github.com/brandonp2412) ([#10](https://github.com/devmesh-git/seerrtv/pull/10)).
 
+### Fixed: Pull request notifications never reached Discord
+
+- **Symptom** – The `#github` channel received issue notifications reliably but has never posted a pull request, for any PR.
+
+- **Root cause** – Two independent gates, both of which only affect PRs opened from forks — which is every community PR:
+  - Workflow runs from outside contributors need manual approval in this repository, so those runs sat queued as `action_required` and never executed at all. PRs #9, #10 and #12 were all still unapproved.
+  - On the runs that *were* approved, a `pull_request` event from a fork is denied access to repository secrets, so the Discord webhook value resolved empty and `curl` was handed nothing to post to. That failure was invisible because nothing checked for it.
+
+  Issues originate from this repository, so they passed both gates — which is exactly why they were the only notifications getting through.
+
+- **Fix** – The trigger is now `pull_request_target`, which runs in the base repository context where the webhook value resolves and the fork-approval gate does not apply. This job never checks out pull request code, and the untrusted title and body reach the shell only through environment variables and `toJSON`, never by interpolation — the conditions under which `pull_request_target` is safe. Added `permissions: {}`, since it would otherwise hand the job a read/write token it has no use for.
+
+- **Also** – Dropped `synchronize`, so it no longer fires on every push to an open PR; merged, closed and reopened are now reported distinctly instead of all reading "Opened"; and an empty webhook value now fails the step loudly rather than silently.
+
+- **Note** – This does not retroactively notify for PRs that are already open. Closing and reopening one will exercise it.
+
 ### Changed: Less work per Up/Down D-pad move between rows
 
 - **Symptom** – Vertical row navigation was jankier than it needed to be, most visible on lower-powered hardware.
