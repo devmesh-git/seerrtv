@@ -5,13 +5,19 @@ on:
     branches: [main]
     tags:
       - 'v*'
-  pull_request:
+  # pull_request_target (not pull_request) so PRs opened from forks can still read
+  # secrets.DISCORD_WEBHOOK and are not held behind the outside-collaborator workflow
+  # approval gate. This job never checks out PR code, so running in the base repository
+  # context is safe; untrusted PR title/body reach the shell only via env + toJSON.
+  pull_request_target:
     branches: [main]
-    types: [opened, closed, reopened,synchronize]
+    types: [opened, closed, reopened]
   issues:
     types: [opened, closed]
   release:
     types: [published]
+
+permissions: {}
 
 jobs:
   notify-discord:
@@ -50,9 +56,10 @@ jobs:
           curl -sS -H "Content-Type: application/json" -d "$PAYLOAD" "$WEBHOOK"
 
       - name: Notify Discord - Pull Request
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request_target'
         env:
           ACTION: ${{ github.event.action }}
+          PR_MERGED: ${{ github.event.pull_request.merged }}
           PR_BODY_JSON: ${{ toJSON(github.event.pull_request.body) }}
           PR_TITLE_JSON: ${{ toJSON(github.event.pull_request.title) }}
           PR_NUM: ${{ github.event.pull_request.number }}
@@ -61,7 +68,17 @@ jobs:
           REPO: ${{ github.repository }}
           WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
         run: |
-          if [ "$ACTION" = "closed" ]; then COLOR=15158332; STATUS="Closed"; else COLOR=3447003; STATUS="Opened"; fi
+          if [ -z "$WEBHOOK" ]; then
+            echo "::error::DISCORD_WEBHOOK secret is empty - no notification sent"
+            exit 1
+          fi
+          case "$ACTION" in
+            closed)
+              if [ "$PR_MERGED" = "true" ]; then COLOR=10181046; STATUS="Merged"
+              else COLOR=15158332; STATUS="Closed"; fi ;;
+            reopened) COLOR=3447003; STATUS="Reopened" ;;
+            *)        COLOR=3447003; STATUS="Opened" ;;
+          esac
           PAYLOAD=$(jq -n \
             --arg status "$STATUS" \
             --argjson title "$PR_TITLE_JSON" \
