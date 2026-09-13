@@ -1374,8 +1374,15 @@ class MainActivity : AppCompatActivity() {
      * Scoped to the exact back stack entry the deep link created and consumed on first use, so it
      * can only ever fire for that one screen. Anything else — a title opened from the main rows,
      * a second visit to the same title later in the session — falls through to normal navigation.
+     *
+     * Never applies in a launcher build. There SeerrTV is the device's home screen and sits at the
+     * bottom of the task stack, so there is no caller to go back to: moveTaskToBack() surfaces
+     * whatever stale task happens to be behind it (observed landing on YouTube) and strands the
+     * user with no home screen to return to. The main screen is the home screen in that build, so
+     * ordinary back navigation already lands exactly where the user wants.
      */
     private fun externalBackHandler(navController: NavController): (() -> Boolean)? {
+        if (BuildConfig.IS_LAUNCHER_BUILD) return null
         val entryId = externalDeepLinkEntryId ?: return null
         return {
             if (navController.currentBackStackEntry?.id == entryId) {
