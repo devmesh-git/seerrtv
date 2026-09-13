@@ -261,7 +261,7 @@
     <string name="requestModal_episodes">Osad</string>
     <string name="requestModal_errorLookingUpSeries">Viga sarja otsimisel: %1$s</string>
     <string name="requestModal_errorSubmittingRequest">Viga soovi esitamisel</string>
-    <string name="requestModal_folderMenu">Juuskaust</string>
+    <string name="requestModal_folderMenu">Juurkaust</string>
     <string name="requestModal_lookupError">Viga sarja otsimisel</string>
     <string name="requestModal_lookupLoading">Sarja otsimine...</string>
     <string name="requestModal_noSeriesFound">Sarja ei leitud</string>
@@ -273,7 +273,7 @@
     <string name="requestModal_seasonsMenu">Hooajad</string>
     <string name="requestModal_selected">Valitud</string>
     <string name="requestModal_selectQualityProfile">Vali kvaliteediprofiil</string>
-    <string name="requestModal_selectRootFolder">Vali juuskaust</string>
+    <string name="requestModal_selectRootFolder">Vali juurkaust</string>
     <string name="requestModal_selectSeasonError">Palun valige vähemalt üks hooaeg</string>
     <string name="requestModal_selectServer">Vali server</string>
     <string name="requestModal_selectTags">Vali sildid</string>
