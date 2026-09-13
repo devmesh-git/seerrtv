@@ -3,6 +3,7 @@ package ca.devmesh.seerrtv.ui
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
@@ -80,6 +81,12 @@ import coil3.request.ImageRequest
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
+
+private fun trailerIntent(uri: Uri): Intent = Intent(Intent.ACTION_VIEW, uri).apply {
+    // Keep YouTube/browser history isolated from SeerrTV. Back from the
+    // external trailer task therefore returns to this details screen.
+    addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT or Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
+}
 
 /**
  * A stable state holder for the RequestActionModal to prevent recreation during recomposition
@@ -782,7 +789,7 @@ fun MediaDetails(
                         stateManager.trailerOverlayVideoId = videoId
                     } else {
                         try {
-                            val intent = Intent(Intent.ACTION_VIEW, trailerUrl!!.toUri())
+                            val intent = trailerIntent(trailerUrl!!.toUri())
                             context.startActivity(intent)
                         } catch (_: ActivityNotFoundException) {
                             showMessage = context.getString(R.string.mediaDetails_youTubeNotFound)
@@ -796,7 +803,7 @@ fun MediaDetails(
                             videoId != null -> "https://www.youtube.com/watch?v=$videoId".toUri()
                             else -> return
                         }
-                        val intent = Intent(Intent.ACTION_VIEW, uri)
+                        val intent = trailerIntent(uri)
                         context.startActivity(intent)
                     } catch (_: ActivityNotFoundException) {
                         showMessage = context.getString(R.string.mediaDetails_youTubeNotFound)
