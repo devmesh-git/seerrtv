@@ -54,6 +54,23 @@
 
 - **Note** – This does not retroactively notify for PRs that are already open. Closing and reopening one will exercise it.
 
+### Changed: Dependency updates
+
+- Android Gradle Plugin 9.3.2 → 9.4.0
+- Kotlin 2.4.10 → 2.4.20
+- KSP 2.3.11 → 2.3.12
+- Coil 3.5.0 → 3.6.2
+- Compose BOM 2026.08.00 → 2026.09.00
+- Gradle Versions Plugin 0.61.0 → 0.62.0
+
+Gradle stays on 9.7.1 — 9.8.0 is only at release candidate.
+
+**Kotlin 2.4.20 has not been assumed to fix the 2.4 suspend `Unit`/`Float` crash.** The `ScrollStateCompat` workaround is still in place and still required: scroll animations must keep going through `animateScrollToCompat` rather than `ScrollState.animateScrollTo`. Whether 2.4.20 makes it unnecessary is a separate question that needs its own test before the workaround is removed.
+
+**Navigation Compose deliberately held at 2.9.8.** Navigation 2.10.0 raised its own `minSdk` to 24, and this app supports API 23 (Android 6.0) — the manifest merger fails outright rather than degrading, so 2.10.x cannot be taken without dropping Android 6.0 devices. There is no intermediate release: 2.9.8 is the last of the 2.9 line, and the whole 2.10 line requires 24.
+
+This is a holding position, not a permanent one. The 2.9 line is finished, so it will stop receiving fixes, and anything depending on newer Navigation is blocked behind the same wall. **Expect to raise `minSdk` to 24 in the near future** — when that happens it needs its own decision and its own release note, since it drops Android 6.0 support that was deliberately added in 0.28.06, along with a README correction to the stated minimum.
+
 ### Changed: Less work per Up/Down D-pad move between rows
 
 - **Symptom** – Vertical row navigation was jankier than it needed to be, most visible on lower-powered hardware.
