@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.30.0
+
+### Added: Root folders show their free space, and movies can now choose one
+
+- **What changed** – Every entry in the request modal's Root Folder list now shows how much space is available on that folder, formatted with `Formatter.formatFileSize` so the unit and separator follow the device locale. Root folder selection also works for movies for the first time — it was previously gated to TV.
+
+- **Why movies were excluded** – Nothing principled: `RequestModalController` hard-coded `_rootFolders.value = emptyList()` on the Radarr branch and every folder check was written as `mediaType == MediaType.TV && …`, even though `Radarr.rootFolders` was already being deserialised and carried the same `id`/`freeSpace`/`path` shape as Sonarr's. Radarr and Sonarr folders are now normalised into a shared `RootFolderOption`, so one code path serves both.
+
+- **Also changed — the default folder** – The pre-selected folder was previously "whichever one came back first". It is now the folder matching the server's configured `activeDirectory`, for Sonarr as well as Radarr, falling back to the first folder when no path matches. This makes SeerrTV agree with what the server itself considers the default.
+
+- **Behaviour to be aware of** – If you have *Root Folder Selection* enabled in Settings and more than one Radarr root folder, movie requests that previously submitted in one click will now open the request modal so you can pick a folder. Turn off Root Folder Selection to restore one-click behaviour.
+
+- **Known limitation** – Folder counting in `RequestViewModel.getRootFolders` flattens across every server in the tier, so with two Radarr servers the modal can open to offer a choice that a single server would not have needed. The modal itself only ever lists folders belonging to the selected server, so the submitted request is always correct. This shape predates the change and applied to TV already.
+
+- Credits to [@brandonp2412](https://github.com/brandonp2412) ([#10](https://github.com/devmesh-git/seerrtv/pull/10)).
+
+### Changed: Less work per Up/Down D-pad move between rows
+
+- **Symptom** – Vertical row navigation was jankier than it needed to be, most visible on lower-powered hardware.
+
+- **Root cause** – `navigateToActiveRow` reset the destination carousel with `forceCarouselReset`, which exists for *data-changing* operations: it emits a synthetic carousel update from `N -> 0`, publishes the reset event, waits, then emits a second update from `0 -> N`. Row navigation changes no data. Worse, every carousel on screen collects `carouselUpdates` and keys a `LaunchedEffect` on it, so each synthetic update restarted effects across all rows — and the one branch that acts on an update (`itemsAfter > itemsBefore` on the selected carousel) performs a scroll reposition that works against the reset-to-zero the navigation had just requested.
+
+- **Fix** – A new `resetCarouselForNavigation` keeps the selection reset, scroll reset and reset animation, and skips the two fake data-change emissions. Destination rows still land on card 0 with the existing animation.
+
+- **Measured** – On a Google TV Streamer, release builds, ART `speed` compilation, identical app data and fixed ADB D-pad workloads with `gfxinfo` frame metrics: a mixed 130-key workload improved from 8.27% to 7.68% janky frames (5-run median), and a vertical-only workload from 16.71% to 12.84% (3-run median). Several other candidate optimisations were tested on the same device and discarded for not surviving the A/B.
+
+- **Still outstanding** – The focus-sync path in `MainScreen` is the same class of pure navigation and still calls `forceCarouselReset`. Left alone in this release to keep the change to the one call site that was benchmarked.
+
+- Credits to [@brandonp2412](https://github.com/brandonp2412) ([#9](https://github.com/devmesh-git/seerrtv/pull/9)).
+
 ## 0.29.0
 
 ### Added: SeerrTV now honours the server's blocklist and "Hide Available Items"
