@@ -4,6 +4,8 @@ plugins {
     alias(libs.plugins.hilt) apply false
     alias(libs.plugins.ksp) apply false
     alias(libs.plugins.compose.compiler) apply false
+    alias(libs.plugins.android.test) apply false
+    alias(libs.plugins.baselineprofile) apply false
     id("org.jetbrains.kotlin.plugin.serialization") version libs.versions.kotlin.get() apply false
     id("io.github.ben-manes.versions") version "0.62.0"
 }

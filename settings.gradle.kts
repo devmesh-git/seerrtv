@@ -35,3 +35,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "SeerrTV"
 include(":tv")
+include(":baselineprofile")

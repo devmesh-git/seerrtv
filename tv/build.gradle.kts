@@ -2,8 +2,8 @@ import java.io.File
 import java.util.Properties
 
 // Single source for app version; used in defaultConfig and for direct-release APK naming
-val appVersionName = "0.30.0"
-val appVersionCode = 139
+val appVersionName = "0.31.0"
+val appVersionCode = 140
 
 plugins {
     // https://developer.android.com/jetpack/androidx/releases/hilt
@@ -13,6 +13,7 @@ plugins {
     alias(libs.plugins.hilt)
     alias(libs.plugins.ksp)
     alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.baselineprofile)
     alias(libs.plugins.detekt) apply false
     id("org.jetbrains.kotlin.plugin.serialization")
 }
@@ -93,7 +94,10 @@ android {
     }
     buildTypes {
         release {
-            isMinifyEnabled = false
+            // Play flags apps whose DEX is under-optimised once they exceed 10 MB uncompressed;
+            // SeerrTV ships 34.4 MB, and with R8 off the obfuscation score sat at 1% against a
+            // 25% threshold. See proguard-rules.pro for the keep rules this needs.
+            isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -101,7 +105,29 @@ android {
             isDebuggable = false
             signingConfig = signingConfigs.getByName("release")
         }
+
+        // The baseline profile plugin needs these two build types and will create them itself
+        // with initWith(release) if they are absent — which copies the release signing config.
+        // They exist only to be installed on a throwaway device while generating a profile and
+        // are never shipped, so requiring the release keystore to build them would block
+        // profile generation on any machine without it. Declaring them here instead of letting
+        // the plugin do it is what makes the debug key stick: the plugin's initWith runs after
+        // the android block is evaluated, so anything set afterwards (configureEach,
+        // afterEvaluate) is either overwritten or lands after AGP has already snapshotted the
+        // signing config into the variant.
+        create("nonMinifiedRelease") {
+            initWith(getByName("release"))
+            matchingFallbacks += "release"
+            signingConfig = signingConfigs.getByName("debug")
+            isMinifyEnabled = false
+        }
+        create("benchmarkRelease") {
+            initWith(getByName("release"))
+            matchingFallbacks += "release"
+            signingConfig = signingConfigs.getByName("debug")
+        }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -180,10 +206,32 @@ kotlin {
     }
 }
 
+baselineProfile {
+    // All four variants (play/direct x app/launcher) share the same startup code path, so one
+    // profile checked into src/main covers them all. Without this the plugin would emit a
+    // separate copy per variant.
+    mergeIntoMain = true
+
+    // Keep generation an explicit, manual step (./gradlew generateBaselineProfile). Generating
+    // during every release build would require a connected TV device or a managed-device boot
+    // on any machine cutting a release, including CI.
+    automaticGenerationDuringBuild = false
+
+    // Check the generated profile into git so release builds pick it up without regenerating.
+    saveInSrc = true
+}
+
 dependencies {
     // Core Android Dependencies
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
+
+    // Applies src/main/generated/baselineProfiles at first run on API 28-30; API 31+ reads the
+    // profile straight out of the APK.
+    implementation(libs.androidx.profileinstaller)
+
+    // Supplies the generated profile to this module (see :baselineprofile).
+    baselineProfile(project(":baselineprofile"))
 
     // Add desugaring library
     coreLibraryDesugaring(libs.desugar.jdk.libs)

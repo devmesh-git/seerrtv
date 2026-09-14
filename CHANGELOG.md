@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.31.0
+
+### Added: A baseline profile covering SeerrTV's own startup
+
+- **What changed** – Release builds now carry a baseline profile recorded from SeerrTV's own cold start, so the classes and methods the app touches while launching are compiled ahead of time instead of being interpreted and JIT-compiled on the device.
+
+- **Why** – Play vitals recorded an ANR on 0.29.0 whose main thread was *runnable* rather than blocked, sitting in `WindowInsetsRulers.<clinit>` — reached from `AndroidComposeView.<init>` during the first `setContent` — with a concurrent GC running alongside it and the profile saver still active. That is the signature of a cold start grinding through class loading and verification on a device where nothing had been compiled ahead of time yet.
+
+- **What was already there** – The APK has always contained `assets/dexopt/baseline.prof`, merged from the profiles that AndroidX and Compose ship inside their own AARs. What was missing was a profile covering SeerrTV's own code — `MainActivity`, the navigation graph, the Hilt-generated graph, the app's composables. That is what this adds.
+
+- **Where it helps, and where it does not** – On API 31 and above the platform uses the embedded profile at install time, so the first launch benefits. On API 28–30 the profile is written during the first run and compiled in the background afterwards, so there it improves the second and later launches rather than the first. Below API 28 it does nothing. The other two ANRs seen on 0.29.0 are untouched by this and were never app-side: one was the main thread waiting on `system_server` for a permission check during `DecorView` construction, the other the RenderThread wedged inside a vendor Mali driver while the window was being stopped.
+
+- **Generating it** – `./gradlew :tv:generateBaselineProfile`, against a booted TV emulator or a connected Android TV device. Gradle Managed Devices cannot be used here: they reject TV system images outright, and a phone image is not a substitute because SeerrTV requires `android.software.leanback` and will not install on one. With more than one device attached, pin the right one with `ANDROID_SERIAL` or the test will also run on any connected phone.
+
+- **Not automatic** – Generation is a deliberate manual step, so cutting a release never requires a booted emulator. The result is committed under `tv/src/main/generated/baselineProfiles/`; regenerate it when the startup path changes meaningfully.
+
+- **The generator drives the D-pad** rather than looking up Compose nodes, because which screen startup lands on depends on what is stored on the device — an unconfigured device shows the configuration flow, a configured one the browse rows, a multi-profile one the profile picker. D-pad input is meaningful on all of them, so focus traversal and row rendering are recorded either way and the generator cannot fail hunting for a node that is not on screen. Only DOWN and RIGHT are sent: pressing centre would open a detail screen or a request modal depending on where focus happened to be, which would make the recorded profile depend on the device's library contents.
+
+- **Size cost** – The release APK grows from 13.83 MB to 14.41 MB, about 560 KB, and the AAB by roughly the same. Only 12 KB of that is the bigger profile (`assets/dexopt/baseline.prof`, 15.7 KB → 28.0 KB). The rest is the startup profile doing its job: AGP redistributes classes across the dex files so the startup path clusters together — `classes.dex` loses 2.2 MB while `classes3`/`classes4` gain it back — and that ordering compresses less well than the original. Setting `includeInStartupProfile = false` in the generator would recover most of the size at the cost of the dex-layout benefit.
+
+- **Build impact** – `assembleDirectRelease` and `bundlePlayAppRelease` are unchanged as commands, produce the same set of entries and an identical merged manifest, and are still signed with the release key; `profileinstaller` was already present transitively through Compose. The plugin does add two build types, `nonMinifiedRelease` and `benchmarkRelease`, which exist only to be installed on a throwaway device while generating. They are declared explicitly in `tv/build.gradle.kts` so they can be signed with the debug key — left to itself the plugin creates them with `initWith(release)`, which would make generating a profile impossible without the release keystore.
+
+### Fixed: Estonian "root folder" read as "hair folder"
+
+- **What changed** – Two Estonian strings in the request modal's folder menu were spelled `juuskaust` rather than `juurkaust`. Estonian for root is *juur*, so a root folder is *juurkaust*; *juus* means hair, which made the label read roughly as "hair folder".
+
+- **Where** – Both in `values-et`: `requestModal_folderMenu` (Juuskaust → Juurkaust) and `requestModal_selectRootFolder` (Vali juuskaust → Vali juurkaust).
+
+- **How it surfaced** – Noticed while writing the Play Store release notes, which quote this label back to the user; the notes would otherwise have disagreed with what the app actually shows.
+
+- **Confidence** – The rest of the file uses *juur* correctly elsewhere (*juurdepääs*, access), so this reads as a slip rather than a misunderstanding of the term — but it is still worth a native speaker confirming.
+
 ## 0.30.0
 
 ### Added: External deep links into a title or a search
