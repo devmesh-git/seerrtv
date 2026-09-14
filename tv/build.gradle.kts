@@ -98,6 +98,14 @@ android {
             // SeerrTV ships 34.4 MB, and with R8 off the obfuscation score sat at 1% against a
             // 25% threshold. See proguard-rules.pro for the keep rules this needs.
             isMinifyEnabled = true
+            // Resource shrinking rides on code shrinking: R8 has to have determined which R.*
+            // references survive before unused resources can be identified. Safe here because
+            // nothing looks resources up by name — there is no getIdentifier call in the app —
+            // so every reference is statically visible. Note this does not conflict with
+            // `bundle { language { enableSplit = false } }` below: that controls which locales
+            // are *packaged per device*, while shrinking only removes resources nothing refers
+            // to at all, and every translated string is reachable through R.string.
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -120,6 +128,10 @@ android {
             matchingFallbacks += "release"
             signingConfig = signingConfigs.getByName("debug")
             isMinifyEnabled = false
+            // initWith(release) copies isShrinkResources = true, and AGP fails the build if
+            // resource shrinking is on while code shrinking is off. This variant must stay
+            // unminified so the generated profile carries real names, so turn it back off.
+            isShrinkResources = false
         }
         create("benchmarkRelease") {
             initWith(getByName("release"))
@@ -334,9 +346,13 @@ project.afterEvaluate {
     }
     registerRenameDirectApkTask("App", false)
     registerRenameDirectApkTask("Launcher", true)
-    // So Gradle's task dependency validation is satisfied: printBuildOutputs reads APK dirs written by rename tasks
+    // printBuildOutputs reports whatever APKs and AABs are on disk, so it has to run after
+    // everything that can write one — AGP's per-variant package* tasks as well as the rename*
+    // tasks above. Naming them individually is what went wrong before: the list only covered
+    // the two direct renames, so any other producer in the same build either failed validation
+    // or raced. Matching by name keeps new variants covered automatically.
     tasks.named("printBuildOutputs") {
-        mustRunAfter(tasks.named("renameDirectAppReleaseApk"), tasks.named("renameDirectLauncherReleaseApk"))
+        mustRunAfter(tasks.matching { it.name.startsWith("package") || it.name.startsWith("rename") })
     }
 }
 
@@ -392,7 +408,13 @@ tasks.register("printBuildOutputs") {
     val bundleRoot = objects.directoryProperty()
     apkRoot.set(layout.buildDirectory.dir("outputs/apk"))
     bundleRoot.set(layout.buildDirectory.dir("outputs/bundle"))
-    inputs.dir(apkRoot)
+    // Deliberately no inputs.dir(apkRoot). This task has no outputs, so it is never considered
+    // up to date and always re-runs, walking the directory itself in doLast — the input
+    // declaration bought no up-to-date checking. What it did buy was an obligation: Gradle then
+    // required an ordering rule against every task that writes into outputs/apk, and only the
+    // two direct rename tasks were covered. Asking for a Play variant and a direct variant in
+    // one invocation — which is exactly what cutting a release looks like — failed validation
+    // on packagePlayAppRelease. See the ordering rule near registerRenameDirectApkTask.
 
     doLast {
         val apkRootDir = apkRoot.get().asFile

@@ -22,6 +22,40 @@
 
 - **Build impact** – `assembleDirectRelease` and `bundlePlayAppRelease` are unchanged as commands, produce the same set of entries and an identical merged manifest, and are still signed with the release key; `profileinstaller` was already present transitively through Compose. The plugin does add two build types, `nonMinifiedRelease` and `benchmarkRelease`, which exist only to be installed on a throwaway device while generating. They are declared explicitly in `tv/build.gradle.kts` so they can be signed with the debug key — left to itself the plugin creates them with `initWith(release)`, which would make generating a profile impossible without the release keystore.
 
+### Changed: R8 is now enabled for release builds
+
+- **What changed** – `isMinifyEnabled` and `isShrinkResources` are now both true for the release build type, so release builds are shrunk, optimised and obfuscated, and unused resources are dropped. Both had been off for the life of the project.
+
+- **Why now** – Play Console flagged SeerrTV under *DEX code optimization*, reporting obfuscation at 1% against a 25% threshold, with a February 2027 deadline and a warning that scores below it "may impact your visibility and publishing capabilities". Play only alerts on apps above 10 MB of uncompressed DEX; SeerrTV was shipping 34.4 MB.
+
+- **The result**, from `BUNDLE-METADATA/com.android.tools/r8.json`, which is the file Play actually reads: obfuscation 1% → **97.1%**, optimisation **96.2%**, shrinking **97.0%**.
+
+- **Size** – Uncompressed DEX 34.4 MB → 5.7 MB. The Play bundle 13.6 MB → 8.6 MB; the sideload APK 14.4 MB → 4.0 MB, of which resource shrinking accounts for the last ~460 KB. That more than absorbs the ~560 KB the baseline profile added, so 0.31.0 ships substantially smaller than 0.30.0 despite gaining the profile.
+
+- **Resource shrinking needed one guard** – `nonMinifiedRelease` is created with `initWith(release)`, which copies `isShrinkResources = true`, and AGP fails the build outright when resource shrinking is enabled without code shrinking. That variant has to stay unminified so the generated baseline profile carries real names, so it sets `isShrinkResources = false` explicitly. Shrinking is safe here because nothing resolves resources by name — there is no `getIdentifier` call in the app — and it does not interact with `bundle { language { enableSplit = false } }`, which governs which locales are packaged per device rather than which resources exist.
+
+- **Keep rules added** to `tv/proguard-rules.pro`, which until now was the untouched new-project template:
+  - `-keepattributes SourceFile,LineNumberTable` with `-renamesourcefileattribute SourceFile`, so Play vitals ANR and crash traces still read as `File.kt:123`. The three ANRs analysed for this release were diagnosed from exactly those line numbers; obfuscating them away would have cost more than the bytes saved.
+  - The upstream kotlinx.serialization rules — `Companion` fields, `serializer()` on default and named companions, `INSTANCE.serializer()` for serializable objects, and `RuntimeVisibleAnnotations`. SeerrTV has 17 files carrying `@Serializable`, and the generated serializers are only ever reached reflectively, so R8 cannot see the link on its own.
+  - `@android.webkit.JavascriptInterface <methods>`. This is redundant with the rule already in `proguard-android-optimize.txt`, which was verified to be doing the work, but it is stated explicitly because the failure mode is silent and expensive to diagnose: the trailer player (androidyoutubeplayer 13.0.0) drives playback from `res/raw/ayp_youtube_player.html`, which calls `YouTubePlayerBridge.sendReady()` and nine siblings *by name* from JavaScript. Rename them and the player never reports ready — it spins forever, with no crash and nothing in logcat pointing at the cause.
+  - Nothing was needed for Ktor. `SeerrApiService` builds `HttpClient(OkHttp)` with an explicit engine rather than relying on ServiceLoader discovery, which is the usual reason Ktor breaks under R8. Hilt and Coil ship their own consumer rules. R8 emitted no warnings and produced no `missing_rules.txt`.
+
+- **No interaction with the baseline profile** – The profile is recorded against the unminified `nonMinifiedRelease` variant and AGP rewrites it through R8's mapping, so it does not need regenerating. `r8.json` confirms `isProfileGuidedOptimizationEnabled` and `isDexLayoutOptimizationEnabled` are both still true, with the startup dex split out on its own.
+
+- **Verified on a Google TV emulator** against a live Seerr instance: cold start, browse rows, a detail screen with ratings, release dates, revenue and studios, cast and crew with images and initial-avatar fallbacks, an external trailer hand-off to the YouTube app, and the embedded trailer player used when *Use Trailer WebView* is enabled — which confirms the JavaScript bridge survives obfuscation in practice, not just on paper. Dozens of API responses across `/movie`, `/tv`, `/network` and `/studio` decoded without a single `SerializationException`, `NoSuchMethodError`, `NoClassDefFoundError` or `VerifyError`.
+
+- **Paths not exercised, and why they are low risk anyway** – The request modal, search and issue reporting were not driven, since exercising the first writes to a real Seerr instance. None of them is structurally different from what was tested. `RequestModels` is a plain `@Serializable data class` like the models already proven to decode, and the keep rules match on the annotation rather than naming classes individually, so nothing selects one model over another. Encoding a request body goes through the same `Json` instance and the same generated serializers as decoding a response. Search is the only genuinely different shape — `SearchResult` is a sealed interface — but `SearchResultSerializer` is a `JsonContentPolymorphicSerializer` that branches on the `mediaType` field in the JSON and then calls `Movie.serializer()` / `TV.serializer()` / `Person.serializer()` directly. Those are static references, so it never depends on a class name surviving obfuscation, which is the usual way polymorphic serialization breaks under R8. What remains is the ordinary risk that code nobody ran is code nobody tested.
+
+- **Incidental finding** – The `SerializersModule` in `SeerrApiService` registers `polymorphic(SearchResult::class) { subclass(Movie::class) … }`, which is dead configuration: `@Serializable(with = SearchResultSerializer::class)` on the interface takes precedence, so the module registration is never consulted. Harmless, left alone.
+
+### Fixed: Building Play and direct artifacts in one invocation failed
+
+- **Symptom** – `./gradlew :tv:assemblePlayAppRelease :tv:bundlePlayAppRelease :tv:assembleDirectRelease` failed with *"Task ':tv:printBuildOutputs' uses this output of task ':tv:packagePlayAppRelease' without declaring an explicit or implicit dependency"*. Each task succeeded on its own; only the combination failed — which is unfortunate, because building the Play bundle and the sideload APKs together is exactly what cutting a release looks like.
+
+- **Root cause** – `printBuildOutputs` declared `inputs.dir("outputs/apk")`, so Gradle required an ordering rule against every task that writes into that directory. Only the two direct rename tasks were listed, so any other producer in the same build — `packagePlayAppRelease` among them — tripped validation.
+
+- **Fix** – Dropped the input declaration, which bought nothing: the task has no outputs, is therefore never up to date, and walks the directory itself at execution time. The ordering rule is kept and widened to match `package*` and `rename*` by name rather than listing tasks individually, so the printed list stays complete and new variants are covered automatically.
+
 ### Fixed: Estonian "root folder" read as "hair folder"
 
 - **What changed** – Two Estonian strings in the request modal's folder menu were spelled `juuskaust` rather than `juurkaust`. Estonian for root is *juur*, so a root folder is *juurkaust*; *juus* means hair, which made the label read roughly as "hair folder".

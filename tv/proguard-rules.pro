@@ -62,3 +62,18 @@
     public static <1> INSTANCE;
     kotlinx.serialization.KSerializer serializer(...);
 }
+
+# ---------------------------------------------------------------------------
+# WebView JavaScript bridges
+# ---------------------------------------------------------------------------
+# Redundant with the @android.webkit.JavascriptInterface rule in
+# proguard-android-optimize.txt, which is currently doing the work — verified by
+# finding sendReady/sendStateChange/... intact in the minified DEX. Stated
+# explicitly anyway because the failure mode is silent: the YouTube player
+# (androidyoutubeplayer 13.0.0) drives playback from res/raw/ayp_youtube_player.html,
+# which calls YouTubePlayerBridge.sendReady() and friends *by name* from JavaScript.
+# Rename those methods and the player never reports ready — it just spins forever,
+# with no crash and nothing in logcat to point at the cause.
+-keepclassmembers class * {
+    @android.webkit.JavascriptInterface <methods>;
+}
