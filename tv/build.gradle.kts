@@ -1,5 +1,8 @@
 import java.io.File
 import java.util.Properties
+// Imported rather than fully qualified at the use site: inside a Gradle build script `java`
+// resolves to the Java plugin extension, so `java.util.zip.ZipFile` parses as property access.
+import java.util.zip.ZipFile
 
 // Single source for app version; used in defaultConfig and for direct-release APK naming
 val appVersionName = "0.31.0"
@@ -512,4 +515,157 @@ listOf(
     tasks.matching { it.name == taskName }.configureEach {
         finalizedBy("printBuildOutputs")
     }
+}
+// ---------------------------------------------------------------------------
+// Post-R8 verification
+// ---------------------------------------------------------------------------
+// Unit tests run on unminified classes, so they cannot tell you whether R8 kept what the app
+// needs at runtime. Running them inside the minified APK does not work here (see the note at
+// testBuildType), so instead this asserts the properties directly over R8's own output.
+//
+// Everything it checks is a failure that is silent at build time and only shows up as a crash,
+// a spinner or an unreadable stack trace in the field:
+//
+//  1. Generated kotlinx.serialization serializers. Reached only reflectively, so R8 cannot see
+//     the link; if a keep rule regresses they vanish and every API response fails to decode.
+//  2. The YouTube player's JavaScript bridge. res/raw/ayp_youtube_player.html calls
+//     YouTubePlayerBridge.sendReady() and siblings by name; rename them and the trailer player
+//     spins forever with no crash and nothing in logcat.
+//  3. SourceFile/LineNumberTable, without which Play vitals ANR traces lose the line numbers
+//     that made the 0.29.0 ANRs diagnosable at all.
+//  4. The DEX optimisation scores Play measures, so a future broad keep rule cannot quietly
+//     push the app back under the threshold that prompted enabling R8.
+//
+// Scoped to playAppRelease: that is the variant uploaded to Play, and all four release variants
+// share one proguard configuration.
+tasks.register("verifyR8Output") {
+    group = "verification"
+    description = "Asserts the R8-processed release output kept the serializers, JS bridge and line numbers the app needs."
+
+    // Explicit, because this reads other tasks' outputs — the same trap that broke
+    // printBuildOutputs. Note it is mergeComposeMapping, not minifyWithR8, that writes the final
+    // mapping.txt: R8 produces it and the Compose mapping merge then rewrites it in place, so
+    // depending on the R8 task alone still races.
+    dependsOn("mergePlayAppReleaseComposeMapping")
+    // The bundle is read opportunistically for r8.json. If it is being built in the same
+    // invocation, read it after it is written rather than a stale copy from a previous run.
+    mustRunAfter("bundlePlayAppRelease", "packagePlayAppRelease")
+
+    val mapping = layout.buildDirectory.file("outputs/mapping/playAppRelease/mapping.txt")
+    val bundle = layout.buildDirectory.file("outputs/bundle/playAppRelease/tv-play-app-release.aab")
+    val sourceRoot = layout.projectDirectory.dir("src/main/java/ca/devmesh/seerrtv").asFile
+    inputs.file(mapping)
+
+    // Cheap, and a stale pass here is worse than re-running it.
+    outputs.upToDateWhen { false }
+
+    doLast {
+        val mappingText = mapping.get().asFile.readText()
+        val failures = mutableListOf<String>()
+
+        // --- 1. every generated serializer survived --------------------------------------
+        // Derived from source rather than hard-coded, so a new @Serializable model is covered
+        // the moment it is written.
+        //
+        // Only plain classes are matched, because only they get a generated $$serializer:
+        //  - @Serializable(with = …) delegates to a hand-written serializer (SearchResult), and
+        //    is excluded by requiring the annotation line to be exactly "@Serializable".
+        //  - sealed classes and interfaces get a SealedClassSerializer, so "sealed" is absent
+        //    from the modifiers below and they do not match.
+        //  - objects get an ObjectSerializer built at runtime — SortOption's ten subclasses are
+        //    all @Serializable objects, and treating them as missing was a false positive.
+        val declPattern =
+            Regex("""^\s*(?:public\s+|internal\s+|private\s+)?(?:data\s+|value\s+)?class\s+(\w+)""")
+        val expected = sortedSetOf<String>()
+        sourceRoot.walkTopDown().filter { it.isFile && it.extension == "kt" }.forEach { file ->
+            val lines = file.readLines()
+            lines.forEachIndexed { i, line ->
+                if (line.trim() != "@Serializable") return@forEachIndexed
+                for (j in i + 1 until minOf(i + 4, lines.size)) {
+                    val name = declPattern.find(lines[j])?.groupValues?.get(1)
+                    if (name != null) {
+                        expected += name
+                        break
+                    }
+                }
+            }
+        }
+        val missing = expected.filterNot { mappingText.contains("$it\$\$serializer ->") }
+        if (missing.isNotEmpty()) {
+            failures += "Generated serializers absent from the R8 output for: " +
+                missing.joinToString() +
+                ". kotlinx.serialization reaches these reflectively, so decoding will fail at " +
+                "runtime. Check the kotlinx.serialization keep rules in proguard-rules.pro."
+        }
+
+        // --- 2. the YouTube JS bridge kept its method names -------------------------------
+        val bridgeMethods = listOf(
+            "sendReady", "sendStateChange", "sendError", "sendApiChange",
+            "sendPlaybackQualityChange", "sendPlaybackRateChange", "sendVideoCurrentTime",
+            "sendVideoDuration", "sendVideoId", "sendVideoLoadedFraction",
+            "sendYouTubeIFrameAPIReady"
+        )
+        val renamed = bridgeMethods.filterNot { mappingText.contains("-> $it") }
+        if (renamed.isNotEmpty()) {
+            failures += "YouTube bridge methods were renamed or removed: " +
+                renamed.joinToString() +
+                ". The player's HTML calls these by name, so trailers will hang on a spinner " +
+                "with no crash. Check the @android.webkit.JavascriptInterface keep rule."
+        }
+
+        // --- 3 and 4. attributes and scores, from the metadata Play reads ------------------
+        val aab = bundle.get().asFile
+        if (!aab.exists()) {
+            logger.lifecycle(
+                "verifyR8Output: no bundle at ${aab.name}, skipping the attribute and score " +
+                    "checks. Run :tv:bundlePlayAppRelease to include them."
+            )
+        } else {
+            val r8Json: String? = ZipFile(aab).use { zf ->
+                val entry = zf.getEntry("BUNDLE-METADATA/com.android.tools/r8.json")
+                if (entry == null) null
+                else zf.getInputStream(entry).bufferedReader().use { r -> r.readText() }
+            }
+            if (r8Json == null) {
+                failures += "The bundle contains no BUNDLE-METADATA/com.android.tools/r8.json, " +
+                    "which is the file Play reads to score DEX optimisation. R8 may not have run."
+            } else {
+                if (!Regex(""""isSourceFileKept"\s*:\s*true""").containsMatchIn(r8Json)) {
+                    failures += "SourceFile is not being kept, so Play vitals stack traces will " +
+                        "lose their file and line numbers. Check -keepattributes in " +
+                        "proguard-rules.pro."
+                }
+                // Play reports the share that IS optimised; r8.json stores the inverse.
+                val threshold = 25.0
+                Regex(""""(no\w+Percentage)"\s*:\s*([0-9.]+)""").findAll(r8Json).forEach { m ->
+                    val metric = m.groupValues[1]
+                    val notOptimised = m.groupValues[2].toDouble()
+                    if (notOptimised >= 100.0 - threshold) {
+                        failures += "$metric is $notOptimised%, leaving only " +
+                            "${"%.1f".format(100 - notOptimised)}% optimised — at or below the " +
+                            "$threshold% floor Play flags. A keep rule was probably widened."
+                    }
+                }
+            }
+        }
+
+        if (failures.isNotEmpty()) {
+            throw GradleException(
+                "R8 output verification failed:\n\n" +
+                    failures.joinToString("\n\n") { "  - $it" } + "\n"
+            )
+        }
+        logger.lifecycle(
+            "verifyR8Output: ${expected.size} generated serializers, " +
+                "${bridgeMethods.size} JS bridge methods, line numbers and DEX scores all intact."
+        )
+    }
+}
+
+// Run the verification automatically whenever the Play release bundle is built, since that is
+// the artifact whose DEX scores Play reads and the point at which a regression would ship. It is
+// deliberately not wired into `check`: it needs a full R8 pass, which is too slow to impose on
+// every ordinary build. Run it directly with ./gradlew :tv:verifyR8Output.
+tasks.matching { it.name == "bundlePlayRelease" }.configureEach {
+    finalizedBy("verifyR8Output")
 }

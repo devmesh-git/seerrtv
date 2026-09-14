@@ -36,6 +36,22 @@
 
 - **What these tests do not cover** – They run on unminified classes, so they cannot tell you whether R8 stripped a serializer. Making them run inside the minified APK was attempted and abandoned; see the note on `testBuildType` in `tv/build.gradle.kts` for what fails and why.
 
+### Added: Post-R8 verification of the release output
+
+- **What changed** – A new `./gradlew :tv:verifyR8Output` asserts, against R8's own mapping file and the `r8.json` metadata Play reads, that the release build kept what the app needs at runtime. It runs automatically after `bundlePlayRelease` — the point at which a regression would actually ship — and is deliberately not wired into `check`, since it needs a full R8 pass.
+
+- **Why not tests** – Unit tests run on unminified classes and cannot see R8 at all, and running them inside the minified APK is blocked (see the note at `testBuildType`). Every property below fails silently: nothing breaks at build time, and the symptom appears in the field as a crash, a spinner, or an unreadable stack trace.
+
+- **What it checks**
+  - Every generated `kotlinx.serialization` serializer is present. The expected set is derived from the source on each run rather than hard-coded, so a new `@Serializable` model is covered the moment it is written. Classes using `@Serializable(with = …)`, sealed hierarchies and `@Serializable object`s are excluded, because none of them produce a `$$serializer` — treating `SortOption`'s ten objects as missing was the first false positive this turned up.
+  - The YouTube player's eleven JavaScript bridge methods still carry their original names, since `ayp_youtube_player.html` calls them by name.
+  - `SourceFile` and `LineNumberTable` are still kept, so vitals traces keep the line numbers that made the 0.29.0 ANRs diagnosable.
+  - The three DEX optimisation percentages stay clear of the 25% floor Play flags, so a future broad keep rule cannot quietly undo what enabling R8 achieved.
+
+- **Proven to fail** – A verification that cannot fail is worse than none, so each check was exercised against a deliberately broken build. Removing `-keepattributes SourceFile` makes it fail with the specific reason rather than a generic error.
+
+- **A useful negative result** – Removing the kotlinx.serialization keep rules entirely does *not* strip any serializer: all 95 survive regardless. The app decodes through `decodeFromString<ConcreteType>()` with reified type parameters, which the compiler resolves to direct `Companion.serializer()` calls, so R8 sees the references statically. Those rules are insurance against a future reflective lookup rather than load-bearing today.
+
 ### Changed: R8 is now enabled for release builds
 
 - **What changed** – `isMinifyEnabled` and `isShrinkResources` are now both true for the release build type, so release builds are shrunk, optimised and obfuscated, and unused resources are dropped. Both had been off for the life of the project.
