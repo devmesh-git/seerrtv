@@ -88,6 +88,7 @@ android {
         buildConfigField("Boolean", "IS_DIRECT_FLAVOR", "false")
         buildConfigField("Boolean", "IS_LAUNCHER_BUILD", "false")
         buildConfigField("String", "BROWSER_CONFIG_BASE_URL", "\"${browserConfigProperties.getProperty("browser.config.base.url", "https://seerrtv.devmesh.ca")}\"")
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
         }
@@ -139,6 +140,44 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    // One body of contract tests, compiled into both test source sets.
+    //
+    // src/test runs them on the JVM against unminified classes — fast, every build. src/androidTest
+    // runs the identical assertions on a device, and because testBuildType is "release" below, that
+    // happens inside the R8-processed APK. Only the second can tell you a serializer survived
+    // obfuscation, which is the whole reason this split exists.
+    sourceSets {
+        // kotlin.srcDir, not java.srcDir: under AGP 9's built-in Kotlin support a directory
+        // registered only as a Java source dir contributes no .kt files, so the tests compiled
+        // into nothing and silently did not run.
+        getByName("test") {
+            kotlin.srcDir("src/sharedTest/java")
+            resources.srcDir("src/sharedTest/resources")
+        }
+        getByName("androidTest") {
+            kotlin.srcDir("src/sharedTest/java")
+            // Instrumented tests read fixtures off the classpath the same way, so the resources
+            // have to be packaged into the test APK too, not just the JVM test runtime.
+            resources.srcDir("src/sharedTest/resources")
+        }
+    }
+
+    // NOTE: testBuildType is deliberately left at its default ("debug").
+    //
+    // Setting it to "release" so ApiContractTest would execute inside the minified APK does very
+    // nearly work — the runner starts, finds all five tests and runs them — but every test then
+    // fails on a core-library-desugaring collision: both the app and the test APK receive their
+    // own L8-generated copy of the j$-namespaced JDK backport, each minimised against its own
+    // call sites, and they disagree ("No direct method <init>(I)V in class
+    // j$.util.concurrent.ConcurrentHashMap"). L8 runs after R8, so no keep rule reaches it, and
+    // core library desugaring cannot simply be turned off — minSdk is 23 and the app relies on
+    // it. Getting that far also required keeping androidx.tracing.Trace, kotlin.LazyKt and the
+    // seerrApiJson accessor in the *shipped* app purely so the test APK could resolve them,
+    // which taxes the obfuscation score 0.31.0 exists to raise.
+    //
+    // The R8 verification these tests were meant to provide is better served by asserting over
+    // the mapping file and DEX after R8 runs — no emulator, no keep rules, no shipped cost.
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -254,7 +293,19 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+    // ui-test-junit4 takes its version from the Compose BOM, which was only applied to the
+    // implementation configuration — so this dependency had never actually resolved. It went
+    // unnoticed because the module had no androidTest source set to build.
+    androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.ui.test.junit4)
+    // Needed by the shared contract tests when they run instrumented.
+    androidTestImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.test.ext.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    // androidx.test references @CanIgnoreReturnValue / @MustBeClosed, which nothing declares
+    // transitively, so R8 on the test APK fails with "Missing classes detected". Same shape as
+    // the Hilt case above; compile-time only, CLASS retention.
+    androidTestImplementation(libs.errorprone.annotations)
 
     // Material Design & TV Components
     implementation(libs.androidx.material3)

@@ -1,0 +1,63 @@
+{
+  "pageInfo": { "pages": 3, "pageSize": 10, "results": 27, "page": 1 },
+  "results": [
+    {
+      "id": 412,
+      "createdAt": "2026-09-01T12:00:00.000Z",
+      "updatedAt": "2026-09-01T12:05:00.000Z",
+      "status": 2,
+      "type": "movie",
+      "is4k": false,
+      "isAutoRequest": false,
+      "seasonCount": 0,
+      "rootFolder": "/data/media/movies",
+      "profileId": 4,
+      "profileName": "HD-1080p",
+      "serverId": 0,
+      "media": {
+        "id": 77,
+        "mediaType": "movie",
+        "tmdbId": 1241982,
+        "status": 3,
+        "status4k": 1,
+        "createdAt": "2026-08-01T10:00:00.000Z",
+        "updatedAt": "2026-08-02T10:00:00.000Z",
+        "lastSeasonChange": "2026-08-01T10:00:00.000Z"
+      },
+      "requestedBy": {
+        "id": 3,
+        "username": "example-user",
+        "email": "user@example.invalid",
+        "permissions": 2,
+        "userType": 1
+      },
+      "seasons": []
+    },
+    {
+      "id": 413,
+      "createdAt": "2026-09-02T12:00:00.000Z",
+      "updatedAt": "2026-09-02T12:05:00.000Z",
+      "status": 1,
+      "type": "tv",
+      "is4k": true,
+      "isAutoRequest": true,
+      "seasonCount": 2,
+      "media": {
+        "id": 78,
+        "mediaType": "tv",
+        "tmdbId": 84773,
+        "tvdbId": 366524,
+        "status": 1,
+        "status4k": 2,
+        "createdAt": "2026-08-01T10:00:00.000Z",
+        "updatedAt": "2026-08-02T10:00:00.000Z",
+        "lastSeasonChange": "2026-08-01T10:00:00.000Z"
+      },
+      "requestedBy": { "id": 4, "username": "second-user", "permissions": 2 },
+      "seasons": [
+        { "id": 900, "seasonNumber": 1, "status": 5, "episodeCount": 8 },
+        { "id": 901, "seasonNumber": 2, "status": 1, "episodeCount": 8 }
+      ]
+    }
+  ]
+}

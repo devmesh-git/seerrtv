@@ -1,0 +1,54 @@
+{
+  "page": 1,
+  "totalPages": 42,
+  "totalResults": 831,
+  "results": [
+    {
+      "id": 1241982,
+      "mediaType": "movie",
+      "title": "Example Voyage",
+      "originalTitle": "Example Voyage",
+      "overview": "A placeholder synopsis used only by the contract tests.",
+      "posterPath": "/examplePoster.jpg",
+      "backdropPath": "/exampleBackdrop.jpg",
+      "releaseDate": "2026-07-10",
+      "voteAverage": 7.2,
+      "voteCount": 1843,
+      "genreIds": [16, 12, 35],
+      "originalLanguage": "en",
+      "popularity": 512.4,
+      "adult": false,
+      "mediaInfo": {
+        "id": 77,
+        "mediaType": "movie",
+        "tmdbId": 1241982,
+        "status": 5,
+        "status4k": 1,
+        "createdAt": "2026-08-01T10:00:00.000Z",
+        "updatedAt": "2026-08-02T10:00:00.000Z",
+        "lastSeasonChange": "2026-08-01T10:00:00.000Z"
+      }
+    },
+    {
+      "id": 84773,
+      "mediaType": "tv",
+      "name": "Example Chronicles",
+      "overview": "Second entry, exercising the tv branch of the same list.",
+      "posterPath": "/exampleTv.jpg",
+      "firstAirDate": "2022-09-02",
+      "voteAverage": 6.9,
+      "genreIds": [10765, 18],
+      "mediaInfo": {
+        "id": 78,
+        "mediaType": "tv",
+        "tmdbId": 84773,
+        "tvdbId": 366524,
+        "status": 3,
+        "status4k": 1,
+        "createdAt": "2026-08-01T10:00:00.000Z",
+        "updatedAt": "2026-08-02T10:00:00.000Z",
+        "lastSeasonChange": "2026-08-01T10:00:00.000Z"
+      }
+    }
+  ]
+}

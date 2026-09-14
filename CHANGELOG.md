@@ -22,6 +22,20 @@
 
 - **Build impact** – `assembleDirectRelease` and `bundlePlayAppRelease` are unchanged as commands, produce the same set of entries and an identical merged manifest, and are still signed with the release key; `profileinstaller` was already present transitively through Compose. The plugin does add two build types, `nonMinifiedRelease` and `benchmarkRelease`, which exist only to be installed on a throwaway device while generating. They are declared explicitly in `tv/build.gradle.kts` so they can be signed with the debug key — left to itself the plugin creates them with `initWith(release)`, which would make generating a profile impossible without the release keystore.
 
+### Added: API contract tests against committed fixtures
+
+- **What changed** – A new `ApiContractTest` decodes committed JSON fixtures for the response types the app actually parses: `Discover` (the busiest decode path, nine call sites), `SearchResponse`, `RequestResponse`, Radarr servers, and public settings. It lives in a new `src/sharedTest` source set compiled into both `src/test` and `src/androidTest`, so the same assertions can run on the JVM and on a device.
+
+- **Why these types** – They cover the paths hardest to reach by hand. Driving the request UI writes to a real Seerr instance, so the request list had never been exercised; a fixture covers the decode half with no side effects. Search is the only structurally unusual case — `SearchResult` is a sealed interface — and the test pins that each entry lands as the right concrete type.
+
+- **Tests now use the app's real codec** – `seerrApiJson` was extracted from a private property of `SeerrApiService` to an `internal` top-level value. The existing serialization tests each re-declared their own `Json { … }` with a comment saying it mirrored the service's; a mirrored copy keeps passing the moment a flag like `coerceInputValues` changes on one side only. `PublicSettingsResponse` became `internal` for the same reason — `hideAvailable` and `hideBlocklisted` are applied client-side, so a decode regression there would surface titles that should be hidden.
+
+- **Fixtures** – `settings_public.json` and `status.json` were captured from a live instance and scrubbed of hostnames, URLs and identifiers (`applicationUrl`, `jellyfinExternalHost`, `plexClientIdentifier`, `vapidPublic`, `applicationTitle`), then checked programmatically for leftovers. Everything else is synthetic and uses `example.invalid`.
+
+- **Incidental fix** – `androidTestImplementation(libs.androidx.ui.test.junit4)` had never resolved: it takes its version from the Compose BOM, and the BOM was only applied to the `implementation` configuration. Nothing noticed because the module had no `androidTest` source set to build. The BOM is now applied there too.
+
+- **What these tests do not cover** – They run on unminified classes, so they cannot tell you whether R8 stripped a serializer. Making them run inside the minified APK was attempted and abandoned; see the note on `testBuildType` in `tv/build.gradle.kts` for what fails and why.
+
 ### Changed: R8 is now enabled for release builds
 
 - **What changed** – `isMinifyEnabled` and `isShrinkResources` are now both true for the release build type, so release builds are shrunk, optimised and obfuscated, and unused resources are dropped. Both had been off for the life of the project.

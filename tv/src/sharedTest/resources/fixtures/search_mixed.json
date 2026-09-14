@@ -1,0 +1,47 @@
+{
+  "page": 1,
+  "totalPages": 1,
+  "totalResults": 3,
+  "results": [
+    {
+      "id": 550,
+      "mediaType": "movie",
+      "title": "Example Movie Result",
+      "overview": "Chosen by SearchResultSerializer on mediaType == movie.",
+      "popularity": 61.4,
+      "posterPath": "/m.jpg",
+      "backdropPath": "/mb.jpg",
+      "voteAverage": 8.4,
+      "voteCount": 27000,
+      "releaseDate": "1999-10-15",
+      "adult": false,
+      "genreIds": [18],
+      "originalLanguage": "en",
+      "originalTitle": "Example Movie Result"
+    },
+    {
+      "id": 1399,
+      "mediaType": "tv",
+      "name": "Example Series Result",
+      "overview": "Chosen on mediaType == tv.",
+      "popularity": 120.9,
+      "posterPath": "/t.jpg",
+      "voteAverage": 8.4,
+      "voteCount": 19000,
+      "firstAirDate": "2011-04-17",
+      "genreIds": [10765],
+      "originCountry": ["US"],
+      "originalLanguage": "en",
+      "originalName": "Example Series Result"
+    },
+    {
+      "id": 287,
+      "mediaType": "person",
+      "name": "Example Person Result",
+      "popularity": 44.1,
+      "overview": null,
+      "posterPath": null,
+      "backdropPath": null
+    }
+  ]
+}

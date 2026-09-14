@@ -162,6 +162,27 @@ private val startupCacheJson = Json {
     coerceInputValues = true
 }
 
+/**
+ * The codec every Seerr API response is decoded through, and every request body encoded through.
+ *
+ * Top-level and `internal` rather than a private class property so the contract tests can decode
+ * fixtures using the *same* configuration the app uses. A test that re-declares these flags is
+ * testing a copy: flip `coerceInputValues` here and the mirrored version keeps passing while the
+ * app changes behaviour.
+ */
+internal val seerrApiJson = Json {
+    ignoreUnknownKeys = true
+    isLenient = true
+    coerceInputValues = true
+    serializersModule = SerializersModule {
+        polymorphic(SearchResult::class) {
+            subclass(Movie::class)
+            subclass(TV::class)
+            subclass(Person::class)
+        }
+    }
+}
+
 class SeerrApiService @Inject constructor(
     private var config: SeerrConfig,
     private val context: Context
@@ -828,18 +849,7 @@ class SeerrApiService @Inject constructor(
         val title: String? = null
     )
 
-    private val json = Json {
-        ignoreUnknownKeys = true
-        isLenient = true
-        coerceInputValues = true
-        serializersModule = SerializersModule {
-            polymorphic(SearchResult::class) {
-                subclass(Movie::class)
-                subclass(TV::class)
-                subclass(Person::class)
-            }
-        }
-    }
+    private val json = seerrApiJson
 
     private val clientLock = Any()
     private var httpClient: HttpClient? = null
@@ -3411,7 +3421,10 @@ class SeerrApiService @Inject constructor(
     }
 
     @Serializable
-    private data class PublicSettingsResponse(
+    // internal, not private: the contract tests decode a captured fixture through this type,
+    // because hideAvailable/hideBlocklisted gate what the UI is allowed to show and are applied
+    // client-side — a silent decode regression here would surface titles that should be hidden.
+    internal data class PublicSettingsResponse(
         @SerialName("mediaServerType") val mediaServerType: Int? = null,
         val hideAvailable: Boolean? = null,
         val hideBlocklisted: Boolean? = null,

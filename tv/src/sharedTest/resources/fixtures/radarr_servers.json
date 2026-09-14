@@ -1,0 +1,19 @@
+[
+  {
+    "id": 0,
+    "name": "Example Radarr",
+    "is4k": false,
+    "isDefault": true,
+    "activeDirectory": "/data/media/movies",
+    "activeProfileId": 4,
+    "activeTags": []
+  },
+  {
+    "id": 1,
+    "name": "Example Radarr 4K",
+    "is4k": true,
+    "isDefault": false,
+    "activeDirectory": "/data/media/movies-4k",
+    "activeProfileId": 5
+  }
+]
