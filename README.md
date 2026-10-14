@@ -371,7 +371,7 @@ For release builds, you need to configure APK signing:
 
 2. **Edit `tv/signing.properties`** with your keystore information:
    ```properties
-   storeFile=../localSigningKey.jks
+   storeFile=/Users/mmejia/Projects/.keys/localSigningKey.jks
    storePassword=your_keystore_password
    keyAlias=your_key_alias
    keyPassword=your_key_password

@@ -15,7 +15,7 @@ cp tv/signing.properties.template tv/signing.properties
 Update the file with your actual keystore information:
 ```properties
 # Path to your keystore file (relative to project root)
-storeFile=../localSigningKey.jks
+storeFile=/Users/mmejia/Projects/.keys/localSigningKey.jks
 
 # Your keystore password
 storePassword=your_actual_keystore_password
@@ -28,7 +28,7 @@ keyPassword=your_actual_key_password
 ```
 
 ### 3. Verify Keystore Path
-Make sure your keystore file exists at the specified path. The default path assumes `localSigningKey.jks` is located one directory above the project root.
+Make sure your keystore file exists at the specified path. It lives in `~/Projects/.keys/localSigningKey.jks` (moved there 2026-10-13; listed in `~/Projects/.keys/README.md`), shared with Pickleball Mixer: both sign with the alias `overseerrtv_key`.
 
 ## Security Notes
 
