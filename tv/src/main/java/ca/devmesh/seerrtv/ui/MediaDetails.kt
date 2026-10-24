@@ -70,6 +70,7 @@ import ca.devmesh.seerrtv.ui.components.processMediaStatus
 import ca.devmesh.seerrtv.ui.focus.DpadController
 import ca.devmesh.seerrtv.util.CommonUtil
 import ca.devmesh.seerrtv.util.Permission
+import ca.devmesh.seerrtv.util.PlexDeepLink
 import ca.devmesh.seerrtv.util.SharedPreferencesUtil
 import ca.devmesh.seerrtv.viewmodel.RequestViewModel
 import ca.devmesh.seerrtv.viewmodel.SeerrViewModel
@@ -101,7 +102,7 @@ private fun getPlexPlayUrl(mediaInfo: MediaInfo): String? {
         val metadataId = metadataKey?.split("/")?.lastOrNull()
 
         if (serverId != null && metadataId != null) {
-            return "plex://server://$serverId/com.plexapp.plugins.library/library/metadata/$metadataId"
+            PlexDeepLink.build(serverId, metadataId, mediaInfo.mediaType)?.let { return it }
         }
     }
 
@@ -114,7 +115,7 @@ private fun getPlexPlayUrl(mediaInfo: MediaInfo): String? {
         val metadataId = metadataKey?.split("/")?.lastOrNull()
 
         if (serverId != null && metadataId != null) {
-            return "plex://server://$serverId/com.plexapp.plugins.library/library/metadata/$metadataId"
+            PlexDeepLink.build(serverId, metadataId, mediaInfo.mediaType)?.let { return it }
         }
     }
 

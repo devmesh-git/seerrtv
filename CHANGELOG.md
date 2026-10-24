@@ -1,5 +1,19 @@
 # Changelog
 
+## Unreleased
+
+### Fixed: Play on Plex opened the Plex Home screen instead of the title
+
+- **Symptom** – On a Plex-backed server, pressing **Play on Plex** on an available movie or series launched the Plex app, but Plex stayed on its For You / Home screen. No details page opened and nothing played. Nothing was shown in SeerrTV either, because the launch itself succeeded.
+
+- **Root cause** – The link was built as `plex://server://<serverId>/com.plexapp.plugins.library/library/metadata/<ratingKey>`. Recent Plex for Android TV builds (checked on 2026.20.0) no longer act on that form, and they ignore the Overseerr-style `plex://preplay/?metadataKey=…&server=…` form too. The intent still reaches Plex's `MainActivity`, which is why `startActivity` reported success.
+
+- **Fix** – New `PlexDeepLink` builds `plex://libraries/<serverId>/unmatched/%2Flibrary%2Fmetadata%2F<ratingKey>` for movies and `plex://libraries/<serverId>/unmatched/tv/%2Flibrary%2Fmetadata%2F<ratingKey>` for series. Both open the item's details page. The server id and rating key are still read from the same Seerr fields, so no extra request is needed. It stays a pure function (no `android.net.Uri`) so it can be unit tested on the JVM, and `PlexDeepLinkTest` pins the format for both media types.
+
+- **Limitation** – Plex has no supported way to start playback from an outside link, so the button lands on the title's page and the user presses Watch. `android.intent.extra.START_PLAYBACK` is still sent, but Plex does not act on it.
+
+- **Verified** – With `adb shell am start -a android.intent.action.VIEW -p com.plexapp.android -d '<link>'` on a Chromecast with Google TV (Android TV 14, Plex 2026.20.0): the movie link opened the movie's details page from a cold start and with Plex already open, and the series link opened the series page. The previous link opened Home in both states.
+
 ## 0.34.0
 
 ### Added: Keyword filters show every pick, and keywords can be excluded
