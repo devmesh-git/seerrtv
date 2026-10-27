@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.34.2
+
+### Fixed: The first card in a home row ended up half off screen
+
+- **Symptom** – On the home screen, scrolling right far enough that a row moved, then going back left to the first item, could leave the row shifted part-way: the first card was selected but half of it sat off the left edge of the screen. It stayed like that until the row was scrolled again. Fast D-pad presses made it more likely.
+
+- **Root cause** – 0.34.0 made carousel scrolls cancellable, so a newer key press stops the animation started for the previous one instead of the two fighting. A cancelled animation can stop between two cards. Both "already in place?" checks in `EnhancedMediaCarousel` compared only `firstVisibleItemIndex` with the target. Stopped part-way into card 0, the row reported index 0, the target for the first card was 0, so the scroll that would have settled it was skipped.
+
+- **Fix** – The checks also require `firstVisibleItemScrollOffset == 0`. A row left on the right index but shifted is scrolled back into line on the next press.
+
+- **Verified** – On a Google TV emulator: in Recently Added, eight presses right then eight left, and two rounds of ten right/eleven left sent as fast as `adb` can, each ended with the first card fully on screen. The log shows the cancelled scrolls (`Scrolling from 7 to 4 … 7 to 0`) settling at 0.
+
+### Fixed: A new person page kept the previous person's position
+
+- **Symptom** – Scrolling through a person's Known For or Crew row, going back, and opening a different person opened the new page with the same item selected and the row scrolled as far as on the previous person, instead of starting at the first item.
+
+- **Root cause** – `PersonViewModel` is shared by every person page, and `loadPersonData` already resets the positions when the person changes. But `PersonScreen` copied the ViewModel's focus and row positions into its own state as it composed, before the reset ran. Its sync effect then saw its copy differ from the freshly reset ViewModel and wrote the previous person's positions back.
+
+- **Fix** – `PersonScreen` only restores the ViewModel's saved state when it belongs to the same person (returning from one of their titles). For a different person it starts at the first item of each row with the overview focused.
+
+- **Verified** – On a Google TV emulator: Anne Hathaway's Known For scrolled 12 items, back, Dakota Johnson opens on her first item. Scrolling Dakota Johnson to item 10, opening that title and pressing Back still returns to item 10.
+
+### Changed: Dependency updates
+
+- Kotlin 2.4.20 → 2.4.21
+- kotlinx.serialization 1.11.0 → 1.12.0
+- AndroidX Core KTX 1.19.0 → 1.19.1
+- Error Prone annotations 2.50.0 → 2.51.0
+- Gradle 9.7.1 → 9.8.2
+- Gradle Versions Plugin 0.64.0 → 0.66.0
+
+Navigation Compose stays on 2.9.8: 2.10.2 still requires `minSdk` 24 (the manifest merge fails against it), and this app supports API 23.
+
 ## 0.34.1
 
 ### Fixed: Play on Plex opened the Plex Home screen instead of the title

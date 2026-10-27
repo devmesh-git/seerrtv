@@ -167,8 +167,12 @@ fun <T> EnhancedMediaCarousel(
         animated: Boolean = true
     ) {
         try {
-            // Skip if we're already at the target position
-            if (scrollState.firstVisibleItemIndex == targetPosition) {
+            // Skip if we're already at the target position. The offset matters too: a scroll
+            // cancelled by a newer press can stop part-way into a card, leaving the row on the
+            // right index but shifted (e.g. the first card half off screen).
+            if (scrollState.firstVisibleItemIndex == targetPosition &&
+                scrollState.firstVisibleItemScrollOffset == 0
+            ) {
                 if (BuildConfig.DEBUG) {
                     Log.d(
                         "MediaCarousel",
@@ -462,8 +466,10 @@ fun <T> EnhancedMediaCarousel(
                             category = category
                         )
                                 
-                        // Only scroll if we need to adjust position
-                        if (targetPosition != currentScrollPosition) {
+                        // Only scroll if we need to adjust position (or settle a part-way offset)
+                        if (targetPosition != currentScrollPosition ||
+                            scrollState.firstVisibleItemScrollOffset != 0
+                        ) {
                             // Don't call performScrollIfNeeded because it will recalculate the position
                             // Instead, scroll directly to the calculated position
                             safeScrollToItem(

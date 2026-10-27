@@ -7,7 +7,7 @@ plugins {
     alias(libs.plugins.android.test) apply false
     alias(libs.plugins.baselineprofile) apply false
     id("org.jetbrains.kotlin.plugin.serialization") version libs.versions.kotlin.get() apply false
-    id("io.github.ben-manes.versions") version "0.64.0"
+    id("io.github.ben-manes.versions") version "0.66.0"
 }
 
 // Set project-wide Kotlin version (using extra properties instead of deprecated ext block)

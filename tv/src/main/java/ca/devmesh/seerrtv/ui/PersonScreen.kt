@@ -107,22 +107,33 @@ fun PersonScreen(
     // Use collectAsStateWithLifecycle to observe the state
     val viewModelState by viewModel.state.collectAsStateWithLifecycle()
 
-    // Use stable state for focus management that syncs with viewModel
-    val uiState = remember { 
-        mutableStateOf(UiPersonScreenState(
-            currentFocus = when(viewModelState.currentFocus) {
-                "Top" -> PersonScreenFocus.Top
-                "ReadMore" -> PersonScreenFocus.ReadMore
-                "KnownFor" -> PersonScreenFocus.KnownFor
-                "Crew" -> PersonScreenFocus.Crew
-                else -> PersonScreenFocus.Top
-            },
-            selectedKnownForIndex = viewModelState.selectedKnownForIndex,
-            selectedCrewIndex = viewModelState.selectedCrewIndex,
-            isFullBiographyShown = viewModelState.isFullBiographyShown,
-            hasFocusBeenRequested = viewModelState.isDataLoaded,
-            hasEmptyBiography = viewModelState.personDetails?.biography.isNullOrBlank()
-        ))
+    // Use stable state for focus management that syncs with viewModel. The ViewModel is shared
+    // across Person screens, so its saved focus/positions are only restored when they belong to
+    // this person (e.g. returning from a title's details). For a different person they are the
+    // previous person's, and copying them here would also write them back over the reset below.
+    val uiState = remember(personId) {
+        val isSamePerson = viewModelState.currentPersonId == personId
+        mutableStateOf(
+            if (isSamePerson) {
+                UiPersonScreenState(
+                    currentFocus = when (viewModelState.currentFocus) {
+                        "Top" -> PersonScreenFocus.Top
+                        "ReadMore" -> PersonScreenFocus.ReadMore
+                        "KnownFor" -> PersonScreenFocus.KnownFor
+                        "Crew" -> PersonScreenFocus.Crew
+                        else -> PersonScreenFocus.Top
+                    },
+                    selectedKnownForIndex = viewModelState.selectedKnownForIndex,
+                    selectedCrewIndex = viewModelState.selectedCrewIndex,
+                    isFullBiographyShown = viewModelState.isFullBiographyShown,
+                    hasFocusBeenRequested = viewModelState.isDataLoaded,
+                    hasEmptyBiography = viewModelState.personDetails?.biography.isNullOrBlank()
+                )
+            } else {
+                // Fresh start: first item in each row, overview focused once data loads
+                UiPersonScreenState()
+            }
+        )
     }
     
 
