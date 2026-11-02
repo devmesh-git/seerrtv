@@ -504,6 +504,7 @@
     <string name="language_dutch">Dutch</string>
     <string name="language_estonian">Estonian</string>
     <string name="language_hungarian">Hungarian</string>
+    <string name="language_italian">Italian</string>
 
     <!-- Other Filter Strings -->
     <string name="filter_close">Close</string>

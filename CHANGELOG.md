@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+### Added: Italian (it) localization
+
+- **Localization** – Added full Italian (`it`) translation in `tv/src/main/res/values-it/strings.xml`.
+- **Language catalog** – Registered Italian in `LanguageCatalog` and added localized `language_italian` strings across all supported locales (`values`, `values-de`, `values-es`, `values-et`, `values-fr`, `values-hu`, `values-ja`, `values-nl`, `values-pt`, `values-zh`).
+
 ## 0.34.2
 
 ### Fixed: The first card in a home row ended up half off screen

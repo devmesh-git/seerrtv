@@ -430,6 +430,7 @@
     <string name="language_dutch">荷兰语</string>
     <string name="language_estonian">爱沙尼亚语</string>
     <string name="language_hungarian">匈牙利语</string>
+    <string name="language_italian">意大利语</string>
     
     <!-- Other Filter Strings -->
     <string name="filter_close">关闭</string>
