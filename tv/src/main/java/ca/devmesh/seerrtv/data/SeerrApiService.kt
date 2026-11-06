@@ -1819,6 +1819,11 @@ class SeerrApiService @Inject constructor(
         )
     }
 
+    suspend fun getDownloads(): ApiResult<ca.devmesh.seerrtv.model.DownloadsResponse> =
+        loadDownloads { skip, take ->
+            executeApiCall("request?filter=processing&take=$take&skip=$skip&sort=modified")
+        }
+
     suspend fun getMovieDetails(id: String): ApiResult<MediaDetails> {
         val locale = SharedPreferencesUtil.getDiscoveryLanguage(context)
         val pageEndpoint = "movie/$id"

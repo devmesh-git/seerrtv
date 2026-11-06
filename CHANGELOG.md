@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+### Added: Downloads screen
+
+- Open Downloads from the top navigation to follow processing movie and episode requests.
+- Show existing title posters, queue progress, status, and ETA, with movie, series, and attention filters.
+- Use the authenticated Seerr request API; no download-client credentials or direct torrent requests.
+- Poll while visible, preserve D-pad focus through queue updates, and stop polling when leaving or backgrounding.
+- Show live speed and precise client states only when supplied by the server.
+
 ## 0.34.2
 
 ### Fixed: The first card in a home row ended up half off screen

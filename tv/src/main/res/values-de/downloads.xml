@@ -1,0 +1,32 @@
+<resources>
+    <string name="downloads_title">Downloads</string>
+    <string name="downloads_subtitle">Film- und Episodendownloads an einem Ort verfolgen.</string>
+    <string name="downloads_back">Zurück</string>
+    <string name="downloads_refresh">Aktualisieren</string>
+    <string name="downloads_all">Alle</string>
+    <string name="downloads_movies">Filme</string>
+    <string name="downloads_movie">Film</string>
+    <string name="downloads_series">Serien</string>
+    <string name="downloads_attention">Handlungsbedarf</string>
+    <string name="downloads_downloading">Wird heruntergeladen</string>
+    <string name="downloads_speed">Gemeldete Gesamtgeschwindigkeit</string>
+    <string name="downloads_paused">Pausiert</string>
+    <string name="downloads_stalled">Stillstand</string>
+    <string name="downloads_queued">In Warteschlange</string>
+    <string name="downloads_importing">Heruntergeladen — wartet auf Import</string>
+    <string name="downloads_failed">Fehlgeschlagen</string>
+    <string name="downloads_checking">Wird geprüft</string>
+    <string name="downloads_metadata">Metadaten werden abgerufen</string>
+    <string name="downloads_unknown">Unbekannt</string>
+    <string name="downloads_no_speed">Live-Geschwindigkeit nicht verfügbar</string>
+    <string name="downloads_eta_unknown">Restzeit unbekannt</string>
+    <string name="downloads_eta">Restzeit %1$s</string>
+    <string name="downloads_shared">Gemeinsamer Download</string>
+    <string name="downloads_requested_by">Angefordert von %1$s</string>
+    <string name="downloads_unknown_title">Medium #%1$d</string>
+    <string name="downloads_empty">Keine laufenden Downloads. Angeforderte Downloads erscheinen hier automatisch.</string>
+    <string name="downloads_unavailable">Downloadinformationen sind vorübergehend nicht verfügbar.</string>
+    <string name="downloads_empty_filter">Keine Downloads entsprechen diesem Filter.</string>
+    <string name="downloads_episode_note">Bei Aktivität alle 5 Sekunden aktualisiert · Episodenfortschritt ist unabhängig von der Staffelverfügbarkeit.</string>
+    <string name="downloads_error">Downloads konnten nicht aktualisiert werden. Automatischer erneuter Versuch.</string>
+</resources>

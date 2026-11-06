@@ -145,8 +145,8 @@ fun TopBarController(
                 val onMoviesBrowse = currentRoute == "browse/movies"
                 val onSeriesBrowse = currentRoute == "browse/series"
                 val showSearchIcon = currentRoute?.startsWith("search") != true
-                // On browse screens only 3 icons are visible; move left between them with no wrap.
-                // Visual order: Settings | Series/Movies | Search
+                // Visual order: Settings | Downloads | Series/Movies | Search | Avatar.
+                // Browse screens hide their current media type; movement does not wrap.
                 when (focus.focus) {
                     TopBarFocus.Search -> {
                         if (onMoviesBrowse) {
@@ -159,18 +159,18 @@ fun TopBarController(
                     }
                     TopBarFocus.Movies -> {
                         if (onSeriesBrowse) {
-                            appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Settings))
+                            appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Downloads))
                         } else {
                             appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Series))
                         }
                     }
                     TopBarFocus.Series -> {
                         if (onMoviesBrowse) {
-                            appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Settings))
+                            appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Downloads))
                         } else if (onSeriesBrowse) {
                             appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Movies))
                         } else {
-                            appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Settings))
+                            appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Downloads))
                         }
                     }
                     TopBarFocus.Avatar -> {
@@ -180,6 +180,9 @@ fun TopBarController(
                                 if (showSearchIcon) TopBarFocus.Search else TopBarFocus.Settings
                             )
                         )
+                    }
+                    TopBarFocus.Downloads -> {
+                        appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Settings))
                     }
                     TopBarFocus.Settings -> {
                         // Left from Settings = end (no wrap on any screen)
@@ -201,9 +204,12 @@ fun TopBarController(
                 val onMoviesBrowse = currentRoute == "browse/movies"
                 val onSeriesBrowse = currentRoute == "browse/series"
                 val showSearchIcon = currentRoute?.startsWith("search") != true
-                // On browse screens only 3 icons are visible; move right between them with no wrap.
+                // Downloads remains visible when a browse screen hides its media type.
                 when (focus.focus) {
                     TopBarFocus.Settings -> {
+                        appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Downloads))
+                    }
+                    TopBarFocus.Downloads -> {
                         if (onMoviesBrowse) {
                             appFocusManager.setFocus(AppFocusState.TopBar(TopBarFocus.Series))
                         } else if (onSeriesBrowse) {
@@ -290,6 +296,9 @@ fun TopBarController(
                             }
                             navController.navigate("browse/series")
                         }
+                    }
+                    TopBarFocus.Downloads -> {
+                        navController.navigate("downloads") { launchSingleTop = true }
                     }
                     TopBarFocus.Settings -> {
                         if (BuildConfig.DEBUG) {

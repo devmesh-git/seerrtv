@@ -1,0 +1,32 @@
+<resources>
+    <string name="downloads_title">Descargas</string>
+    <string name="downloads_subtitle">Sigue las descargas de películas y episodios en un solo lugar.</string>
+    <string name="downloads_back">Atrás</string>
+    <string name="downloads_refresh">Actualizar</string>
+    <string name="downloads_all">Todas</string>
+    <string name="downloads_movies">Películas</string>
+    <string name="downloads_movie">Película</string>
+    <string name="downloads_series">Series</string>
+    <string name="downloads_attention">Requieren atención</string>
+    <string name="downloads_downloading">Descargando</string>
+    <string name="downloads_speed">Velocidad total informada</string>
+    <string name="downloads_paused">En pausa</string>
+    <string name="downloads_stalled">Sin actividad</string>
+    <string name="downloads_queued">En cola</string>
+    <string name="downloads_importing">Descargado — pendiente de importación</string>
+    <string name="downloads_failed">Error</string>
+    <string name="downloads_checking">Verificando</string>
+    <string name="downloads_metadata">Obteniendo metadatos</string>
+    <string name="downloads_unknown">Desconocido</string>
+    <string name="downloads_no_speed">Velocidad en directo no disponible</string>
+    <string name="downloads_eta_unknown">Tiempo restante desconocido</string>
+    <string name="downloads_eta">Tiempo restante: %1$s</string>
+    <string name="downloads_shared">Descarga compartida</string>
+    <string name="downloads_requested_by">Solicitado por %1$s</string>
+    <string name="downloads_unknown_title">Contenido #%1$d</string>
+    <string name="downloads_empty">No hay descargas en curso. Las descargas solicitadas aparecerán aquí automáticamente.</string>
+    <string name="downloads_unavailable">La información de descargas no está disponible temporalmente.</string>
+    <string name="downloads_empty_filter">Ninguna descarga coincide con este filtro.</string>
+    <string name="downloads_episode_note">Se actualiza cada 5 segundos mientras está activo · El progreso de un episodio es independiente de la disponibilidad de la temporada.</string>
+    <string name="downloads_error">No se pudieron actualizar las descargas. Se reintentará automáticamente.</string>
+</resources>

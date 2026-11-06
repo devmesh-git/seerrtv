@@ -1,0 +1,32 @@
+<resources>
+    <string name="downloads_title">ダウンロード</string>
+    <string name="downloads_subtitle">映画とエピソードのダウンロードをまとめて確認できます。</string>
+    <string name="downloads_back">戻る</string>
+    <string name="downloads_refresh">更新</string>
+    <string name="downloads_all">すべて</string>
+    <string name="downloads_movies">映画</string>
+    <string name="downloads_movie">映画</string>
+    <string name="downloads_series">シリーズ</string>
+    <string name="downloads_attention">要確認</string>
+    <string name="downloads_downloading">ダウンロード中</string>
+    <string name="downloads_speed">報告された合計速度</string>
+    <string name="downloads_paused">一時停止中</string>
+    <string name="downloads_stalled">停滞中</string>
+    <string name="downloads_queued">待機中</string>
+    <string name="downloads_importing">ダウンロード済み — インポート待ち</string>
+    <string name="downloads_failed">失敗</string>
+    <string name="downloads_checking">確認中</string>
+    <string name="downloads_metadata">メタデータを取得中</string>
+    <string name="downloads_unknown">不明</string>
+    <string name="downloads_no_speed">リアルタイム速度は取得できません</string>
+    <string name="downloads_eta_unknown">残り時間は不明</string>
+    <string name="downloads_eta">残り時間 %1$s</string>
+    <string name="downloads_shared">共有ダウンロード</string>
+    <string name="downloads_requested_by">リクエストしたユーザー：%1$s</string>
+    <string name="downloads_unknown_title">メディア #%1$d</string>
+    <string name="downloads_empty">進行中のダウンロードはありません。リクエストしたダウンロードは自動的にここに表示されます。</string>
+    <string name="downloads_unavailable">ダウンロード情報は一時的に取得できません。</string>
+    <string name="downloads_empty_filter">このフィルターに一致するダウンロードはありません。</string>
+    <string name="downloads_episode_note">表示中は5秒ごとに更新 · エピソードの進捗はシーズンの利用可否とは別です。</string>
+    <string name="downloads_error">ダウンロードを更新できませんでした。自動的に再試行します。</string>
+</resources>

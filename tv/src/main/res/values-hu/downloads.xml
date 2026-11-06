@@ -1,0 +1,32 @@
+<resources>
+    <string name="downloads_title">Letöltések</string>
+    <string name="downloads_subtitle">Kövesd a filmek és epizódok letöltését egy helyen.</string>
+    <string name="downloads_back">Vissza</string>
+    <string name="downloads_refresh">Frissítés</string>
+    <string name="downloads_all">Összes</string>
+    <string name="downloads_movies">Filmek</string>
+    <string name="downloads_movie">Film</string>
+    <string name="downloads_series">Sorozatok</string>
+    <string name="downloads_attention">Figyelmet igényel</string>
+    <string name="downloads_downloading">Letöltés</string>
+    <string name="downloads_speed">Jelzett összesített sebesség</string>
+    <string name="downloads_paused">Szüneteltetve</string>
+    <string name="downloads_stalled">Elakadt</string>
+    <string name="downloads_queued">Sorban áll</string>
+    <string name="downloads_importing">Letöltve — importálásra vár</string>
+    <string name="downloads_failed">Sikertelen</string>
+    <string name="downloads_checking">Ellenőrzés</string>
+    <string name="downloads_metadata">Metaadatok lekérése</string>
+    <string name="downloads_unknown">Ismeretlen</string>
+    <string name="downloads_no_speed">Az élő sebesség nem érhető el</string>
+    <string name="downloads_eta_unknown">Hátralévő idő ismeretlen</string>
+    <string name="downloads_eta">Hátralévő idő: %1$s</string>
+    <string name="downloads_shared">Közös letöltés</string>
+    <string name="downloads_requested_by">Kérelmező: %1$s</string>
+    <string name="downloads_unknown_title">Média #%1$d</string>
+    <string name="downloads_empty">Nincs folyamatban letöltés. A kért letöltések automatikusan megjelennek itt.</string>
+    <string name="downloads_unavailable">A letöltési információk átmenetileg nem érhetők el.</string>
+    <string name="downloads_empty_filter">Egyetlen letöltés sem felel meg ennek a szűrőnek.</string>
+    <string name="downloads_episode_note">Aktív állapotban 5 másodpercenként frissül · Az epizód előrehaladása különálló az évad elérhetőségétől.</string>
+    <string name="downloads_error">Nem sikerült frissíteni a letöltéseket. Automatikus újrapróbálkozás.</string>
+</resources>

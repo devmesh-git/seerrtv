@@ -96,6 +96,7 @@ sealed class AppFocusState {
     data class DiscoveryScreen(val focus: DiscoveryFocusState) : AppFocusState()
     data class BrowseScreen(val focus: BrowseFocusState) : AppFocusState()
     data class DetailsScreen(val focus: DetailsFocusState) : AppFocusState()
+    data class DownloadsScreen(val focus: ca.devmesh.seerrtv.ui.downloads.DownloadsFocus) : AppFocusState()
     object SettingsScreen : AppFocusState()
 
     override fun toString(): String {
@@ -105,6 +106,7 @@ sealed class AppFocusState {
             is DiscoveryScreen -> "DiscoveryScreen(${focus})"
             is BrowseScreen -> "BrowseScreen(${focus})"
             is DetailsScreen -> "DetailsScreen(${focus})"
+            is DownloadsScreen -> "DownloadsScreen($focus)"
             is SettingsScreen -> "SettingsScreen"
         }
     }
@@ -114,7 +116,7 @@ sealed class AppFocusState {
  * Top bar focus states
  */
 enum class TopBarFocus {
-    Search, Movies, Series, Settings, Avatar
+    Search, Movies, Series, Downloads, Settings, Avatar
 }
 
 /**

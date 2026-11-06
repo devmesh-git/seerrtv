@@ -452,6 +452,7 @@ class DpadControllerImpl : DpadController {
                     else -> DpadSection.Details
                 }
             }
+            is AppFocusState.DownloadsScreen -> DpadSection.List
             is AppFocusState.SettingsScreen -> DpadSection.Grid
         }
     }

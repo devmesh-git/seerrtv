@@ -51,6 +51,7 @@ fun MainTopBar(
     isSearchFocused: Boolean = false,
     isMoviesFocused: Boolean = false,
     isSeriesFocused: Boolean = false,
+    isDownloadsFocused: Boolean = false,
     isSettingsFocused: Boolean = false,
     isAvatarFocused: Boolean = false,
     showRefreshHint: Boolean = false,
@@ -89,6 +90,13 @@ fun MainTopBar(
                 icon = Icons.Default.Settings,
                 label = stringResource(R.string.mainScreen_settings),
                 isFocused = isSettingsFocused
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+
+            TopBarIcon(
+                icon = AppIcons.Download,
+                label = stringResource(R.string.downloads_title),
+                isFocused = isDownloadsFocused
             )
             Spacer(modifier = Modifier.width(8.dp))
 

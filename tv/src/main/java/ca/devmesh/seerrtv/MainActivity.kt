@@ -177,6 +177,7 @@ data class TopBarFocusState(
     val isSearchFocused: Boolean,
     val isMoviesFocused: Boolean,
     val isSeriesFocused: Boolean,
+    val isDownloadsFocused: Boolean,
     val isSettingsFocused: Boolean,
     val isAvatarFocused: Boolean,
     val showRefreshHint: Boolean,
@@ -876,6 +877,7 @@ class MainActivity : AppCompatActivity() {
                             isSearchFocused = topBarFocus == TopBarFocus.Search,
                             isMoviesFocused = topBarFocus == TopBarFocus.Movies,
                             isSeriesFocused = topBarFocus == TopBarFocus.Series,
+                            isDownloadsFocused = topBarFocus == TopBarFocus.Downloads,
                             isSettingsFocused = topBarFocus == TopBarFocus.Settings,
                             isAvatarFocused = topBarFocus == TopBarFocus.Avatar,
                             showRefreshHint = if (currentRouteLocal == "main") topBarShowRefreshHint else false,
@@ -1070,6 +1072,19 @@ class MainActivity : AppCompatActivity() {
                                             onExternalBack = externalBackHandler(navController)
                                         )
                                     }
+                                }
+                                composable("downloads") {
+                                    ca.devmesh.seerrtv.ui.downloads.DownloadsScreen(
+                                        appFocusManager = appFocusManager,
+                                        dpadController = dpadController,
+                                        onBack = { navController.popBackStack() },
+                                        onOpenMedia = { id, type ->
+                                            navController.navigate("details/$id/$type")
+                                            appFocusManager.setFocus(AppFocusState.DetailsScreen(
+                                                ca.devmesh.seerrtv.ui.focus.DetailsFocusState.Overview
+                                            ))
+                                        }
+                                    )
                                 }
                                 composable(
                                     route = "settings",
@@ -1543,6 +1558,7 @@ fun SeerrTVApp(
                 isSearchFocused = topBarFocusState.isSearchFocused,
                 isMoviesFocused = topBarFocusState.isMoviesFocused,
                 isSeriesFocused = topBarFocusState.isSeriesFocused,
+                isDownloadsFocused = topBarFocusState.isDownloadsFocused,
                 isSettingsFocused = topBarFocusState.isSettingsFocused,
                 isAvatarFocused = topBarFocusState.isAvatarFocused,
                 showRefreshHint = topBarFocusState.showRefreshHint,

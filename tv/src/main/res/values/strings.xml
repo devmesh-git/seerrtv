@@ -513,4 +513,35 @@
     <string name="filter_applyRange">Apply Range</string>
     <string name="filter_clearFilter">Clear Filter</string>
     <string name="filter_clearAllDates">Clear all date filters</string>
+
+    <string name="downloads_title">Downloads</string>
+    <string name="downloads_subtitle">Follow your movie and episode downloads in one place.</string>
+    <string name="downloads_back">Back</string>
+    <string name="downloads_refresh">Refresh</string>
+    <string name="downloads_all">All</string>
+    <string name="downloads_movies">Movies</string>
+    <string name="downloads_movie">Movie</string>
+    <string name="downloads_series">Series</string>
+    <string name="downloads_attention">Needs attention</string>
+    <string name="downloads_downloading">Downloading</string>
+    <string name="downloads_speed">Reported total speed</string>
+    <string name="downloads_paused">Paused</string>
+    <string name="downloads_stalled">Stalled</string>
+    <string name="downloads_queued">Queued</string>
+    <string name="downloads_importing">Downloaded — awaiting import</string>
+    <string name="downloads_failed">Failed</string>
+    <string name="downloads_checking">Checking</string>
+    <string name="downloads_metadata">Fetching metadata</string>
+    <string name="downloads_unknown">Unknown</string>
+    <string name="downloads_no_speed">Live speed unavailable</string>
+    <string name="downloads_eta_unknown">ETA unknown</string>
+    <string name="downloads_eta">ETA %1$s</string>
+    <string name="downloads_shared">Shared download</string>
+    <string name="downloads_requested_by">Requested by %1$s</string>
+    <string name="downloads_unknown_title">Media #%1$d</string>
+    <string name="downloads_empty">No downloads in progress. Requested downloads will appear here automatically.</string>
+    <string name="downloads_unavailable">Download information is temporarily unavailable.</string>
+    <string name="downloads_empty_filter">No downloads match this filter.</string>
+    <string name="downloads_episode_note">Updates every 5 seconds while active · Episode progress is separate from season availability.</string>
+    <string name="downloads_error">Could not refresh downloads. Retrying automatically.</string>
 </resources>

@@ -1,0 +1,32 @@
+<resources>
+    <string name="downloads_title">Allalaadimised</string>
+    <string name="downloads_subtitle">Jälgi filmide ja episoodide allalaadimist ühes kohas.</string>
+    <string name="downloads_back">Tagasi</string>
+    <string name="downloads_refresh">Värskenda</string>
+    <string name="downloads_all">Kõik</string>
+    <string name="downloads_movies">Filmid</string>
+    <string name="downloads_movie">Film</string>
+    <string name="downloads_series">Sarjad</string>
+    <string name="downloads_attention">Vajab tähelepanu</string>
+    <string name="downloads_downloading">Allalaadimine</string>
+    <string name="downloads_speed">Teatatud kogukiirus</string>
+    <string name="downloads_paused">Peatatud</string>
+    <string name="downloads_stalled">Seiskunud</string>
+    <string name="downloads_queued">Järjekorras</string>
+    <string name="downloads_importing">Alla laaditud — ootab importimist</string>
+    <string name="downloads_failed">Ebaõnnestunud</string>
+    <string name="downloads_checking">Kontrollimine</string>
+    <string name="downloads_metadata">Metaandmete hankimine</string>
+    <string name="downloads_unknown">Teadmata</string>
+    <string name="downloads_no_speed">Reaalajakiirus pole saadaval</string>
+    <string name="downloads_eta_unknown">Järelejäänud aeg teadmata</string>
+    <string name="downloads_eta">Järelejäänud aeg %1$s</string>
+    <string name="downloads_shared">Ühine allalaadimine</string>
+    <string name="downloads_requested_by">Taotleja: %1$s</string>
+    <string name="downloads_unknown_title">Meedia #%1$d</string>
+    <string name="downloads_empty">Aktiivseid allalaadimisi pole. Taotletud allalaadimised ilmuvad siia automaatselt.</string>
+    <string name="downloads_unavailable">Allalaadimiste teave pole ajutiselt saadaval.</string>
+    <string name="downloads_empty_filter">Selle filtriga sobivaid allalaadimisi pole.</string>
+    <string name="downloads_episode_note">Aktiivsena uuendatakse iga 5 sekundi järel · Episoodi edenemine on hooaja saadavusest eraldi.</string>
+    <string name="downloads_error">Allalaadimisi ei saanud värskendada. Proovitakse automaatselt uuesti.</string>
+</resources>

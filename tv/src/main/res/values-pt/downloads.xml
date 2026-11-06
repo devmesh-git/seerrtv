@@ -1,0 +1,32 @@
+<resources>
+    <string name="downloads_title">Transferências</string>
+    <string name="downloads_subtitle">Acompanhe as transferências de filmes e episódios num só lugar.</string>
+    <string name="downloads_back">Voltar</string>
+    <string name="downloads_refresh">Atualizar</string>
+    <string name="downloads_all">Todas</string>
+    <string name="downloads_movies">Filmes</string>
+    <string name="downloads_movie">Filme</string>
+    <string name="downloads_series">Séries</string>
+    <string name="downloads_attention">Requer atenção</string>
+    <string name="downloads_downloading">A transferir</string>
+    <string name="downloads_speed">Velocidade total comunicada</string>
+    <string name="downloads_paused">Em pausa</string>
+    <string name="downloads_stalled">Sem atividade</string>
+    <string name="downloads_queued">Em fila</string>
+    <string name="downloads_importing">Transferido — a aguardar importação</string>
+    <string name="downloads_failed">Falhou</string>
+    <string name="downloads_checking">A verificar</string>
+    <string name="downloads_metadata">A obter metadados</string>
+    <string name="downloads_unknown">Desconhecido</string>
+    <string name="downloads_no_speed">Velocidade em tempo real indisponível</string>
+    <string name="downloads_eta_unknown">Tempo restante desconhecido</string>
+    <string name="downloads_eta">Tempo restante: %1$s</string>
+    <string name="downloads_shared">Transferência partilhada</string>
+    <string name="downloads_requested_by">Pedido por %1$s</string>
+    <string name="downloads_unknown_title">Conteúdo #%1$d</string>
+    <string name="downloads_empty">Não há transferências em curso. As transferências pedidas aparecerão aqui automaticamente.</string>
+    <string name="downloads_unavailable">A informação das transferências está temporariamente indisponível.</string>
+    <string name="downloads_empty_filter">Nenhuma transferência corresponde a este filtro.</string>
+    <string name="downloads_episode_note">Atualiza a cada 5 segundos enquanto está ativo · O progresso do episódio é independente da disponibilidade da temporada.</string>
+    <string name="downloads_error">Não foi possível atualizar as transferências. Nova tentativa automática.</string>
+</resources>

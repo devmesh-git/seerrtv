@@ -18,6 +18,19 @@ import androidx.compose.ui.graphics.vector.ImageVector
  * reintroducing the extended dependency.
  */
 object AppIcons {
+    // Material file_download, Google Material Design Icons (Apache 2.0).
+    val Download: ImageVector by lazy {
+        materialIcon(name = "Filled.FileDownload") {
+            materialPath {
+                moveTo(19f, 9f); horizontalLineTo(15f); verticalLineTo(3f)
+                horizontalLineTo(9f); verticalLineTo(9f); horizontalLineTo(5f)
+                lineTo(12f, 16f); close()
+                moveTo(5f, 18f); verticalLineTo(20f); horizontalLineTo(19f)
+                verticalLineTo(18f); close()
+            }
+        }
+    }
+
 
     val Bookmark: ImageVector by lazy {
         materialIcon(name = "Filled.Bookmark") {

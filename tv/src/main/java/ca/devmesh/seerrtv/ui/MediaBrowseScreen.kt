@@ -713,6 +713,8 @@ fun MediaBrowseScreen(
                         (appFocusManager.currentFocus as AppFocusState.TopBar).focus == TopBarFocus.Movies,
                 isSeriesFocused = appFocusManager.currentFocus is AppFocusState.TopBar &&
                         (appFocusManager.currentFocus as AppFocusState.TopBar).focus == TopBarFocus.Series,
+                isDownloadsFocused = appFocusManager.currentFocus is AppFocusState.TopBar &&
+                        (appFocusManager.currentFocus as AppFocusState.TopBar).focus == TopBarFocus.Downloads,
                 isSettingsFocused = appFocusManager.currentFocus is AppFocusState.TopBar &&
                         (appFocusManager.currentFocus as AppFocusState.TopBar).focus == TopBarFocus.Settings,
                 isAvatarFocused = appFocusManager.currentFocus is AppFocusState.TopBar &&

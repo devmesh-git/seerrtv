@@ -1,0 +1,32 @@
+<resources>
+    <string name="downloads_title">Downloads</string>
+    <string name="downloads_subtitle">Volg downloads van films en afleveringen op één plek.</string>
+    <string name="downloads_back">Terug</string>
+    <string name="downloads_refresh">Vernieuwen</string>
+    <string name="downloads_all">Alle</string>
+    <string name="downloads_movies">Films</string>
+    <string name="downloads_movie">Film</string>
+    <string name="downloads_series">Series</string>
+    <string name="downloads_attention">Aandacht nodig</string>
+    <string name="downloads_downloading">Downloaden</string>
+    <string name="downloads_speed">Gemelde totale snelheid</string>
+    <string name="downloads_paused">Gepauzeerd</string>
+    <string name="downloads_stalled">Vastgelopen</string>
+    <string name="downloads_queued">In wachtrij</string>
+    <string name="downloads_importing">Gedownload — wacht op import</string>
+    <string name="downloads_failed">Mislukt</string>
+    <string name="downloads_checking">Controleren</string>
+    <string name="downloads_metadata">Metadata ophalen</string>
+    <string name="downloads_unknown">Onbekend</string>
+    <string name="downloads_no_speed">Actuele snelheid niet beschikbaar</string>
+    <string name="downloads_eta_unknown">Resterende tijd onbekend</string>
+    <string name="downloads_eta">Resterende tijd: %1$s</string>
+    <string name="downloads_shared">Gedeelde download</string>
+    <string name="downloads_requested_by">Aangevraagd door %1$s</string>
+    <string name="downloads_unknown_title">Media #%1$d</string>
+    <string name="downloads_empty">Geen actieve downloads. Aangevraagde downloads verschijnen hier automatisch.</string>
+    <string name="downloads_unavailable">Downloadinformatie is tijdelijk niet beschikbaar.</string>
+    <string name="downloads_empty_filter">Geen downloads komen overeen met dit filter.</string>
+    <string name="downloads_episode_note">Elke 5 seconden bijgewerkt zolang actief · Voortgang per aflevering staat los van de beschikbaarheid van het seizoen.</string>
+    <string name="downloads_error">Downloads konden niet worden vernieuwd. Er wordt automatisch opnieuw geprobeerd.</string>
+</resources>
