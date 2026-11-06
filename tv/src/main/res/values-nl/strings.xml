@@ -432,6 +432,7 @@
     <string name="language_dutch">Nederlands</string>
     <string name="language_estonian">Estisch</string>
     <string name="language_hungarian">Hongaars</string>
+    <string name="language_italian">Italiaans</string>
     
     <!-- Other Filter Strings -->
     <string name="filter_close">Sluiten</string>

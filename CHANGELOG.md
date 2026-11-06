@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.35.1
+
+### Added: Italian
+
+- **Change** – SeerrTV is now available in Italian. It covers every string in the app, and Italian can be picked as the app language and as the discovery language in Settings. "Italian" is also added to the language list in the ten existing languages.
+
+- Credits to [@gstorelli](https://github.com/gstorelli) ([#17](https://github.com/devmesh-git/seerrtv/pull/17)).
+
 ## 0.35.0
 
 ### Added: Download progress on posters and a live Requests row

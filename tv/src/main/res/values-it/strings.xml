@@ -1,0 +1,517 @@
+<resources>    
+    <!-- App Strings -->
+    <string name="app_name">SeerrTV</string>
+    
+    <!-- Carousel Section Strings -->
+    <string name="carouselSection_error_loadingFailed">Errore durante il caricamento dei contenuti</string>
+    <string name="carouselSection_error_noMediaFound">Nessun contenuto trovato per questa categoria</string>
+    
+    <!-- Category Strings -->
+    <string name="category_movieGenres">Generi film</string>
+    <string name="category_networks">Reti televisive</string>
+    <string name="category_popularMovies">Film popolari</string>
+    <string name="category_popularSeries">Serie TV popolari</string>
+    <string name="category_recentlyAdded">Aggiunti di recente</string>
+    <string name="category_recentRequests">Richieste recenti</string>
+    <string name="category_seriesGenres">Generi serie TV</string>
+    <string name="category_studios">Studi</string>
+    <string name="category_trending">Di tendenza</string>
+    <string name="category_watchlist">La tua watchlist</string>
+    <string name="action_add_to_watchlist">Aggiungi alla watchlist</string>
+    <string name="action_remove_from_watchlist">Rimuovi dalla watchlist</string>
+    <string name="watchlist_added_success">Aggiunto alla watchlist</string>
+    <string name="watchlist_removed_success">Rimosso dalla watchlist</string>
+    <string name="watchlist_update_failed">Impossibile aggiornare la watchlist</string>
+    <string name="category_upcomingMovies">Film in arrivo</string>
+    <string name="category_upcomingSeries">Serie TV in arrivo</string>
+    
+    <!-- Common Strings -->
+    <string name="common_apiKey">Chiave API</string>
+    <string name="common_areYouSure">Sei sicuro?</string>
+    <string name="common_cancel">Annulla</string>
+    <string name="common_collectionLabel">COLLEZIONE</string>
+    <string name="common_devmeshLogo">Logo DevMesh</string>
+    <string name="common_email">Email</string>
+    <string name="common_error">Errore</string>
+    <string name="common_loadingMore">Caricamento altri elementi…</string>
+    <string name="common_mediaPoster">Locandina</string>
+    <string name="common_movieLabel">FILM</string>
+    <string name="common_notRequested">Non richiesto</string>
+    <string name="common_personLabel">PERSONA</string>
+    <string name="common_processing">In elaborazione</string>
+    <string name="common_readLess">Mostra meno</string>
+    <string name="common_readMore">Mostra altro</string>
+    <string name="common_requested">Richiesto</string>
+    <string name="common_search">Cerca</string>
+    <string name="common_seriesLabel">SERIE TV</string>
+    <string name="common_success">Operazione completata</string>
+    <string name="common_unknown">Sconosciuto</string>
+    <string name="common_versionPrefix">v</string>
+    <string name="common_yes">Sì</string>
+    <string name="common_no">No</string>
+    
+    <!-- Config Screen Strings -->
+    <string name="configScreen_apiKeyHelp">Inserisci la chiave API dalle impostazioni del server</string>
+    <string name="auth_error_unexpected_response">Il server ha restituito una risposta imprevista. Il server potrebbe eseguire una versione incompatibile.</string>
+    <string name="configScreen_authenticationFailed">Autenticazione non riuscita</string>
+    <string name="configScreen_authFailedMessage">Le credenziali non sono valide. Ciò potrebbe essere dovuto alla modifica della password o alla revoca dell\'accesso. Riconfigura con credenziali valide.</string>
+    <string name="configScreen_authMethod">Metodo di autenticazione</string>
+    <string name="configScreen_authMethodHelp">Scegli come autenticarti con il server</string>
+    <string name="configScreen_authTypeEmby">Emby</string>
+    <string name="configScreen_authTypeJellyfin">Jellyfin</string>
+    <string name="configScreen_authTypeLocalUser">@string/configScreen_localUser</string>
+    <string name="configScreen_authTypePlex">Plex</string>
+    <string name="configScreen_browserBasedConfiguration">Configurazione basata su browser</string>
+    <string name="configScreen_cloudflareClientId">ID client Cloudflare Access</string>
+    <string name="configScreen_cloudflareClientSecret">Segreto client Cloudflare Access</string>
+    <string name="configScreen_cloudflareConfig">Configurazione Cloudflare</string>
+    <string name="configScreen_cloudflareHelp">Il tuo server è protetto da Cloudflare Access. Inserisci le tue credenziali Cloudflare.</string>
+    <string name="configScreen_configInstructions">Scansiona il codice QR qui sotto con il tuo telefono o apri l\'URL per configurare SeerrTV</string>
+    <string name="configScreen_configServiceUnavailable">ERRORE: Il servizio di configurazione non è disponibile. Riprova più tardi.</string>
+    <string name="configScreen_configSuccess">Configurazione completata con successo!</string>
+    <string name="configScreen_connecting">Connessione al servizio di configurazione via browser di SeerrTV…</string>
+    <string name="configScreen_connectionFailed">Connessione non riuscita</string>
+    <string name="configScreen_connectionTimeout">Timeout di connessione - Server non raggiungibile</string>
+    <string name="configScreen_displayName">Nome visualizzato</string>
+    <string name="configScreen_embyConfig">Configurazione Emby</string>
+    <string name="configScreen_embyHelp">Inserisci le tue credenziali Emby. Verranno utilizzate per l\'autenticazione con il tuo media server.</string>
+    <string name="configScreen_hostname">Nome host</string>
+    <string name="configScreen_hostnameHelp">Inserisci qui il nome host del tuo servizio Jellyseerr/Overseerr/Seerr:</string>
+    <string name="configScreen_jellyfinConfig">Configurazione Jellyfin</string>
+    <string name="configScreen_jellyfinHelp">Inserisci i dettagli e le credenziali del server Jellyfin. Verranno utilizzati per l\'autenticazione con il tuo media server.</string>
+    <string name="configScreen_jellyfinHostname">Nome host server Jellyfin</string>
+    <string name="configScreen_jellyfinPort">Porta server</string>
+    <string name="configScreen_jellyfinUseSsl">Usa SSL</string>
+    <string name="configScreen_jellyseerrDetected">Rilevato server Jellyseerr!</string>
+    <string name="configScreen_seerrDetected">Rilevato server Seerr!</string>
+    <string name="configScreen_localUser">Utente locale</string>
+    <string name="configScreen_localUserHelp">Inserisci la tua email e password</string>
+    <string name="configScreen_loginSuccess">Accesso eseguito!</string>
+    <string name="configScreen_manualConfiguration">Configurazione manuale</string>
+    <string name="configScreen_next">Avanti</string>
+    <string name="configScreen_orVisit">Oppure visita:</string>
+    <string name="configScreen_overseerrDetected">Rilevato server Overseerr!</string>
+    <string name="configScreen_password">Password</string>
+    <string name="configScreen_permissions">Autorizzazioni</string>
+    <string name="configScreen_plexGettingPin">Recupero PIN Plex in corso…</string>
+    <string name="configScreen_plexHelp">Accedi al tuo account Plex per utilizzare Overseerr/Jellyseerr/Seerr.</string>
+    <string name="configScreen_plexInstructions">Per collegare il tuo account Plex, segui questi passaggi:</string>
+    <string name="configScreen_plexPinCode">Inserisci questo codice:</string>
+    <string name="configScreen_plexTitle">Autenticazione Plex</string>
+    <string name="configScreen_plexVisitLink">Visita questo link da qualsiasi dispositivo:</string>
+    <string name="configScreen_protocol">Protocollo</string>
+    <string name="configScreen_protocolHttp">HTTP</string>
+    <string name="configScreen_protocolHttps">HTTPS</string>
+    <string name="configScreen_qrCode">Codice QR per la configurazione</string>
+    <string name="configScreen_reconfigure">Riconfigura</string>
+    <string name="configScreen_retry">Riprova</string>
+    <string name="configScreen_seerrIcon">Icona Seerr</string>
+    <string name="configScreen_selectConfigurationMethod">Seleziona metodo di configurazione</string>
+    <string name="configScreen_serverConnection">Connessione server</string>
+    <string name="configScreen_serverError">Errore server</string>
+    <string name="configScreen_testAndSave">Testa e salva configurazione</string>
+    <string name="configScreen_unknownError">Si è verificato un errore sconosciuto</string>
+    <string name="configScreen_username">Nome utente</string>
+    <string name="configScreen_waitingAuth">In attesa di autenticazione…</string>
+    
+    <!-- Issue Strings -->
+    <string name="issue_add_comment_button">Aggiungi commento</string>
+    <string name="issue_add_comment_placeholder">Aggiungi il tuo commento...</string>
+    <string name="issue_add_comment_title">Aggiungi commento alla segnalazione</string>
+    <string name="issue_additional_comment_title">Commento aggiuntivo</string>
+    <string name="issue_audio_language">Traccia audio errata</string>
+    <string name="issue_audio_missing">Audio assente</string>
+    <string name="issue_audio_quality">Scarsa qualità audio</string>
+    <string name="issue_audio_stuttering">Audio a scatti</string>
+    <string name="issue_audio_sync">Audio desincronizzato</string>
+    <string name="issue_button_report_issues">Segnala problemi</string>
+    <string name="issue_button_view_issues">Visualizza segnalazioni</string>
+    <string name="issue_by_label"> da </string>
+    <string name="issue_common_issues_title">Problemi frequenti (opzionale)</string>
+    <string name="issue_createdSuccessfully">Problema segnalato con successo</string>
+    <string name="issue_describe_placeholder">Descrivi il problema...</string>
+    <string name="issue_details_title">Segnalazioni</string>
+    <string name="issue_episode">Episodio</string>
+    <string name="issue_more_comments">+%1$d altri commenti</string>
+    <string name="issue_new_issue_button">Nuova segnalazione</string>
+    <string name="issue_no_issues_message">Nessun problema segnalato per questo contenuto.</string>
+    <string name="issue_none_option">Nessuno (solo commento personalizzato)</string>
+    <string name="issue_opened_label">Aperto </string>
+    <string name="issue_other_app_crash">Chiusura improvvisa dell\'app durante la riproduzione</string>
+    <string name="issue_other_incorrect_metadata">Metadati errati</string>
+    <string name="issue_other_missing_content">Contenuto mancante</string>
+    <string name="issue_other_other">Altro problema</string>
+    <string name="issue_other_wrong_content">Film/episodio errato</string>
+    <string name="issue_press_back_to_close">Premi Indietro per chiudere</string>
+    <string name="issue_report_title">Segnala problema</string>
+    <string name="issue_season_episode_title">Stagione ed episodio</string>
+    <string name="issue_season">Stagione</string>
+    <string name="issue_status_label">Stato</string>
+    <string name="issue_status_open">Aperto</string>
+    <string name="issue_status_resolved">Risolto</string>
+    <string name="issue_submit_button">Invia segnalazione</string>
+    <string name="issue_subtitle_display">I sottotitoli non vengono visualizzati</string>
+    <string name="issue_subtitle_language">Lingua dei sottotitoli errata</string>
+    <string name="issue_subtitle_missing">Nessun sottotitolo disponibile</string>
+    <string name="issue_subtitle_quality">Scarsa qualità dei sottotitoli</string>
+    <string name="issue_subtitle_sync">Sottotitoli desincronizzati</string>
+    <string name="issue_type_audio">Audio</string>
+    <string name="issue_type_label">Tipo</string>
+    <string name="issue_type_other">Altro</string>
+    <string name="issue_type_subtitle">Sottotitoli</string>
+    <string name="issue_type_title">Tipo di problema</string>
+    <string name="issue_type_video">Video</string>
+    <string name="issue_video_aspect">Proporzioni (aspect ratio) errate</string>
+    <string name="issue_video_playback">Il video non viene riprodotto</string>
+    <string name="issue_video_quality">Scarsa qualità video</string>
+    <string name="issue_video_stuttering">Video a scatti/bloccato</string>
+    <string name="issue_video_sync">Video desincronizzato</string>
+    
+    <!-- Main Screen Strings -->
+    <string name="mainScreen_loading_pleaseWait">Attendere prego</string>
+    <string name="mainScreen_mediaBackdrop">Sfondo del contenuto</string>
+    <string name="mainScreen_pressBackAgainToExit">Premi di nuovo INDIETRO per uscire dall\'applicazione</string>
+    <string name="mainScreen_pressUpToRefresh">Premi SU per aggiornare tutte le categorie</string>
+    <string name="mainScreen_refreshed">Aggiornato!</string>
+    <string name="mainScreen_settings">Impostazioni</string>
+    <string name="mainScreen_appsRow">Applicazioni</string>
+    <string name="mainScreen_appOrderSaved">Ordine delle app salvato</string>
+    <string name="mainScreen_reorderModeHint">Riordina: Sinistra/Destra per spostare, Invio o Indietro per salvare</string>
+    <string name="mainScreen_appsRowReorderTitle">Applicazioni (riordina)</string>
+    
+    <!-- Media Details Strings -->
+    <string name="mediaDetails_cast">Cast</string>
+    <string name="mediaDetails_crew">Troupe</string>
+    <string name="mediaDetails_errorSubmittingRequest">Errore durante l\'invio della richiesta: %1$s</string>
+    <string name="mediaDetails_information">Informazioni</string>
+    <string name="mediaDetails_embyNotFound">App Emby non trovata. Installa Emby dal Play Store.</string>
+    <string name="mediaDetails_jellyfinNotFound">App Jellyfin non trovata. Installa Jellyfin dal Play Store.</string>
+    <string name="mediaDetails_manageRequest">Gestisci richiesta</string>
+    <string name="mediaDetails_minutes">Minuti</string>
+    <string name="mediaDetails_noMediaPlayerFound">Nessuna app di riproduzione trovata su questo dispositivo</string>
+    <string name="mediaDetails_ok">OK</string>
+    <string name="mediaDetails_playOnEmby">Riproduci su Emby</string>
+    <string name="mediaDetails_playOnJellyfin">Riproduci su Jellyfin</string>
+    <string name="mediaDetails_playOnPlex">Riproduci su PLEX</string>
+    <string name="mediaDetails_plexNotFound">App Plex non trovata. Installa Plex dal Play Store.</string>
+    <string name="mediaDetails_requestMore">Richiedi altro</string>
+    <string name="mediaDetails_similarMovies">Film simili</string>
+    <string name="mediaDetails_similarSeries">Serie TV simili</string>
+    <string name="mediaDetails_tvSeries">Serie TV</string>
+    <string name="mediaDetails_unknownDuration">Sconosciuta</string>
+    <string name="mediaDetails_unknownError">Errore sconosciuto</string>
+    <string name="mediaDetails_unknownTitle">Titolo sconosciuto</string>
+    <string name="mediaDetails_unknownType">Tipo di contenuto sconosciuto</string>
+    <string name="mediaDetails_watchTrailer">Guarda trailer</string>
+    <string name="mediaDetails_youTubeNotFound">App YouTube non trovata. Installa YouTube dal Play Store.</string>
+    
+    <!-- Media Discovery Strings -->
+    <string name="mediaDiscovery_movieKeywordSearch">Film con parola chiave</string>
+    <string name="mediaDiscovery_noImage">Nessuna immagine</string>
+    <string name="mediaDiscovery_noResults">Nessun risultato trovato. Prova a modificare i criteri di ricerca.</string>
+    <string name="mediaDiscovery_personImage">Immagine della persona</string>
+    <string name="mediaDiscovery_searchPlaceholder">Cerca film o serie TV</string>
+    <string name="mediaDiscovery_searchResults">Risultati della ricerca</string>
+    <string name="mediaDiscovery_tvKeywordSearch">Serie TV con parola chiave</string>
+    
+    <!-- Media Info Table Strings -->
+    <string name="mediaInfoTable_budget">Budget</string>
+    <string name="mediaInfoTable_currentlyStreamingOn">Attualmente in streaming su</string>
+    <string name="mediaInfoTable_firstAirDate">Data prima messa in onda</string>
+    <string name="mediaInfoTable_lastAirDate">Data ultima messa in onda</string>
+    <string name="mediaInfoTable_more">altro</string>
+    <string name="mediaInfoTable_network">Rete televisiva</string>
+    <string name="mediaInfoTable_notApplicable">N/D</string>
+    <string name="mediaInfoTable_numberOfEpisodes">N. di episodi</string>
+    <string name="mediaInfoTable_numberOfSeasons">N. di stagioni</string>
+    <string name="mediaInfoTable_originalTitle">Titolo originale</string>
+    <string name="mediaInfoTable_productionCountry">Paese di produzione</string>
+    <string name="mediaInfoTable_releaseDate">Data di uscita</string>
+    <string name="mediaInfoTable_releaseDateTheatrical">Al cinema</string>
+    <string name="mediaInfoTable_releaseDateDigital">Digitale</string>
+    <string name="mediaInfoTable_releaseDatePhysical">Supporto fisico</string>
+    <string name="mediaInfoTable_revenue">Incassi</string>
+    <string name="mediaInfoTable_rottenTomatoesRating">Punteggio Rotten Tomatoes</string>
+    <string name="mediaInfoTable_status">Stato</string>
+    <string name="mediaInfoTable_studios">Studi</string>
+    <string name="mediaInfoTable_tmdbRating">Punteggio TMDB</string>
+    
+    <!-- Person Screen Strings -->
+    <string name="personScreen_alsoKnownAs">Noto anche come</string>
+    <string name="personScreen_born">Nascita</string>
+    <string name="personScreen_crew">Troupe</string>
+    <string name="personScreen_knownFor">Conosciuto per</string>
+    <string name="personScreen_personProfile">Profilo persona</string>
+    <string name="personScreen_yearsOld">anni</string>
+    
+    <!-- Request Action Strings -->
+    <string name="requestAction_approve">Approva</string>
+    <string name="requestAction_by">da</string>
+    <string name="requestAction_decline">Rifiuta</string>
+    <string name="requestAction_delete">Elimina</string>
+    <string name="requestAction_mediaStatus">Stato del contenuto</string>
+    <string name="requestAction_modified">Modificato</string>
+    <string name="requestAction_removeFromRadarr">Rimuovi da Radarr</string>
+    <string name="requestAction_removeFromSonarr">Rimuovi da Sonarr</string>
+    <string name="requestAction_requestStatus">Stato della richiesta</string>
+    <string name="requestAction_unknownMediaType">Tipo di contenuto sconosciuto</string>
+    <string name="requestAction_unknownProfile">Profilo sconosciuto</string>
+    
+    <!-- Request Modal Strings -->
+    <string name="requestModal_episodes">Episodi</string>
+    <string name="requestModal_errorLookingUpSeries">Errore durante la ricerca della serie: %1$s</string>
+    <string name="requestModal_errorSubmittingRequest">Errore durante l\'invio della richiesta</string>
+    <string name="requestModal_folderMenu">Cartella principale</string>
+    <string name="requestModal_freeSpace">%1$s liberi</string>
+    <string name="requestModal_lookupError">Errore durante la ricerca della serie</string>
+    <string name="requestModal_lookupLoading">Ricerca della serie in corso...</string>
+    <string name="requestModal_noSeriesFound">Nessuna serie trovata</string>
+    <string name="requestModal_notSelected">Non selezionato</string>
+    <string name="requestModal_qualityMenu">Profilo di qualità</string>
+    <string name="requestModal_requestedSuccessfully">Richiesta inviata con successo!</string>
+    <string name="requestModal_requestSeriesTitle">Richiedi serie TV</string>
+    <string name="requestModal_season">Stagione</string>
+    <string name="requestModal_seasonsMenu">Stagioni</string>
+    <string name="requestModal_selected">Selezionato</string>
+    <string name="requestModal_selectQualityProfile">Seleziona profilo di qualità</string>
+    <string name="requestModal_selectRootFolder">Seleziona cartella principale</string>
+    <string name="requestModal_selectSeasonError">Seleziona almeno una stagione</string>
+    <string name="requestModal_selectServer">Seleziona server</string>
+    <string name="requestModal_selectTags">Seleziona tag</string>
+    <string name="requestModal_serverMenu">Server</string>
+    <string name="requestModal_submit">Richiedi</string>
+    <string name="requestModal_success">@string/common_success</string>
+    <string name="requestModal_tag">Tag</string>
+    <string name="requestModal_tagsMenu">Tag</string>
+    <string name="requestModal_title">Richiedi contenuto</string>
+    <string name="requestModal_unableToMatch">Impossibile associare automaticamente questa serie. Seleziona la corrispondenza corretta qui sotto.</string>
+    
+    <!-- Request Status Strings -->
+    <string name="requestStatus_approved">Approvato</string>
+    <string name="requestStatus_available">Disponibile</string>
+    <!-- Seerr renamed "blacklist" to "blocklist"; the resource key is kept so the 25 translated
+         locales keep resolving. Only the English copy follows the new naming. -->
+    <string name="requestStatus_blacklisted">In lista di blocco</string>
+    <string name="requestStatus_completed">Completato</string>
+    <string name="requestStatus_declined">Rifiutato</string>
+    <string name="requestStatus_deleted">Eliminato</string>
+    <string name="requestStatus_failed">Non riuscito</string>
+    <string name="requestStatus_notRequested">Non richiesto</string>
+    <string name="requestStatus_partiallyAvailable">Parzialmente disponibile</string>
+    <string name="requestStatus_pending">In attesa</string>
+    
+    <!-- Settings Menu Strings -->
+    <string name="settingsMenu_12Hour">12 ore</string>
+    <string name="settingsMenu_24Hour">24 ore</string>
+    <string name="settingsMenu_aboutMenu">Informazioni</string>
+    <string name="settingsMenu_diagnostics">Diagnostica</string>
+    <string name="settingsMenu_diagnosticsDescription">Problemi registrati dall\'app durante l\'esecuzione. Utile per segnalare un problema.</string>
+    <string name="diagnostics_none">Nessun problema registrato</string>
+    <string name="diagnostics_count">%1$d registrati</string>
+    <string name="diagnostics_clear">Cancella tutto</string>
+    <string name="diagnostics_clearConfirmPrompt">Cancellare tutti i problemi registrati?</string>
+    <string name="diagnostics_clearConfirm">Sì, cancellali</string>
+    <string name="diagnostics_clearCancel">Annulla</string>
+    <string name="diagnostics_emptyHint">Nessun errore registrato dall\'ultima cancellazione.</string>
+    <string name="diagnostics_categoryImageLoad">Caricamento immagini</string>
+    <string name="diagnostics_categoryServerRequest">Richiesta al server</string>
+    <string name="diagnostics_categoryServerResponse">Risposta del server</string>
+    <string name="diagnostics_categorySignIn">Accesso</string>
+    <string name="diagnostics_openHint">Premi OK su una voce per i dettagli completi</string>
+    <string name="diagnostics_detailTitle">Dettagli diagnostici</string>
+    <string name="diagnostics_repeated">Ripetuto %1$d volte</string>
+    <string name="diagnostics_appVersion">Versione app %1$s</string>
+    <string name="diagnostics_backHint">Premi Indietro per tornare all\'elenco</string>
+    <string name="settingsMenu_appLanguage">Lingua dell\'app</string>
+    <string name="settingsMenu_authType">Tipo di autenticazione</string>
+    <string name="settingsMenu_clockFormat">Formato orologio</string>
+    <string name="settingsMenu_configMenu">Configurazione API</string>
+    <string name="settingsMenu_userProfiles">Profili utente</string>
+    <string name="settingsMenu_debugMode">Modalità debug</string>
+    <string name="settingsMenu_disabled">Disabilitato</string>
+    <string name="settingsMenu_discoveryMenu">Lingua di scoperta</string>
+    <string name="settingsMenu_defaultStreamingRegion">Regione di streaming predefinita</string>
+    <string name="settingsMenu_edit">MODIFICA</string>
+    <string name="settingsMenu_enabled">Abilitato</string>
+    <string name="settingsMenu_folderSelection">Selezione cartella</string>
+    <string name="settingsMenu_hostname">Nome host</string>
+    <string name="settingsMenu_mediaServerType">Media Server</string>
+    <string name="settingsMenu_mediaServerTypeEmby">Emby</string>
+    <string name="settingsMenu_mediaServerTypeJellyfin">Jellyfin</string>
+    <string name="settingsMenu_mediaServerTypeNotConfigured">Non configurato</string>
+    <string name="settingsMenu_mediaServerTypePlex">Plex</string>
+    <string name="settingsMenu_serverType">Tipo di server</string>
+    <string name="settingsMenu_thankYou">Grazie per il supporto al nostro prodotto.</string>
+    <string name="settingsMenu_aboutIntro">Ringraziamo tutti coloro che hanno contribuito a SeerrTV e all\'ecosistema Seerr.</string>
+    <string name="settingsMenu_aboutOriginalAuthorLabel">Autore originale</string>
+    <string name="settingsMenu_aboutOriginalAuthorUrl">devmesh.ca</string>
+    <string name="settingsMenu_aboutCommunityLabel">Comunità Seerr</string>
+    <string name="settingsMenu_aboutCommunityUrl">https://seerr.dev</string>
+    <string name="settingsMenu_aboutDescription">SeerrTV è ora guidato dalla comunità e creato con passione da collaboratori in tutto il mondo.</string>
+    <string name="settingsMenu_noUpdateAvailable">Nessun aggiornamento disponibile</string>
+    <string name="settingsMenu_appLanguageDescription">Lingua corrente dell\'app.</string>
+    <string name="settingsMenu_discoveryLanguageDescription">Lingua utilizzata per i contenuti di scoperta.</string>
+    <string name="settingsMenu_defaultRegionDescription">Regione predefinita utilizzata per i servizi di streaming.</string>
+    <string name="settingsMenu_folderSelectionDescription">Scegli se selezionare una cartella durante l\'invio delle richieste.</string>
+    <string name="settingsMenu_clockFormatDescription">Visualizza l\'ora nel formato a 12 o 24 ore.</string>
+    <string name="settingsMenu_trailerPlayerDescription">Riproduci i trailer all\'interno dell\'app o aprilo nell\'app YouTube.</string>
+    <string name="settingsMenu_toggleHint">Premi Invio o Destra per alternare.</string>
+    <string name="settingsMenu_checkForUpdateTitle">Verifica aggiornamenti</string>
+    <string name="settingsMenu_checkForUpdateDescription">Controlla se è disponibile una nuova versione dell\'app.</string>
+    <string name="settingsMenu_checkForUpdateHint">Premi Invio o Destra per verificare.</string>
+    <string name="settingsMenu_rightPanelPlaceholder">Seleziona un elemento per visualizzare o modificare le sue impostazioni.</string>
+    <string name="settingsMenu_loadingRegions">Caricamento regioni in corso...</string>
+    <string name="settingsMenu_trailerPlayer">Riproduttore trailer</string>
+    <string name="settingsMenu_trailerPlayer_youtubeApp">App YouTube</string>
+    <string name="settingsMenu_trailerPlayer_inApp">Riproduttore in-app</string>
+    <string name="settingsMenu_title">Impostazioni</string>
+    <string name="settingsMenu_username">Account</string>
+
+    <!-- User Profiles Strings -->
+    <string name="userProfiles_loadProfileInfoError">Impossibile caricare le informazioni del profilo</string>
+    <string name="userProfiles_settingsSummary_title">Gestione profili utente</string>
+    <string name="userProfiles_settingsSummary_noActiveProfile">Nessun profilo attivo.</string>
+    <string name="userProfiles_settingsSummary_currentProfile">Profilo attuale</string>
+    <string name="userProfiles_settingsSummary_manageHint">Premi Seleziona/Invio per visualizzare e gestire i profili.</string>
+    <string name="userProfiles_pinProtected">Protetto da PIN</string>
+    <string name="userProfiles_loadingProfileInfo">Caricamento informazioni profilo in corso...</string>
+    <string name="userProfiles_totalRequests">Richieste totali: %1$d</string>
+    <string name="userProfiles_movieRequests">Richieste film: %1$s</string>
+    <string name="userProfiles_seriesRequests">Richieste serie TV: %1$s</string>
+    <string name="userProfiles_quotaUnlimited">Illimitato</string>
+    <string name="userProfiles_quotaPerDays">%1$d ogni %2$d giorni</string>
+    <string name="userProfiles_selectProfile">Seleziona profilo</string>
+    <string name="userProfiles_enterPin">Inserisci PIN</string>
+    <string name="userProfiles_noProfilesConfigureServer">Nessun profilo presente. Configura il tuo server.</string>
+    <string name="userProfiles_incorrectPin">PIN errato</string>
+    <string name="userProfiles_keyDelete">CANC</string>
+    <string name="userProfiles_keyOk">OK</string>
+    <string name="userProfiles_actionConfigureApi">Configura API</string>
+    <string name="userProfiles_actionAvatarColor">Colore avatar</string>
+    <string name="userProfiles_actionClearPin">Rimuovi PIN</string>
+    <string name="userProfiles_actionSetPin">Imposta PIN</string>
+    <string name="userProfiles_actionDeleteProfile">Elimina profilo</string>
+    <string name="userProfiles_pinMinimumLengthError">Il PIN deve contenere almeno 4 cifre</string>
+    <string name="userProfiles_titleList">Profili utente</string>
+    <string name="userProfiles_titleManageProfile">Gestisci profilo</string>
+    <string name="userProfiles_titleSetProfilePin">Imposta PIN profilo</string>
+    <string name="userProfiles_titleDeleteProfile">Eliminare il profilo?</string>
+    <string name="userProfiles_noProfilesYet">Nessun profilo presente.</string>
+    <string name="userProfiles_noActiveProfileFound">Nessun profilo attivo trovato.</string>
+    <string name="userProfiles_deleteConfirmMessage">Vuoi eliminare il tuo profilo attivo? L\'operazione non può essere annullata.</string>
+    <string name="userProfiles_pinLabel">PIN</string>
+    <string name="userProfiles_active">Attivo</string>
+    <string name="userProfiles_addProfile">Aggiungi profilo</string>
+    
+    <!-- Splash Screen Strings -->
+    <string name="splashScreen_authenticating">Autenticazione in corso…</string>
+    <string name="splashScreen_checkingConnection">Verifica della connessione in corso…</string>
+    <string name="splashScreen_checkingForUpdates">Ricerca aggiornamenti in corso…</string>
+    <string name="splashScreen_errorAuthFailed">Errore di autenticazione: Accesso negato - Le credenziali non sono valide</string>
+    <string name="splashScreen_errorCloudflareRequired">Rilevata protezione Cloudflare</string>
+    <string name="splashScreen_errorConnectionFailed">Errore di connessione: Connessione non riuscita</string>
+    <string name="splashScreen_loadingConfiguration">Caricamento configurazione in corso…</string>
+    <string name="splashScreen_loadingRadarrConfig">Caricamento configurazione Radarr in corso…</string>
+    <string name="splashScreen_loadingSonarrConfig">Caricamento configurazione Sonarr in corso…</string>
+    <string name="splashScreen_noRadarrServersInfo">Radarr: Non configurato</string>
+    <string name="splashScreen_noServersInfo">Nessun server backend configurato - Modalità solo Overseerr/Jellyseerr/Seerr</string>
+    <string name="splashScreen_noSonarrServersInfo">Sonarr: Non configurato</string>
+    <string name="splashScreen_mediaServerDetected_plex">Rilevato media server Plex</string>
+    <string name="splashScreen_mediaServerDetected_jellyfin">Rilevato media server Jellyfin</string>
+    <string name="splashScreen_mediaServerDetected_emby">Rilevato media server Emby</string>
+    <string name="splashScreen_mediaServerNotConfigured">Nessun media server configurato</string>
+    <string name="splashScreen_radarrConfigComplete">Radarr: %1$d server - HD (%2$d) 4K (%3$d)</string>
+    <string name="splashScreen_ready">Pronto!</string>
+    <string name="splashScreen_sonarrConfigComplete">Sonarr: %1$d server - HD (%2$d) 4K (%3$d)</string>
+    <plurals name="splashScreen_sonarrConfigComplete_basic">
+        <item quantity="one">Sonarr: %1$d server</item>
+        <item quantity="other">Sonarr: %1$d server</item>
+    </plurals>
+    <plurals name="splashScreen_radarrConfigComplete_basic">
+        <item quantity="one">Radarr: %1$d server</item>
+        <item quantity="other">Radarr: %1$d server</item>
+    </plurals>
+    
+    <!-- Time Strings -->
+    <string name="time_dayAgo">1 giorno fa</string>
+    <string name="time_days">%1$d giorni</string>
+    <string name="time_daysAgo">%1$d giorni fa</string>
+    <string name="time_estimatedIn">Previsto tra</string>
+    <string name="time_hourAgo">1 ora fa</string>
+    <string name="time_hours">%1$d ore</string>
+    <string name="time_hoursAgo">%1$d ore fa</string>
+    <string name="time_justNow">proprio ora</string>
+    <string name="time_minuteAgo">1 minuto fa</string>
+    <string name="time_minutes">%1$d minuti</string>
+    <string name="time_minutesAgo">%1$d minuti fa</string>
+    <string name="time_monthAgo">1 mese fa</string>
+    <string name="time_monthsAgo">%1$d mesi fa</string>
+    <string name="time_secondAgo">1 secondo fa</string>
+    <string name="time_seconds">%1$d secondi</string>
+    <string name="time_secondsAgo">%1$d secondi fa</string>
+    <string name="time_yearAgo">1 anno fa</string>
+    <string name="time_yearsAgo">%1$d anni fa</string>
+    
+    <!-- Browse Screen Strings -->
+    <string name="browse_movies">Film</string>
+    <string name="browse_series">Serie TV</string>
+    <string name="topBar_profiles">Profili</string>
+    <string name="browse_noResults">Nessun risultato trovato</string>
+    
+    <!-- Sort Menu Strings -->
+    <string name="sort_title">Ordina per</string>
+    <string name="sort_popularity">Popolarità</string>
+    <string name="sort_releaseDate">Data di uscita</string>
+    <string name="sort_firstAirDate">Prima messa in onda</string>
+    <string name="sort_tmdbRating">Valutazione TMDB</string>
+    <string name="sort_title_az">Titolo A→Z</string>
+    
+    <!-- Filter Strings -->
+    <string name="filter_title">Filtri</string>
+    <string name="filter_clearAll">Cancella tutti i filtri</string>
+    
+    <!-- Filter Section Strings -->
+    <string name="filter_releaseDate">Data di uscita</string>
+    <string name="filter_genres">Generi</string>
+    <string name="filter_keywords">Parole chiave</string>
+    <string name="filter_excludeKeywords">Escludi parole chiave</string>
+    <string name="filter_searchKeywords">Cerca parole chiave…</string>
+    <string name="filter_selectedCount">%1$d selezionati</string>
+    <string name="filter_originalLanguage">Lingua originale</string>
+    <string name="filter_contentRating">Classificazione contenuti</string>
+    <string name="filter_runtime">Durata (minuti)</string>
+    <string name="filter_userScore">Punteggio utenti</string>
+    <string name="filter_voteCount">Numero di voti</string>
+    <string name="filter_studios">Studi</string>
+    <string name="filter_networks">Reti televisive</string>
+    <string name="filter_region">Regione</string>
+    <string name="filter_firstAirDate">Prima messa in onda</string>
+    <string name="filter_streamingServices">Servizi di streaming</string>
+    <string name="filter_comingSoon">In arrivo</string>
+    
+    <!-- Filter Control Strings -->
+    <string name="filter_from">Da</string>
+    <string name="filter_to">A</string>
+    
+    <!-- Language Names -->
+    <string name="language_english">Inglese</string>
+    <string name="language_spanish">Spagnolo</string>
+    <string name="language_french">Francese</string>
+    <string name="language_german">Tedesco</string>
+    <string name="language_portuguese">Portoghese</string>
+    <string name="language_japanese">Giapponese</string>
+    <string name="language_chinese">Cinese</string>
+    <string name="language_dutch">Olandese</string>
+    <string name="language_estonian">Estone</string>
+    <string name="language_hungarian">Ungherese</string>
+    <string name="language_italian">Italiano</string>
+
+    <!-- Other Filter Strings -->
+    <string name="filter_close">Chiudi</string>
+    <string name="filter_regionChangeConfirm">Aggiornare la regione di streaming predefinita a %1$s?</string>
+    <string name="filter_notSet">Non impostato</string>
+    <string name="filter_clearSelection">Cancella selezione</string>
+    <string name="filter_applyRange">Applica intervallo</string>
+    <string name="filter_clearFilter">Cancella filtro</string>
+    <string name="filter_clearAllDates">Cancella tutti i filtri di data</string>
+</resources>

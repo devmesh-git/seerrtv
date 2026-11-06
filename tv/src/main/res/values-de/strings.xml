@@ -432,6 +432,7 @@
     <string name="language_dutch">Niederländisch</string>
     <string name="language_estonian">Estnisch</string>
     <string name="language_hungarian">Ungarisch</string>
+    <string name="language_italian">Italienisch</string>
     
     <!-- Other Filter Strings -->
     <string name="filter_close">Schließen</string>
