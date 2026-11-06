@@ -7,6 +7,10 @@ on a download to open its existing media details page. Back returns to the previ
 The screen follows processing requests visible to the configured Seerr account. Posters
 and title translations come from the same media-details API used elsewhere in the app.
 
+![Downloads screen with synthetic queue data](images/downloads-preview.png)
+
+Preview uses synthetic downloads and a synthetic requester name, with existing media posters.
+
 ## Server requirements and limits
 
 Enable download tracking on the relevant Radarr/Sonarr services in Seerr. The TV app reads
