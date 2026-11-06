@@ -221,6 +221,7 @@ object CommonUtil {
         "de" -> "DE"
         "es" -> "ES"
         "fr" -> "FR"
+        "it" -> "IT"
         "ja" -> "JP"
         "nl" -> "NL"
         "pt" -> "PT"

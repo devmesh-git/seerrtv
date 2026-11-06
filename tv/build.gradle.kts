@@ -5,8 +5,8 @@ import java.util.Properties
 import java.util.zip.ZipFile
 
 // Single source for app version; used in defaultConfig and for direct-release APK naming
-val appVersionName = "0.35.0"
-val appVersionCode = 146
+val appVersionName = "0.35.1"
+val appVersionCode = 147
 
 plugins {
     // https://developer.android.com/jetpack/androidx/releases/hilt

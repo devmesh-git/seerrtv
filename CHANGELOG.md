@@ -4,7 +4,7 @@
 
 ### Added: Italian
 
-- **Change** – SeerrTV is now available in Italian. It covers every string in the app, and Italian can be picked as the app language and as the discovery language in Settings. "Italian" is also added to the language list in the ten existing languages.
+- **Change** – SeerrTV is now available in Italian. It covers every string in the app, and Italian can be picked as the app language and as the discovery language in Settings. "Italian" is also added to the language list in the ten existing languages. Italian as the discovery language uses Italy's release dates.
 
 - Credits to [@gstorelli](https://github.com/gstorelli) ([#17](https://github.com/devmesh-git/seerrtv/pull/17)).
 
