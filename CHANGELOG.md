@@ -1,5 +1,47 @@
 # Changelog
 
+## 0.35.0
+
+### Added: Download progress on posters and a live Requests row
+
+- **Request** – [#18](https://github.com/devmesh-git/seerrtv/issues/18) asked for a way to follow downloads from the TV, without opening Seerr, Radarr or Sonarr on another device. Download status was already shown on the media details screen and in the request popup, but only there, so it was easy to miss. [#19](https://github.com/devmesh-git/seerrtv/pull/19) proposed a separate Downloads screen with its own entry in the top bar. That PR is not merged: this release takes a smaller approach that shows the same information where requests already are. Thanks to [@eaqueiroz](https://github.com/eaqueiroz) for the issue and the PR. Its handling of season packs and progress values informed this one.
+
+- **Change** –
+  - A poster with an active download shows a progress pill (bar and percentage) along its bottom edge, in any row that carries the data: Recent Requests, discover rows and search. Purple is a regular download, blue a 4K-only one. The pill is solid so it reads over any poster. It is hidden on the poster in the request popup and on the media details screen, where the full download bar is already shown.
+  - A season pack is listed by Seerr once per episode with one shared `downloadId`. Its bytes count once. `DownloadStatus` now also reads Seerr's `downloadId` and `episode` fields.
+  - When the Recent Requests row loads, downloading titles are moved to the front. Everything else keeps the server's order.
+  - While home is on screen, the Recent Requests row keeps itself current:
+    - It re-reads `request?filter=processing` every 15 s while something is downloading and every 30 s otherwise. Download progress is updated in the cards in place, without reloading the row, so focus stays on the same card.
+    - It also reads the newest request and the total count (`request?filter=all&take=1&sort=added`). A request made or deleted anywhere else, such as the web app or another device, reloads the row on the next check, with downloading titles first. This happens even while the row is focused, so it always shows Seerr's current requests.
+    - A download that the row doesn't hold yet also reloads it.
+    - A title that leaves the processing list has its status fetched once, so the card switches to Available (or clears its pill) on its own.
+  - One cadence (`DownloadPolling`) is shared by the Recent Requests row, the media details screen and the request popup. Seerr refreshes download data once a minute (its download-sync job), so polling faster would only repeat the same numbers.
+  - It uses Seerr's existing request API only. Nothing connects to Radarr, Sonarr or a download client directly.
+
+### Fixed: Download progress in the request popup never moved
+
+- **Symptom** – With the request popup open on a downloading title, the percentage and the poster stayed at whatever they showed when it opened.
+
+- **Root cause** – The popup drew both from the details it was handed when it opened. Its `MediaDownloadStatus` was given no view model, so it polled through a separate Hilt instance into a cache that nothing on screen read.
+
+- **Fix** – The popup follows the shared poller's details for its title (`SeerrViewModel.liveMediaDetails`) and passes the screen's own view model. The poller's first cycle only reuses details fetched in the last 5 s, so a popup opened from details preloaded a minute earlier no longer starts behind the card it was opened from.
+
+### Fixed: The details screen checked downloads every 2 minutes
+
+- **Symptom** – With a download running, its progress on the details screen or in the request popup could lag by up to 2 minutes.
+
+- **Root cause** – The shared poller chose its interval from `_currentMediaDetails`, which is whichever title home or details showed last, not the title being polled. For the request popup that was a different title, so it fell back to the 120 s interval for titles with nothing in progress. It also only counted regular downloads, so a 4K-only download got the slow interval.
+
+- **Fix** – The interval is chosen from the polled title's own cached details, and a download in either tier counts.
+
+### Fixed: Home rows did not redraw a card whose content changed
+
+- **Symptom** – A card whose data changed while it stayed in place kept its old look until the app was restarted. For example, its status icon did not change, and download progress newly added for it did not appear.
+
+- **Root cause** – `EnhancedMediaCarousel` kept a snapshot of the row and rebuilt it only when the item count or the cards' IDs and positions changed. New data for the same cards was ignored.
+
+- **Fix** – The snapshot is also keyed on the items themselves. Lists compare element by element, so a row whose content is unchanged still reuses its snapshot.
+
 ## 0.34.2
 
 ### Fixed: The first card in a home row ended up half off screen

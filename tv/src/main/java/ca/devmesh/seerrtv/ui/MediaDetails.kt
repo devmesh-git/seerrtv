@@ -2282,6 +2282,7 @@ fun MediaDetails(
                                             isSelected = false,
                                             cardWidth = 200.dp,
                                             cardHeight = 300.dp,
+                                            showDownloadProgress = false,
                                             modifier = Modifier.fillMaxSize()
                                         )
                                     }

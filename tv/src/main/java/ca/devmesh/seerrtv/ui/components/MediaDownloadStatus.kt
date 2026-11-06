@@ -167,7 +167,7 @@ fun MediaDownloadStatus(
                         // Show all download statuses
                         downloadStatuses.forEachIndexed { index, statusWithType ->
                             // Use key to ensure stable identity for each status item
-                            key(statusWithType.downloadStatus.externalId) {
+                            key(statusWithType.stableKey) {
                                 if (index > 0) {
                                     Spacer(modifier = Modifier.height(1.dp))
                                 }
@@ -177,7 +177,7 @@ fun MediaDownloadStatus(
                     } else {
                         // Only show the first download status
                         downloadStatuses.firstOrNull()?.let { statusWithType ->
-                            key(statusWithType.downloadStatus.externalId) {
+                            key(statusWithType.stableKey) {
                                 RenderDownloadStatus(statusWithType)
                             }
                         }
@@ -206,7 +206,13 @@ private fun RenderDownloadStatus(downloadStatusWithType: DownloadStatusWithType)
 private data class DownloadStatusWithType(
     val downloadStatus: DownloadStatus,
     val type: DownloadType
-)
+) {
+    // externalId is the Radarr/Sonarr title id, shared by every episode of a series: key on the
+    // download and episode instead so items keep their identity as the list changes.
+    val stableKey: String
+        get() = "$type:${downloadStatus.downloadId ?: downloadStatus.externalId}:" +
+            "${downloadStatus.episode?.seasonNumber}:${downloadStatus.episode?.episodeNumber}:${downloadStatus.title}"
+}
 
 // Enum to distinguish between download types
 private enum class DownloadType {

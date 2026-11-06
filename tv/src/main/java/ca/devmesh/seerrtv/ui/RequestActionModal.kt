@@ -1,5 +1,8 @@
 package ca.devmesh.seerrtv.ui
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
+import kotlinx.coroutines.flow.flowOf
 import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
@@ -670,7 +673,23 @@ fun RequestActionModal(
                         }
 
                         is ApiResult.Success -> {
-                            val details = initialMediaDetails.data
+                            // Opens with a snapshot; follow the shared poller afterwards so the
+                            // poster pill and the download bar move while the modal is open.
+                            val liveDetails by remember(request.media.tmdbId, request.media.mediaType) {
+                                viewModel?.liveMediaDetails(
+                                    request.media.tmdbId.toString(),
+                                    request.media.mediaType.lowercase()
+                                ) ?: flowOf(null)
+                            }.collectAsState(initial = null)
+                            val details = liveDetails ?: initialMediaDetails.data
+                            val liveMedia = details.mediaInfo?.let { info ->
+                                request.media.copy(
+                                    downloadStatus = info.downloadStatus,
+                                    downloadStatus4k = info.downloadStatus4k,
+                                    status = info.status,
+                                    status4k = info.status4k
+                                )
+                            } ?: request.media
                             
                             // Prepare seasons data for display for TV series
                             val seasonsToDisplay = if (details.mediaType?.name?.lowercase() == "tv") {
@@ -706,11 +725,12 @@ fun RequestActionModal(
                                             posterPath = details.posterPath ?: "",
                                             backdropPath = details.backdropPath ?: "",
                                             overview = details.overview,
-                                            mediaInfo = request.media
+                                            mediaInfo = liveMedia
                                         ),
                                         context = context,
                                         imageLoader = imageLoader,
                                         isSelected = currentFocus == FocusState.MainMenu(-1),
+                                        showDownloadProgress = false,
                                         modifier = Modifier.fillMaxSize()
                                     )
                                 }
@@ -953,8 +973,6 @@ fun RequestActionModal(
                             }
 
 
-                            val downloadStatusList = request.media.downloadStatus
-                            Log.d("RequestActionModal","downloadStatusList: $downloadStatusList")
 
                             // Add spacing above the MediaDownloadStatus component
                             Spacer(modifier = Modifier.height(16.dp))
@@ -966,7 +984,10 @@ fun RequestActionModal(
                                 initialMediaDetails = details,
                                 showAllDownloads = true,
                                 filterBy4K = request.is4k,
-                                mediaDetailsState = ApiResult.Success(details)
+                                mediaDetailsState = ApiResult.Success(details),
+                                // The screen's own view model: a separate Hilt instance polled
+                                // into a cache nothing here was reading.
+                                mainViewModel = viewModel
                             )
                         }
                         is ApiResult.Error -> {

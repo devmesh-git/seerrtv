@@ -69,5 +69,14 @@ data class DownloadStatus(
     val sizeLeft: Long? = null,
     val status: String,
     val timeLeft: String? = null,
-    val title: String
+    val title: String,
+    // Seerr repeats one season-pack download once per episode, all with the same downloadId.
+    val downloadId: String? = null,
+    val episode: DownloadEpisode? = null
+)
+
+@Serializable
+data class DownloadEpisode(
+    val seasonNumber: Int,
+    val episodeNumber: Int
 )

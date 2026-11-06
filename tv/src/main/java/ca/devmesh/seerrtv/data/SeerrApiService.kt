@@ -2674,6 +2674,21 @@ class SeerrApiService @Inject constructor(
         }
     }
 
+    /**
+     * One page of approved requests whose media isn't fully available yet — everything that can
+     * be downloading. Separate from [getRequests] so polling never moves the Requests row's
+     * pagination. Seerr fills each media's downloadStatus from its once-a-minute download sync.
+     */
+    suspend fun getProcessingRequests(take: Int = 100): ApiResult<RequestResponse> =
+        executeApiCall("request?filter=processing&take=$take&skip=0&sort=modified")
+
+    /**
+     * The newest request and the total count, for spotting requests made or deleted elsewhere
+     * (the web app, another device) without reloading the Requests row on every check.
+     */
+    suspend fun getNewestRequest(): ApiResult<RequestResponse> =
+        executeApiCall("request?filter=all&take=1&skip=0&sort=added")
+
     suspend fun addToWatchlist(
         tmdbId: Int,
         mediaType: String,

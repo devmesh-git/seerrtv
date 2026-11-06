@@ -45,6 +45,7 @@ import ca.devmesh.seerrtv.model.Movie
 import ca.devmesh.seerrtv.model.Person
 import ca.devmesh.seerrtv.model.SearchResult
 import ca.devmesh.seerrtv.model.TV
+import ca.devmesh.seerrtv.model.activeDownloadProgress
 import ca.devmesh.seerrtv.R
 import coil3.compose.AsyncImage
 import coil3.ImageLoader
@@ -74,7 +75,9 @@ fun MediaCard(
     isSelected: Boolean,
     cardHeight: Dp = 185.dp,
     cardWidth: Dp = 134.dp,
-    showLabel: Boolean = false
+    showLabel: Boolean = false,
+    // Off where the screen already shows the full download bar beside the poster.
+    showDownloadProgress: Boolean = true
 ) {
     // State, not a delegated value: read inside graphicsLayer so the focus animation only
     // redraws the layer each frame instead of recomposing the whole card.
@@ -125,7 +128,8 @@ fun MediaCard(
                             imageLoader = imageLoader,
                             isSelected = isSelected,
                             cardHeight = cardHeight,
-                            cardWidth = cardWidth
+                            cardWidth = cardWidth,
+                            showDownloadProgress = showDownloadProgress
                         )
                         
                         if (showLabel) {
@@ -154,7 +158,8 @@ fun MediaCard(
                             imageLoader = imageLoader,
                             isSelected = isSelected,
                             cardHeight = cardHeight,
-                            cardWidth = cardWidth
+                            cardWidth = cardWidth,
+                            showDownloadProgress = showDownloadProgress
                         )
                         
                         if (showLabel) {
@@ -183,7 +188,8 @@ fun MediaCard(
                             imageLoader = imageLoader,
                             isSelected = isSelected,
                             cardHeight = cardHeight,
-                            cardWidth = cardWidth
+                            cardWidth = cardWidth,
+                            showDownloadProgress = showDownloadProgress
                         )
                         
                         if (showLabel) {
@@ -215,7 +221,8 @@ fun MediaCard(
                     imageLoader = imageLoader,
                     isSelected = isSelected,
                     cardHeight = cardHeight,
-                    cardWidth = cardWidth
+                    cardWidth = cardWidth,
+                    showDownloadProgress = showDownloadProgress
                 )
                 
                 if (showLabel) {
@@ -375,7 +382,8 @@ private fun StandardMediaCard(
     imageLoader: ImageLoader,
     isSelected: Boolean,
     cardHeight: Dp,
-    cardWidth: Dp
+    cardWidth: Dp,
+    showDownloadProgress: Boolean = true
 ) {
     var hasError by remember { mutableStateOf(false) }
     val hasImagePath = !posterPath.isNullOrBlank()
@@ -473,6 +481,19 @@ private fun StandardMediaCard(
             )
         }
         
+        // Download progress: the same data the details screen shows, surfaced on the poster so
+        // people find it without opening each title. 4K-only downloads get the 4K colour.
+        val downloadProgress = if (showDownloadProgress) mediaInfo?.activeDownloadProgress() else null
+        if (mediaInfo != null && downloadProgress != null) {
+            DownloadProgressPill(
+                progress = downloadProgress,
+                is4kOnly = mediaInfo.downloadStatus.isEmpty(),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(horizontal = 8.dp, vertical = 8.dp)
+            )
+        }
+
         // Status icon
         mediaInfo?.let { info ->
             val iconComposable = getMediaInfoIcon(info)
@@ -509,6 +530,43 @@ private fun StandardMediaCard(
                     )
             )
         }
+    }
+}
+
+@Composable
+private fun DownloadProgressPill(progress: Float, is4kOnly: Boolean, modifier: Modifier = Modifier) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .fillMaxWidth()
+            // Solid, not translucent: it has to read over any poster from across the room.
+            .background(Color(0xFF111827), RoundedCornerShape(8.dp))
+            .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(8.dp))
+            .padding(horizontal = 8.dp, vertical = 5.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(7.dp)
+                .background(Color(0xFF4B5563), RoundedCornerShape(4.dp))
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth(progress)
+                    .background(
+                        if (is4kOnly) Color(0xFF60A5FA) else Color(0xFF6964EE),
+                        RoundedCornerShape(4.dp)
+                    )
+            )
+        }
+        Spacer(modifier = Modifier.width(8.dp))
+        Text(
+            text = "${(progress * 100).toInt()}%",
+            color = Color.White,
+            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.labelMedium
+        )
     }
 }
 

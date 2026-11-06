@@ -213,12 +213,14 @@ class SeerrViewModel @Inject constructor(
         
         // Polling constants for automatic media details updates
         private const val MIN_UPDATE_INTERVAL_MS = 5000L         // Minimum time between updates
-        private const val FAST_UPDATE_INTERVAL_MS = 15_000L      // Fast polling when downloading every 15 seconds
-        private const val SLOW_UPDATE_INTERVAL_MS = 30_000L      // Slow polling when not downloading every 30 seconds
+        // Same cadence as the Requests row (see DownloadPolling)
+        private const val FAST_UPDATE_INTERVAL_MS = DownloadPolling.ACTIVE_MS
+        private const val SLOW_UPDATE_INTERVAL_MS = DownloadPolling.WAITING_MS
         private const val SETTLED_UPDATE_INTERVAL_MS = 120_000L  // Nothing pending or downloading (see determinePollingInterval)
         // Seerr MediaStatus values with nothing in progress: UNKNOWN (never requested), AVAILABLE,
         // BLOCKLISTED, DELETED. PENDING (2), PROCESSING (3) and PARTIALLY_AVAILABLE (4) can still change.
         private val SETTLED_MEDIA_STATUSES = setOf(1, 5, 6, 7)
+        private const val REUSE_SCREEN_FETCH_MS = 5_000L
         private const val MAX_FAILURE_COUNT = 3                  // Max failures before stopping updates
     }
 
@@ -1051,7 +1053,12 @@ class SeerrViewModel @Inject constructor(
                                         )
                                     }
                                     mediaList.clear()
-                                    mediaList.addAll(data.filterIsInstance<Media>())
+                                    val loaded = data.filterIsInstance<Media>()
+                                    mediaList.addAll(
+                                        if (category == MediaCategory.RECENT_REQUESTS) {
+                                            RequestDownloads.downloadingFirst(loaded)
+                                        } else loaded
+                                    )
                                 } else {
                                     // Filter out duplicates when loading more
                                     val existingIds = mediaList.map { it.id }.toSet()
@@ -1124,6 +1131,11 @@ class SeerrViewModel @Inject constructor(
 
                     _categoryData.value = _categoryData.value.toMutableMap().apply {
                         put(category, ApiResult.Success(mediaList.toList(), result.paginationInfo))
+                    }
+                    if (category == MediaCategory.RECENT_REQUESTS) {
+                        _requestDownloadPollMs.value = RequestDownloads.pollIntervalForRow(mediaList)
+                        // A fresh first page holds whatever changed on the server.
+                        if (!loadMore) _requestsRowStale.value = false
                     }
                     if (category == MediaCategory.WATCHLIST) {
                         syncWatchlistMembershipFromMediaList(mediaList)
@@ -2580,6 +2592,98 @@ class SeerrViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Live details for one title as the shared poller refreshes them, for views that open with a
+     * snapshot (the request modal) and need to follow the download afterwards.
+     */
+    fun liveMediaDetails(mediaId: String, mediaType: String): Flow<MediaDetails?> =
+        _mediaDetailsCache
+            .map { (it["$mediaId-$mediaType"]?.details as? ApiResult.Success<MediaDetails>)?.data }
+            .distinctUntilChanged()
+
+    private var requestsSnapshot: Pair<Int, Int?>? = null
+    // Set when Seerr has requests the Requests row doesn't show yet (or no longer has).
+    private val _requestsRowStale = MutableStateFlow(false)
+
+    private fun reloadRequestsRowIfStale() {
+        if (!_requestsRowStale.value) return
+        _requestsRowStale.value = false
+        Log.d("SeerrTV", "⬇️ Reloading Requests row for server-side changes")
+        refreshCategoryWithForce(MediaCategory.RECENT_REQUESTS)
+    }
+
+    private val _requestDownloadPollMs = MutableStateFlow<Long?>(null)
+    private val reloadedForDownloads = mutableSetOf<String>()
+
+    /** How often the home screen should refresh download progress in the Requests row; null = never. */
+    val requestDownloadPollMs: StateFlow<Long?> = _requestDownloadPollMs.asStateFlow()
+
+    /**
+     * Re-reads Seerr's processing requests and patches download progress into the Requests row
+     * in place. Never reorders or reloads the row, so the focused card stays put.
+     */
+    suspend fun refreshRequestDownloads() {
+        val category = MediaCategory.RECENT_REQUESTS
+        if (categoryLoadingState[category] == true) return
+        val processing = when (val result = apiService.getProcessingRequests()) {
+            is ApiResult.Success -> result.data.results
+            else -> return
+        }
+        _requestDownloadPollMs.value = RequestDownloads.pollIntervalForProcessing(processing)
+
+        // The row lists every request, so a request made or deleted anywhere else (web app,
+        // another device) means it is out of date. Compared by total count and newest request.
+        (apiService.getNewestRequest() as? ApiResult.Success)?.data?.let { newest ->
+            val latest = newest.pageInfo.results to newest.results.firstOrNull()?.id
+            val previous = requestsSnapshot
+            requestsSnapshot = latest
+            if (previous != null && previous != latest) {
+                Log.d("SeerrTV", "⬇️ Requests changed on the server ($previous -> $latest)")
+                _requestsRowStale.value = true
+            }
+        }
+
+        val current = categoryMediaLists[category] ?: return
+        val snapshot = current.toList()
+        val patch = RequestDownloads.patch(snapshot, processing)
+        var items = patch.items
+        // A download that left the queue was imported (or removed): fetch its real availability
+        // so the card's status icon changes too, not just the progress bar disappearing.
+        for (info in patch.finished) {
+            val details = if (info.mediaType == "movie") {
+                apiService.getMovieDetails(info.tmdbId.toString())
+            } else {
+                apiService.getTVDetails(info.tmdbId.toString())
+            }
+            (details as? ApiResult.Success)?.data?.mediaInfo?.let { fresh ->
+                items = RequestDownloads.applyStatus(items, fresh)
+            }
+        }
+        // A download the row doesn't show yet also means a reload, so it appears (sorted first).
+        // Remembered per title, so one that never makes the row's first page can't loop reloads.
+        val unseen = patch.newDownloads - reloadedForDownloads
+        if (unseen.isNotEmpty()) {
+            reloadedForDownloads += unseen
+            Log.d("SeerrTV", "⬇️ New download not in Requests row (${unseen.size})")
+            _requestsRowStale.value = true
+        }
+        // The row shows the server's current requests, even while the user is on it.
+        if (_requestsRowStale.value) {
+            reloadRequestsRowIfStale()
+            return
+        }
+        if (!patch.changed) return
+        // The row may have reloaded while we were waiting on the network.
+        if (categoryLoadingState[category] == true || current != snapshot) return
+        Log.d("SeerrTV", "⬇️ Requests row download progress updated (${processing.size} processing)")
+        current.clear()
+        current.addAll(items)
+        val pagination = (_categoryData.value[category] as? ApiResult.Success)?.paginationInfo
+        _categoryData.value = _categoryData.value.toMutableMap().apply {
+            put(category, ApiResult.Success(items, pagination))
+        }
+    }
+
     suspend fun deleteRequest(requestId: Int) {
         Log.d("SeerrTV", "Deleting request $requestId")
         try {
@@ -3390,11 +3494,15 @@ class SeerrViewModel @Inject constructor(
      * Determine the appropriate polling interval based on current state
      */
     private fun determinePollingInterval(): Long {
-        val currentDetails = (_currentMediaDetails.value as? ApiResult.Success<MediaDetails>)?.data
-        
-        // Check if media has download status
-        val hasDownloadStatus = currentDetails?.mediaInfo?.downloadStatus != null && 
-                currentDetails.mediaInfo.downloadStatus.isNotEmpty()
+        // Decide from the title being polled. _currentMediaDetails is whatever home or details
+        // last showed, which for the request modal is a different title (it read 120 s while the
+        // modal's own download was running).
+        val currentDetails = (pollingTmdbId to pollingMediaType).let { (id, type) ->
+            (_mediaDetailsCache.value["$id-$type"]?.details as? ApiResult.Success<MediaDetails>)?.data
+        }
+
+        // Either tier downloading counts: a 4K-only download used to get the slow interval.
+        val hasDownloadStatus = currentDetails?.mediaInfo?.hasActiveDownload() == true
         
         // Each poll makes Seerr fetch the title from TMDB, so titles with nothing in progress
         // (in either tier) are checked less often. A request made here refreshes right away.
@@ -3485,9 +3593,12 @@ class SeerrViewModel @Inject constructor(
                 }
                 // The details screen fetched this title moments before polling started; on the
                 // first cycle reuse that result instead of fetching the same details again.
+                // Only a fetch from the last few seconds counts: the request modal opens from
+                // details preloaded when the card was focused, often a minute old, which showed
+                // older download progress than the Requests row behind it until the next cycle.
                 val freshFromScreen = if (isInitialLoad) {
                     _mediaDetailsCache.value[cacheKey]
-                        ?.takeIf { currentTime - it.timestamp < DEFAULT_CACHE_TIME_MS }
+                        ?.takeIf { currentTime - it.timestamp < REUSE_SCREEN_FETCH_MS }
                         ?.details
                 } else null
                 val result = if (freshFromScreen != null && existingJob?.isActive != true) {

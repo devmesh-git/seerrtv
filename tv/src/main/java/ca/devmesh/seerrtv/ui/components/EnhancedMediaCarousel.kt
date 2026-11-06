@@ -984,7 +984,10 @@ fun <T> EnhancedMediaCarousel(
             }
         }.joinToString("|")
     }
-    val stableRowItems = remember(rowItems.size, rowItemsContentKey) {
+    // Keyed on the items themselves too: the content key only holds ids, so a refresh that
+    // changes a card in place (download progress, availability) kept drawing the old card.
+    // Lists compare element-wise, so an unchanged row still reuses its snapshot.
+    val stableRowItems = remember(rowItems.size, rowItemsContentKey, rowItems) {
         if (rowItems.isEmpty()) emptyList() else rowItems.toList()
     }
     // One key per item that stays the same while the item stays in the row. Keys used to

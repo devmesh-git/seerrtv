@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.navigation.NavController
 import ca.devmesh.seerrtv.BuildConfig
 import ca.devmesh.seerrtv.data.ApiResult
@@ -1665,6 +1666,21 @@ fun MainScreen(
 
     // Add lifecycle observer to detect when app comes back from background
     val lifecycleOwner = LocalLifecycleOwner.current
+
+    // Keeps the Requests row current while home is the visible screen (STARTED): download
+    // progress is patched into the cards in place, and requests made or deleted elsewhere
+    // reload the row.
+    val requestDownloadPollMs by viewModel.requestDownloadPollMs.collectAsState()
+    LaunchedEffect(lifecycleOwner, requestDownloadPollMs) {
+        val interval = requestDownloadPollMs ?: return@LaunchedEffect
+        lifecycleOwner.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            // Refresh first: coming back from details or another app should show current numbers.
+            while (true) {
+                viewModel.refreshRequestDownloads()
+                delay(interval)
+            }
+        }
+    }
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
