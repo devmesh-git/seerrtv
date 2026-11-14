@@ -435,6 +435,7 @@
     <string name="language_estonian">Estoniano</string>
     <string name="language_hungarian">Húngaro</string>
     <string name="language_italian">Italiano</string>
+    <string name="language_russian">Russo</string>
     
     <!-- Other Filter Strings -->
     <string name="filter_close">Fechar</string>

@@ -108,7 +108,7 @@ SeerrTV is an Android TV application that provides a comprehensive media browsin
 
 ### Localization & Internationalization
 - **Independent App Language** - User interface language is independent of Discovery Language
-- **Language Selection** - Choose from supported languages (English, German, Spanish, Estonian, French, Hungarian, Japanese, Dutch, Portuguese, Chinese)
+- **Language Selection** - Choose from supported languages (English, German, Spanish, Estonian, French, Hungarian, Japanese, Dutch, Portuguese, Chinese, Italian, Russian)
 - **On-the-Fly Language Change** - Switch UI language from the Settings screen without restarting
 - **Automatic Migration** - Existing users automatically use system default language (if supported) or English
 - **Regional Settings** - Default streaming region setting for watch providers and content ratings

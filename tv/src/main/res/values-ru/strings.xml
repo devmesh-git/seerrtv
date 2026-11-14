@@ -1,0 +1,522 @@
+<resources>    
+    <!-- App Strings -->
+    <string name="app_name">SeerrTV</string>
+    
+    <!-- Carousel Section Strings -->
+    <string name="carouselSection_error_loadingFailed">Ошибка загрузки материалов</string>
+    <string name="carouselSection_error_noMediaFound">В этой категории ничего не найдено</string>
+    
+    <!-- Category Strings -->
+    <string name="category_movieGenres">Жанры фильмов</string>
+    <string name="category_networks">Телеканалы</string>
+    <string name="category_popularMovies">Популярные фильмы</string>
+    <string name="category_popularSeries">Популярные сериалы</string>
+    <string name="category_recentlyAdded">Недавно добавленные</string>
+    <string name="category_recentRequests">Недавние запросы</string>
+    <string name="category_seriesGenres">Жанры сериалов</string>
+    <string name="category_studios">Студии</string>
+    <string name="category_trending">В тренде</string>
+    <string name="category_watchlist">Ваш список просмотра</string>
+    <string name="action_add_to_watchlist">Добавить в список просмотра</string>
+    <string name="action_remove_from_watchlist">Удалить из списка просмотра</string>
+    <string name="watchlist_added_success">Добавлено в список просмотра</string>
+    <string name="watchlist_removed_success">Удалено из списка просмотра</string>
+    <string name="watchlist_update_failed">Не удалось обновить список просмотра</string>
+    <string name="category_upcomingMovies">Ожидаемые фильмы</string>
+    <string name="category_upcomingSeries">Ожидаемые сериалы</string>
+    
+    <!-- Common Strings -->
+    <string name="common_apiKey">API-ключ</string>
+    <string name="common_areYouSure">Вы уверены?</string>
+    <string name="common_cancel">Отмена</string>
+    <string name="common_collectionLabel">КОЛЛЕКЦИЯ</string>
+    <string name="common_devmeshLogo">Логотип DevMesh</string>
+    <string name="common_email">Эл. почта</string>
+    <string name="common_error">Ошибка</string>
+    <string name="common_loadingMore">Загрузка…</string>
+    <string name="common_mediaPoster">Постер</string>
+    <string name="common_movieLabel">ФИЛЬМ</string>
+    <string name="common_notRequested">Не запрошено</string>
+    <string name="common_personLabel">ПЕРСОНА</string>
+    <string name="common_processing">В обработке</string>
+    <string name="common_readLess">Свернуть</string>
+    <string name="common_readMore">Читать далее</string>
+    <string name="common_requested">Запрошено</string>
+    <string name="common_search">Поиск</string>
+    <string name="common_seriesLabel">СЕРИАЛ</string>
+    <string name="common_success">Готово</string>
+    <string name="common_unknown">Неизвестно</string>
+    <string name="common_versionPrefix">v</string>
+    <string name="common_yes">Да</string>
+    <string name="common_no">Нет</string>
+    
+    <!-- Config Screen Strings -->
+    <string name="configScreen_apiKeyHelp">Введите API-ключ из настроек сервера</string>
+    <string name="auth_error_unexpected_response">Сервер вернул неожиданный ответ. Возможно, на нём установлена несовместимая версия.</string>
+    <string name="configScreen_authenticationFailed">Ошибка аутентификации</string>
+    <string name="configScreen_authFailedMessage">Учётные данные недействительны. Возможно, пароль изменён или доступ отозван. Настройте подключение заново с верными данными.</string>
+    <string name="configScreen_authMethod">Способ аутентификации</string>
+    <string name="configScreen_authMethodHelp">Выберите, как выполнять вход на сервере</string>
+    <string name="configScreen_authTypeEmby">Emby</string>
+    <string name="configScreen_authTypeJellyfin">Jellyfin</string>
+    <string name="configScreen_authTypeLocalUser">@string/configScreen_localUser</string>
+    <string name="configScreen_authTypePlex">Plex</string>
+    <string name="configScreen_browserBasedConfiguration">Настройка через браузер</string>
+    <string name="configScreen_cloudflareClientId">Cloudflare Access: Client ID</string>
+    <string name="configScreen_cloudflareClientSecret">Cloudflare Access: Client Secret</string>
+    <string name="configScreen_cloudflareConfig">Настройка Cloudflare</string>
+    <string name="configScreen_cloudflareHelp">Сервер защищён Cloudflare Access. Введите данные доступа Cloudflare.</string>
+    <string name="configScreen_configInstructions">Отсканируйте QR-код телефоном или откройте указанный ниже адрес, чтобы настроить SeerrTV</string>
+    <string name="configScreen_configServiceUnavailable">ОШИБКА: сервис настройки недоступен. Повторите попытку позже.</string>
+    <string name="configScreen_configSuccess">Настройка завершена!</string>
+    <string name="configScreen_connecting">Подключение к сервису настройки SeerrTV…</string>
+    <string name="configScreen_connectionFailed">Не удалось подключиться</string>
+    <string name="configScreen_connectionTimeout">Время ожидания истекло — сервер недоступен</string>
+    <string name="configScreen_displayName">Отображаемое имя</string>
+    <string name="configScreen_embyConfig">Настройка Emby</string>
+    <string name="configScreen_embyHelp">Введите данные учётной записи Emby. Они будут использоваться для входа на медиасервер.</string>
+    <string name="configScreen_hostname">Имя хоста</string>
+    <string name="configScreen_hostnameHelp">Введите имя хоста вашей службы Jellyseerr/Overseerr/Seerr:</string>
+    <string name="configScreen_jellyfinConfig">Настройка Jellyfin</string>
+    <string name="configScreen_jellyfinHelp">Введите данные сервера и учётной записи Jellyfin. Они будут использоваться для входа на медиасервер.</string>
+    <string name="configScreen_jellyfinHostname">Имя хоста сервера Jellyfin</string>
+    <string name="configScreen_jellyfinPort">Порт сервера</string>
+    <string name="configScreen_jellyfinUseSsl">Использовать SSL</string>
+    <string name="configScreen_jellyseerrDetected">Обнаружен сервер Jellyseerr!</string>
+    <string name="configScreen_seerrDetected">Обнаружен сервер Seerr!</string>
+    <string name="configScreen_localUser">Локальный пользователь</string>
+    <string name="configScreen_localUserHelp">Введите адрес эл. почты и пароль</string>
+    <string name="configScreen_loginSuccess">Вход выполнен!</string>
+    <string name="configScreen_manualConfiguration">Ручная настройка</string>
+    <string name="configScreen_next">Далее</string>
+    <string name="configScreen_orVisit">Или откройте:</string>
+    <string name="configScreen_overseerrDetected">Обнаружен сервер Overseerr!</string>
+    <string name="configScreen_password">Пароль</string>
+    <string name="configScreen_permissions">Разрешения</string>
+    <string name="configScreen_plexGettingPin">Получение PIN-кода Plex…</string>
+    <string name="configScreen_plexHelp">Войдите в учётную запись Plex, чтобы получить доступ к Overseerr/Jellyseerr/Seerr.</string>
+    <string name="configScreen_plexInstructions">Чтобы привязать учётную запись Plex, выполните следующие шаги:</string>
+    <string name="configScreen_plexPinCode">Введите этот код:</string>
+    <string name="configScreen_plexTitle">Аутентификация Plex</string>
+    <string name="configScreen_plexVisitLink">Откройте эту ссылку на любом устройстве:</string>
+    <string name="configScreen_protocol">Протокол</string>
+    <string name="configScreen_protocolHttp">HTTP</string>
+    <string name="configScreen_protocolHttps">HTTPS</string>
+    <string name="configScreen_qrCode">QR-код для настройки</string>
+    <string name="configScreen_reconfigure">Настроить заново</string>
+    <string name="configScreen_retry">Повторить</string>
+    <string name="configScreen_seerrIcon">Значок Seerr</string>
+    <string name="configScreen_selectConfigurationMethod">Выберите способ настройки</string>
+    <string name="configScreen_serverConnection">Подключение к серверу</string>
+    <string name="configScreen_serverError">Ошибка сервера</string>
+    <string name="configScreen_testAndSave">Проверить и сохранить</string>
+    <string name="configScreen_unknownError">Произошла неизвестная ошибка</string>
+    <string name="configScreen_username">Имя пользователя</string>
+    <string name="configScreen_waitingAuth">Ожидание аутентификации…</string>
+    
+    <!-- Issue Strings -->
+    <string name="issue_add_comment_button">Добавить комментарий</string>
+    <string name="issue_add_comment_placeholder">Введите комментарий…</string>
+    <string name="issue_add_comment_title">Добавить комментарий к проблеме</string>
+    <string name="issue_additional_comment_title">Дополнительный комментарий</string>
+    <string name="issue_audio_language">Неверная звуковая дорожка</string>
+    <string name="issue_audio_missing">Нет звука</string>
+    <string name="issue_audio_quality">Плохое качество звука</string>
+    <string name="issue_audio_stuttering">Звук прерывается</string>
+    <string name="issue_audio_sync">Звук рассинхронизирован</string>
+    <string name="issue_button_report_issues">Сообщить о проблеме</string>
+    <string name="issue_button_view_issues">Проблемы</string>
+    <string name="issue_by_label"> от </string>
+    <string name="issue_common_issues_title">Частые проблемы (необязательно)</string>
+    <string name="issue_createdSuccessfully">Проблема отправлена</string>
+    <string name="issue_describe_placeholder">Опишите проблему…</string>
+    <string name="issue_details_title">Проблемы</string>
+    <string name="issue_episode">Эпизод</string>
+    <string name="issue_more_comments">Ещё комментариев: %1$d</string>
+    <string name="issue_new_issue_button">Новая проблема</string>
+    <string name="issue_no_issues_message">Для этого материала проблем не зарегистрировано.</string>
+    <string name="issue_none_option">Нет (только свой комментарий)</string>
+    <string name="issue_opened_label">Открыто </string>
+    <string name="issue_other_app_crash">Сбой приложения при воспроизведении</string>
+    <string name="issue_other_incorrect_metadata">Неверные метаданные</string>
+    <string name="issue_other_missing_content">Отсутствует контент</string>
+    <string name="issue_other_other">Другая проблема</string>
+    <string name="issue_other_wrong_content">Не тот фильм или эпизод</string>
+    <string name="issue_press_back_to_close">Нажмите «Назад», чтобы закрыть</string>
+    <string name="issue_report_title">Сообщить о проблеме</string>
+    <string name="issue_season_episode_title">Сезон и эпизод</string>
+    <string name="issue_season">Сезон</string>
+    <string name="issue_status_label">Статус</string>
+    <string name="issue_status_open">Открыта</string>
+    <string name="issue_status_resolved">Решена</string>
+    <string name="issue_submit_button">Отправить</string>
+    <string name="issue_subtitle_display">Субтитры не отображаются</string>
+    <string name="issue_subtitle_language">Неверный язык субтитров</string>
+    <string name="issue_subtitle_missing">Субтитры отсутствуют</string>
+    <string name="issue_subtitle_quality">Плохое качество субтитров</string>
+    <string name="issue_subtitle_sync">Субтитры рассинхронизированы</string>
+    <string name="issue_type_audio">Звук</string>
+    <string name="issue_type_label">Тип</string>
+    <string name="issue_type_other">Другое</string>
+    <string name="issue_type_subtitle">Субтитры</string>
+    <string name="issue_type_title">Тип проблемы</string>
+    <string name="issue_type_video">Видео</string>
+    <string name="issue_video_aspect">Неверное соотношение сторон</string>
+    <string name="issue_video_playback">Видео не воспроизводится</string>
+    <string name="issue_video_quality">Плохое качество видео</string>
+    <string name="issue_video_stuttering">Видео прерывается или зависает</string>
+    <string name="issue_video_sync">Видео рассинхронизировано</string>
+    
+    <!-- Main Screen Strings -->
+    <string name="mainScreen_loading_pleaseWait">Подождите</string>
+    <string name="mainScreen_mediaBackdrop">Фон материалов</string>
+    <string name="mainScreen_pressBackAgainToExit">Нажмите «Назад» ещё раз, чтобы выйти</string>
+    <string name="mainScreen_pressUpToRefresh">Нажмите вверх, чтобы обновить все категории</string>
+    <string name="mainScreen_refreshed">Обновлено!</string>
+    <string name="mainScreen_settings">Настройки</string>
+    <string name="mainScreen_appsRow">Приложения</string>
+    <string name="mainScreen_appOrderSaved">Порядок приложений сохранён</string>
+    <string name="mainScreen_reorderModeHint">Перемещение: влево/вправо — двигать, Enter или «Назад» — сохранить</string>
+    <string name="mainScreen_appsRowReorderTitle">Приложения (порядок)</string>
+    
+    <!-- Media Details Strings -->
+    <string name="mediaDetails_cast">В ролях</string>
+    <string name="mediaDetails_crew">Съёмочная группа</string>
+    <string name="mediaDetails_errorSubmittingRequest">Ошибка отправки запроса: %1$s</string>
+    <string name="mediaDetails_information">Информация</string>
+    <string name="mediaDetails_embyNotFound">Приложение Emby не найдено. Установите Emby из Play Store.</string>
+    <string name="mediaDetails_jellyfinNotFound">Приложение Jellyfin не найдено. Установите Jellyfin из Play Store.</string>
+    <string name="mediaDetails_manageRequest">Управление запросом</string>
+    <string name="mediaDetails_minutes">мин.</string>
+    <string name="mediaDetails_noMediaPlayerFound">На этом устройстве нет приложения для воспроизведения</string>
+    <string name="mediaDetails_ok">ОК</string>
+    <string name="mediaDetails_playOnEmby">Смотреть в Emby</string>
+    <string name="mediaDetails_playOnJellyfin">Смотреть в Jellyfin</string>
+    <string name="mediaDetails_playOnPlex">Смотреть в PLEX</string>
+    <string name="mediaDetails_plexNotFound">Приложение Plex не найдено. Установите Plex из Play Store.</string>
+    <string name="mediaDetails_requestMore">Запросить ещё</string>
+    <string name="mediaDetails_similarMovies">Похожие фильмы</string>
+    <string name="mediaDetails_similarSeries">Похожие сериалы</string>
+    <string name="mediaDetails_tvSeries">Сериал</string>
+    <string name="mediaDetails_unknownDuration">Неизвестно</string>
+    <string name="mediaDetails_unknownError">Неизвестная ошибка</string>
+    <string name="mediaDetails_unknownTitle">Неизвестное название</string>
+    <string name="mediaDetails_unknownType">Неизвестный тип материала</string>
+    <string name="mediaDetails_watchTrailer">Смотреть трейлер</string>
+    <string name="mediaDetails_youTubeNotFound">Приложение YouTube не найдено. Установите YouTube из Play Store.</string>
+    
+    <!-- Media Discovery Strings -->
+    <string name="mediaDiscovery_movieKeywordSearch">Фильмы с ключевым словом</string>
+    <string name="mediaDiscovery_noImage">Нет изображения</string>
+    <string name="mediaDiscovery_noResults">Ничего не найдено. Измените условия поиска и попробуйте снова.</string>
+    <string name="mediaDiscovery_personImage">Фото персоны</string>
+    <string name="mediaDiscovery_searchPlaceholder">Поиск фильмов и сериалов</string>
+    <string name="mediaDiscovery_searchResults">Результаты поиска</string>
+    <string name="mediaDiscovery_tvKeywordSearch">Сериалы с ключевым словом</string>
+    
+    <!-- Media Info Table Strings -->
+    <string name="mediaInfoTable_budget">Бюджет</string>
+    <string name="mediaInfoTable_currentlyStreamingOn">Сейчас доступно на</string>
+    <string name="mediaInfoTable_firstAirDate">Дата премьеры</string>
+    <string name="mediaInfoTable_lastAirDate">Дата последнего эфира</string>
+    <string name="mediaInfoTable_more">ещё</string>
+    <string name="mediaInfoTable_network">Телеканал</string>
+    <string name="mediaInfoTable_notApplicable">Н/Д</string>
+    <string name="mediaInfoTable_numberOfEpisodes">Кол-во эпизодов</string>
+    <string name="mediaInfoTable_numberOfSeasons">Кол-во сезонов</string>
+    <string name="mediaInfoTable_originalTitle">Оригинальное название</string>
+    <string name="mediaInfoTable_productionCountry">Страна производства</string>
+    <string name="mediaInfoTable_releaseDate">Дата выхода</string>
+    <string name="mediaInfoTable_releaseDateTheatrical">Кинотеатры</string>
+    <string name="mediaInfoTable_releaseDateDigital">Цифровой релиз</string>
+    <string name="mediaInfoTable_releaseDatePhysical">Носители</string>
+    <string name="mediaInfoTable_revenue">Сборы</string>
+    <string name="mediaInfoTable_rottenTomatoesRating">Рейтинг Rotten Tomatoes</string>
+    <string name="mediaInfoTable_status">Статус</string>
+    <string name="mediaInfoTable_studios">Студии</string>
+    <string name="mediaInfoTable_tmdbRating">Рейтинг TMDB</string>
+    
+    <!-- Person Screen Strings -->
+    <string name="personScreen_alsoKnownAs">Также известен как</string>
+    <string name="personScreen_born">Дата рождения</string>
+    <string name="personScreen_crew">Съёмочная группа</string>
+    <string name="personScreen_knownFor">Известен по</string>
+    <string name="personScreen_personProfile">Профиль персоны</string>
+    <string name="personScreen_yearsOld">лет</string>
+    
+    <!-- Request Action Strings -->
+    <string name="requestAction_approve">Одобрить</string>
+    <string name="requestAction_by">от</string>
+    <string name="requestAction_decline">Отклонить</string>
+    <string name="requestAction_delete">Удалить</string>
+    <string name="requestAction_mediaStatus">Статус материала</string>
+    <string name="requestAction_modified">Изменено</string>
+    <string name="requestAction_removeFromRadarr">Удалить из Radarr</string>
+    <string name="requestAction_removeFromSonarr">Удалить из Sonarr</string>
+    <string name="requestAction_requestStatus">Статус запроса</string>
+    <string name="requestAction_unknownMediaType">Неизвестный тип материала</string>
+    <string name="requestAction_unknownProfile">Неизвестный профиль</string>
+    
+    <!-- Request Modal Strings -->
+    <string name="requestModal_episodes">Эпизоды</string>
+    <string name="requestModal_errorLookingUpSeries">Ошибка поиска сериала: %1$s</string>
+    <string name="requestModal_errorSubmittingRequest">Ошибка отправки запроса</string>
+    <string name="requestModal_folderMenu">Корневая папка</string>
+    <string name="requestModal_freeSpace">свободно %1$s</string>
+    <string name="requestModal_lookupError">Ошибка поиска сериала</string>
+    <string name="requestModal_lookupLoading">Поиск сериала…</string>
+    <string name="requestModal_noSeriesFound">Сериалы не найдены</string>
+    <string name="requestModal_notSelected">Не выбрано</string>
+    <string name="requestModal_qualityMenu">Профиль качества</string>
+    <string name="requestModal_requestedSuccessfully">Запрос успешно отправлен!</string>
+    <string name="requestModal_requestSeriesTitle">Запросить сериал</string>
+    <string name="requestModal_season">Сезон</string>
+    <string name="requestModal_seasonsMenu">Сезоны</string>
+    <string name="requestModal_selected">Выбрано</string>
+    <string name="requestModal_selectQualityProfile">Выберите профиль качества</string>
+    <string name="requestModal_selectRootFolder">Выберите корневую папку</string>
+    <string name="requestModal_selectSeasonError">Выберите хотя бы один сезон</string>
+    <string name="requestModal_selectServer">Выберите сервер</string>
+    <string name="requestModal_selectTags">Выберите теги</string>
+    <string name="requestModal_serverMenu">Сервер</string>
+    <string name="requestModal_submit">Запросить</string>
+    <string name="requestModal_success">@string/common_success</string>
+    <string name="requestModal_tag">Тег</string>
+    <string name="requestModal_tagsMenu">Теги</string>
+    <string name="requestModal_title">Запрос материала</string>
+    <string name="requestModal_unableToMatch">Не удалось автоматически сопоставить этот сериал. Выберите правильный вариант ниже.</string>
+    
+    <!-- Request Status Strings -->
+    <string name="requestStatus_approved">Одобрено</string>
+    <string name="requestStatus_available">Доступно</string>
+    <!-- Seerr renamed "blacklist" to "blocklist"; the resource key is kept so the 25 translated
+         locales keep resolving. Only the English copy follows the new naming. -->
+    <string name="requestStatus_blacklisted">В блок-листе</string>
+    <string name="requestStatus_completed">Завершено</string>
+    <string name="requestStatus_declined">Отклонено</string>
+    <string name="requestStatus_deleted">Удалено</string>
+    <string name="requestStatus_failed">Ошибка</string>
+    <string name="requestStatus_notRequested">Не запрошено</string>
+    <string name="requestStatus_partiallyAvailable">Частично доступно</string>
+    <string name="requestStatus_pending">Ожидает</string>
+    
+    <!-- Settings Menu Strings -->
+    <string name="settingsMenu_12Hour">12 часов</string>
+    <string name="settingsMenu_24Hour">24 часа</string>
+    <string name="settingsMenu_aboutMenu">О приложении</string>
+    <string name="settingsMenu_diagnostics">Диагностика</string>
+    <string name="settingsMenu_diagnosticsDescription">Проблемы, зафиксированные приложением во время работы. Пригодятся при сообщении об ошибке.</string>
+    <string name="diagnostics_none">Проблем не зафиксировано</string>
+    <string name="diagnostics_count">Зафиксировано: %1$d</string>
+    <string name="diagnostics_clear">Очистить всё</string>
+    <string name="diagnostics_clearConfirmPrompt">Очистить все зафиксированные проблемы?</string>
+    <string name="diagnostics_clearConfirm">Да, очистить</string>
+    <string name="diagnostics_clearCancel">Отмена</string>
+    <string name="diagnostics_emptyHint">С момента последней очистки ничего не пошло не так.</string>
+    <string name="diagnostics_categoryImageLoad">Загрузка изображения</string>
+    <string name="diagnostics_categoryServerRequest">Запрос к серверу</string>
+    <string name="diagnostics_categoryServerResponse">Ответ сервера</string>
+    <string name="diagnostics_categorySignIn">Вход в систему</string>
+    <string name="diagnostics_openHint">Нажмите ОК на записи, чтобы увидеть подробности</string>
+    <string name="diagnostics_detailTitle">Подробности</string>
+    <string name="diagnostics_repeated">Повторено %1$d раз</string>
+    <string name="diagnostics_appVersion">Версия приложения %1$s</string>
+    <string name="diagnostics_backHint">Нажмите «Назад», чтобы вернуться к списку</string>
+    <string name="settingsMenu_appLanguage">Язык приложения</string>
+    <string name="settingsMenu_authType">Тип аутентификации</string>
+    <string name="settingsMenu_clockFormat">Формат времени</string>
+    <string name="settingsMenu_configMenu">API конфигурации</string>
+    <string name="settingsMenu_userProfiles">Профили пользователей</string>
+    <string name="settingsMenu_debugMode">Режим отладки</string>
+    <string name="settingsMenu_disabled">Выключено</string>
+    <string name="settingsMenu_discoveryMenu">Язык контента</string>
+    <string name="settingsMenu_defaultStreamingRegion">Регион стриминга по умолчанию</string>
+    <string name="settingsMenu_edit">ИЗМЕНИТЬ</string>
+    <string name="settingsMenu_enabled">Включено</string>
+    <string name="settingsMenu_folderSelection">Выбор папки</string>
+    <string name="settingsMenu_hostname">Имя хоста</string>
+    <string name="settingsMenu_mediaServerType">Медиасервер</string>
+    <string name="settingsMenu_mediaServerTypeEmby">Emby</string>
+    <string name="settingsMenu_mediaServerTypeJellyfin">Jellyfin</string>
+    <string name="settingsMenu_mediaServerTypeNotConfigured">Не настроен</string>
+    <string name="settingsMenu_mediaServerTypePlex">Plex</string>
+    <string name="settingsMenu_serverType">Тип сервера</string>
+    <string name="settingsMenu_thankYou">Спасибо за поддержку нашего продукта.</string>
+    <string name="settingsMenu_aboutIntro">Спасибо всем, кто внёс вклад в SeerrTV и экосистему Seerr.</string>
+    <string name="settingsMenu_aboutOriginalAuthorLabel">Оригинальный автор</string>
+    <string name="settingsMenu_aboutOriginalAuthorUrl">devmesh.ca</string>
+    <string name="settingsMenu_aboutCommunityLabel">Сообщество Seerr</string>
+    <string name="settingsMenu_aboutCommunityUrl">https://seerr.dev</string>
+    <string name="settingsMenu_aboutDescription">Теперь SeerrTV развивается сообществом — его с любовью делают участники со всего мира.</string>
+    <string name="settingsMenu_noUpdateAvailable">Обновлений нет</string>
+    <string name="settingsMenu_appLanguageDescription">Текущий язык приложения.</string>
+    <string name="settingsMenu_discoveryLanguageDescription">Язык названий и описаний в каталоге.</string>
+    <string name="settingsMenu_defaultRegionDescription">Регион по умолчанию для стриминговых сервисов.</string>
+    <string name="settingsMenu_folderSelectionDescription">Выбирать ли папку при создании запросов.</string>
+    <string name="settingsMenu_clockFormatDescription">Показывать время в 12- или 24-часовом формате.</string>
+    <string name="settingsMenu_trailerPlayerDescription">Смотреть трейлеры в приложении или в YouTube.</string>
+    <string name="settingsMenu_toggleHint">Нажмите Enter или вправо, чтобы переключить.</string>
+    <string name="settingsMenu_checkForUpdateTitle">Проверить обновления</string>
+    <string name="settingsMenu_checkForUpdateDescription">Проверить, доступна ли новая версия приложения.</string>
+    <string name="settingsMenu_checkForUpdateHint">Нажмите Enter или вправо, чтобы проверить.</string>
+    <string name="settingsMenu_rightPanelPlaceholder">Выберите пункт, чтобы посмотреть или изменить его настройки.</string>
+    <string name="settingsMenu_loadingRegions">Загрузка регионов…</string>
+    <string name="settingsMenu_trailerPlayer">Трейлеры</string>
+    <string name="settingsMenu_trailerPlayer_youtubeApp">Приложение YouTube</string>
+    <string name="settingsMenu_trailerPlayer_inApp">В приложении</string>
+    <string name="settingsMenu_title">Настройки</string>
+    <string name="settingsMenu_username">Учётная запись</string>
+
+    <!-- User Profiles Strings -->
+    <string name="userProfiles_loadProfileInfoError">Не удалось загрузить данные профиля</string>
+    <string name="userProfiles_settingsSummary_title">Управление профилями</string>
+    <string name="userProfiles_settingsSummary_noActiveProfile">Нет активного профиля.</string>
+    <string name="userProfiles_settingsSummary_currentProfile">Текущий профиль</string>
+    <string name="userProfiles_settingsSummary_manageHint">Нажмите Select/Enter, чтобы посмотреть профили и управлять ими.</string>
+    <string name="userProfiles_pinProtected">Защищён PIN-кодом</string>
+    <string name="userProfiles_loadingProfileInfo">Загрузка данных профиля…</string>
+    <string name="userProfiles_totalRequests">Всего запросов: %1$d</string>
+    <string name="userProfiles_movieRequests">Запросы фильмов: %1$s</string>
+    <string name="userProfiles_seriesRequests">Запросы сериалов: %1$s</string>
+    <string name="userProfiles_quotaUnlimited">Без ограничений</string>
+    <string name="userProfiles_quotaPerDays">%1$d за %2$d дн.</string>
+    <string name="userProfiles_selectProfile">Выберите профиль</string>
+    <string name="userProfiles_enterPin">Введите PIN</string>
+    <string name="userProfiles_noProfilesConfigureServer">Профилей пока нет. Настройте сервер.</string>
+    <string name="userProfiles_incorrectPin">Неверный PIN</string>
+    <string name="userProfiles_keyDelete">УДАЛ</string>
+    <string name="userProfiles_keyOk">ОК</string>
+    <string name="userProfiles_actionConfigureApi">Настроить API</string>
+    <string name="userProfiles_actionAvatarColor">Цвет аватара</string>
+    <string name="userProfiles_actionClearPin">Убрать PIN</string>
+    <string name="userProfiles_actionSetPin">Задать PIN</string>
+    <string name="userProfiles_actionDeleteProfile">Удалить профиль</string>
+    <string name="userProfiles_pinMinimumLengthError">PIN должен содержать не менее 4 цифр</string>
+    <string name="userProfiles_titleList">Профили пользователей</string>
+    <string name="userProfiles_titleManageProfile">Управление профилем</string>
+    <string name="userProfiles_titleSetProfilePin">Задать PIN профиля</string>
+    <string name="userProfiles_titleDeleteProfile">Удалить профиль?</string>
+    <string name="userProfiles_noProfilesYet">Профилей пока нет.</string>
+    <string name="userProfiles_noActiveProfileFound">Активный профиль не найден.</string>
+    <string name="userProfiles_deleteConfirmMessage">Удалить активный профиль? Это действие нельзя отменить.</string>
+    <string name="userProfiles_pinLabel">PIN</string>
+    <string name="userProfiles_active">Активен</string>
+    <string name="userProfiles_addProfile">Добавить профиль</string>
+    
+    <!-- Splash Screen Strings -->
+    <string name="splashScreen_authenticating">Аутентификация…</string>
+    <string name="splashScreen_checkingConnection">Проверка подключения…</string>
+    <string name="splashScreen_checkingForUpdates">Проверка обновлений…</string>
+    <string name="splashScreen_errorAuthFailed">Ошибка аутентификации: доступ запрещён — неверные учётные данные</string>
+    <string name="splashScreen_errorCloudflareRequired">Обнаружена защита Cloudflare</string>
+    <string name="splashScreen_errorConnectionFailed">Ошибка подключения: не удалось подключиться</string>
+    <string name="splashScreen_loadingConfiguration">Загрузка конфигурации…</string>
+    <string name="splashScreen_loadingRadarrConfig">Загрузка конфигурации Radarr…</string>
+    <string name="splashScreen_loadingSonarrConfig">Загрузка конфигурации Sonarr…</string>
+    <string name="splashScreen_noRadarrServersInfo">Radarr: не настроен</string>
+    <string name="splashScreen_noServersInfo">Серверы не настроены — используется только режим Overseerr/Jellyseerr/Seerr</string>
+    <string name="splashScreen_noSonarrServersInfo">Sonarr: не настроен</string>
+    <string name="splashScreen_mediaServerDetected_plex">Обнаружен медиасервер Plex</string>
+    <string name="splashScreen_mediaServerDetected_jellyfin">Обнаружен медиасервер Jellyfin</string>
+    <string name="splashScreen_mediaServerDetected_emby">Обнаружен медиасервер Emby</string>
+    <string name="splashScreen_mediaServerNotConfigured">Медиасервер не настроен</string>
+    <string name="splashScreen_radarrConfigComplete">Radarr: серверов %1$d — HD (%2$d), 4K (%3$d)</string>
+    <string name="splashScreen_ready">Готово!</string>
+    <string name="splashScreen_sonarrConfigComplete">Sonarr: серверов %1$d — HD (%2$d), 4K (%3$d)</string>
+    <plurals name="splashScreen_sonarrConfigComplete_basic">
+        <item quantity="one">Sonarr: %1$d сервер</item>
+        <item quantity="few">Sonarr: %1$d сервера</item>
+        <item quantity="many">Sonarr: %1$d серверов</item>
+        <item quantity="other">Sonarr: %1$d сервера</item>
+    </plurals>
+    <plurals name="splashScreen_radarrConfigComplete_basic">
+        <item quantity="one">Radarr: %1$d сервер</item>
+        <item quantity="few">Radarr: %1$d сервера</item>
+        <item quantity="many">Radarr: %1$d серверов</item>
+        <item quantity="other">Radarr: %1$d сервера</item>
+    </plurals>
+    
+    <!-- Time Strings -->
+    <string name="time_dayAgo">1 день назад</string>
+    <string name="time_days">%1$d дн.</string>
+    <string name="time_daysAgo">%1$d дн. назад</string>
+    <string name="time_estimatedIn">Ожидается через</string>
+    <string name="time_hourAgo">1 час назад</string>
+    <string name="time_hours">%1$d ч.</string>
+    <string name="time_hoursAgo">%1$d ч. назад</string>
+    <string name="time_justNow">только что</string>
+    <string name="time_minuteAgo">1 минуту назад</string>
+    <string name="time_minutes">%1$d мин.</string>
+    <string name="time_minutesAgo">%1$d мин. назад</string>
+    <string name="time_monthAgo">1 месяц назад</string>
+    <string name="time_monthsAgo">%1$d мес. назад</string>
+    <string name="time_secondAgo">1 секунду назад</string>
+    <string name="time_seconds">%1$d сек.</string>
+    <string name="time_secondsAgo">%1$d сек. назад</string>
+    <string name="time_yearAgo">1 год назад</string>
+    <string name="time_yearsAgo">%1$d лет назад</string>
+    
+    <!-- Browse Screen Strings -->
+    <string name="browse_movies">Фильмы</string>
+    <string name="browse_series">Сериалы</string>
+    <string name="topBar_profiles">Профили</string>
+    <string name="browse_noResults">Ничего не найдено</string>
+    
+    <!-- Sort Menu Strings -->
+    <string name="sort_title">Сортировка</string>
+    <string name="sort_popularity">Популярность</string>
+    <string name="sort_releaseDate">Дата выхода</string>
+    <string name="sort_firstAirDate">Дата премьеры</string>
+    <string name="sort_tmdbRating">Рейтинг TMDB</string>
+    <string name="sort_title_az">Название А→Я</string>
+    
+    <!-- Filter Strings -->
+    <string name="filter_title">Фильтры</string>
+    <string name="filter_clearAll">Сбросить все фильтры</string>
+    
+    <!-- Filter Section Strings -->
+    <string name="filter_releaseDate">Дата выхода</string>
+    <string name="filter_genres">Жанры</string>
+    <string name="filter_keywords">Ключевые слова</string>
+    <string name="filter_excludeKeywords">Исключить ключевые слова</string>
+    <string name="filter_searchKeywords">Поиск ключевых слов…</string>
+    <string name="filter_selectedCount">Выбрано: %1$d</string>
+    <string name="filter_originalLanguage">Оригинальный язык</string>
+    <string name="filter_contentRating">Возрастной рейтинг</string>
+    <string name="filter_runtime">Длительность (мин.)</string>
+    <string name="filter_userScore">Оценка пользователей</string>
+    <string name="filter_voteCount">Количество голосов</string>
+    <string name="filter_studios">Студии</string>
+    <string name="filter_networks">Телеканалы</string>
+    <string name="filter_region">Регион</string>
+    <string name="filter_firstAirDate">Дата премьеры</string>
+    <string name="filter_streamingServices">Стриминговые сервисы</string>
+    <string name="filter_comingSoon">Скоро</string>
+    
+    <!-- Filter Control Strings -->
+    <string name="filter_from">От</string>
+    <string name="filter_to">До</string>
+    
+    <!-- Language Names -->
+    <string name="language_english">Английский</string>
+    <string name="language_spanish">Испанский</string>
+    <string name="language_french">Французский</string>
+    <string name="language_german">Немецкий</string>
+    <string name="language_portuguese">Португальский</string>
+    <string name="language_japanese">Японский</string>
+    <string name="language_chinese">Китайский</string>
+    <string name="language_dutch">Нидерландский</string>
+    <string name="language_estonian">Эстонский</string>
+    <string name="language_hungarian">Венгерский</string>
+    <string name="language_italian">Итальянский</string>
+    <string name="language_russian">Русский</string>
+
+    <!-- Other Filter Strings -->
+    <string name="filter_close">Закрыть</string>
+    <string name="filter_regionChangeConfirm">Сделать регион стриминга по умолчанию — %1$s?</string>
+    <string name="filter_notSet">Не задано</string>
+    <string name="filter_clearSelection">Сбросить выбор</string>
+    <string name="filter_applyRange">Применить диапазон</string>
+    <string name="filter_clearFilter">Сбросить фильтр</string>
+    <string name="filter_clearAllDates">Сбросить все фильтры по датам</string>
+</resources>
