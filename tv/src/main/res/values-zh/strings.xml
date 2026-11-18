@@ -251,6 +251,7 @@
     <string name="requestModal_errorLookingUpSeries">查找剧集时出错：%1$s</string>
     <string name="requestModal_errorSubmittingRequest">提交请求时出错</string>
     <string name="requestModal_folderMenu">根文件夹</string>
+    <string name="requestModal_freeSpace">可用 %1$s</string>
     <string name="requestModal_lookupError">查找剧集时出错</string>
     <string name="requestModal_lookupLoading">正在查找剧集...</string>
     <string name="requestModal_noSeriesFound">未找到剧集</string>

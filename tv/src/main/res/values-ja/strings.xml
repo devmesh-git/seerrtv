@@ -251,6 +251,7 @@
     <string name="requestModal_errorLookingUpSeries">シリーズ検索エラー: %1$s</string>
     <string name="requestModal_errorSubmittingRequest">リクエスト送信中にエラーが発生しました</string>
     <string name="requestModal_folderMenu">ルートフォルダ</string>
+    <string name="requestModal_freeSpace">空き %1$s</string>
     <string name="requestModal_lookupError">シリーズ検索エラー</string>
     <string name="requestModal_lookupLoading">シリーズを検索中...</string>
     <string name="requestModal_noSeriesFound">シリーズが見つかりません</string>

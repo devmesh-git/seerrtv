@@ -262,6 +262,7 @@
     <string name="requestModal_errorLookingUpSeries">Hiba a sorozat keresésekor: %1$s</string>
     <string name="requestModal_errorSubmittingRequest">Hiba a kérés elküldésekor</string>
     <string name="requestModal_folderMenu">Gyökérmappa</string>
+    <string name="requestModal_freeSpace">%1$s szabad</string>
     <string name="requestModal_lookupError">Hiba a sorozat keresésekor</string>
     <string name="requestModal_lookupLoading">Sorozat keresése...</string>
     <string name="requestModal_noSeriesFound">Nem található sorozat</string>

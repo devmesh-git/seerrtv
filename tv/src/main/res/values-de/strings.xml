@@ -251,6 +251,7 @@
     <string name="requestModal_errorLookingUpSeries">Fehler beim Suchen der Serie: %1$s</string>
     <string name="requestModal_errorSubmittingRequest">Fehler beim Einreichen der Anfrage</string>
     <string name="requestModal_folderMenu">Stammordner</string>
+    <string name="requestModal_freeSpace">%1$s frei</string>
     <string name="requestModal_lookupError">Fehler beim Suchen der Serie</string>
     <string name="requestModal_lookupLoading">Serie wird gesucht...</string>
     <string name="requestModal_noSeriesFound">Keine Serie gefunden</string>

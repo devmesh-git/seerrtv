@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.35.2
+
+### Added: Russian
+
+- **Change** – SeerrTV is now available in Russian. It covers every string in the app, and Russian can be picked as the app language and as the discovery language in Settings. "Russian" is also added to the language list in the eleven existing languages. Russian as the discovery language uses Russia's release dates.
+
+- Credits to [@Hellzeg](https://github.com/Hellzeg) ([#21](https://github.com/devmesh-git/seerrtv/pull/21)).
+
+### Fixed: Long words broke or ran together in buttons and menus
+
+- **Symptom** – With a longer language such as Russian: the Request button on the details screen and in the request popup split the word over two lines ("Запроси / ть"), and in Settings and the request popup a menu entry ran straight into its value with no space ("ДиагностикаПроблем не…").
+
+- **Root cause** – The buttons let their label wrap, and a single word too long for the button is broken mid-word. The menu rows put the value right after the title with no gap, and in Settings the title was not shortened when space ran out.
+
+- **Fix** – A button label that is one word stays on one line and shrinks just enough to fit. Labels with more than one word still wrap. Menu rows keep a gap between title and value. In Settings a short value such as "US" always shows in full, a long value is cut off with "…", and the title shortens only if it must.
+
+- **Verified** – On a Google TV emulator in Russian: Settings, the details screen and the request popup. In English the same screens look as in 0.35.1.
+
+### Fixed: "Free" on root folders was in English
+
+- **Symptom** – In the request popup's folder list, the free space under each root folder read "… free" in every language except Italian.
+
+- **Fix** – Translated in German, Spanish, Estonian, French, Hungarian, Japanese, Dutch, Portuguese and Chinese. Every language now has every string.
+
 ## 0.35.1
 
 ### Added: Italian

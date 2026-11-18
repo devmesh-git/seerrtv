@@ -251,6 +251,7 @@
     <string name="requestModal_errorLookingUpSeries">Fout bij opzoeken van serie: %1$s</string>
     <string name="requestModal_errorSubmittingRequest">Fout bij het indienen van aanvraag</string>
     <string name="requestModal_folderMenu">Hoofdmap</string>
+    <string name="requestModal_freeSpace">%1$s vrij</string>
     <string name="requestModal_lookupError">Fout bij opzoeken van serie</string>
     <string name="requestModal_lookupLoading">Serie opzoeken...</string>
     <string name="requestModal_noSeriesFound">Geen serie gevonden</string>

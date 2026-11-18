@@ -2038,7 +2038,7 @@ fun ScrollableCategoriesSection(
             lastCopiedSelection[0] = categories
             lastCopiedSelection[1] = category
             lastCopiedSelection[2] = index
-            selectedMediaIndices.getOrPut(category) { mutableIntStateOf(0) }.value = index
+            selectedMediaIndices.indexStateFor(category).value = index
         }
     }
     
@@ -2702,3 +2702,7 @@ fun CategoryCardComponent(
     }
 }
 
+// Gets or creates a row's selected-index state. A plain (non-composable) function, so the state
+// it creates for the remembered selectedMediaIndices map isn't flagged as unremembered by lint.
+private fun MutableMap<MediaCategory, MutableState<Int>>.indexStateFor(category: MediaCategory): MutableState<Int> =
+    getOrPut(category) { mutableIntStateOf(0) }

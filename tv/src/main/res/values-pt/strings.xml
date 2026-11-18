@@ -251,6 +251,7 @@
     <string name="requestModal_errorLookingUpSeries">Erro ao procurar série: %1$s</string>
     <string name="requestModal_errorSubmittingRequest">Erro ao enviar solicitação</string>
     <string name="requestModal_folderMenu">Pasta Raiz</string>
+    <string name="requestModal_freeSpace">%1$s livres</string>
     <string name="requestModal_lookupError">Erro ao procurar série</string>
     <string name="requestModal_lookupLoading">Procurando série...</string>
     <string name="requestModal_noSeriesFound">Nenhuma série encontrada</string>

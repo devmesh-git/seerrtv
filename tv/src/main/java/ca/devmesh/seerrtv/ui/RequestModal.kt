@@ -1480,10 +1480,17 @@ fun MenuOption(text: String, selectedValue: String, isSelected: Boolean, isFocus
                 }
             )
             .padding(vertical = 12.dp, horizontal = 16.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Text(text, color = Color.White)
-        Text(selectedValue, color = Color.LightGray, style = MaterialTheme.typography.bodySmall)
+        // Gap before the value, so a long label (e.g. Russian) never runs into it.
+        Spacer(modifier = Modifier.weight(1f).widthIn(min = 12.dp))
+        Text(
+            selectedValue,
+            color = Color.LightGray,
+            style = MaterialTheme.typography.bodySmall,
+            textAlign = TextAlign.End
+        )
     }
 }
 

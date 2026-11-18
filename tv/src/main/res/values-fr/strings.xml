@@ -251,6 +251,7 @@
     <string name="requestModal_errorLookingUpSeries">Erreur lors de la recherche de série : %1$s</string>
     <string name="requestModal_errorSubmittingRequest">Erreur lors de l\'envoi de la demande</string>
     <string name="requestModal_folderMenu">Dossier Racine</string>
+    <string name="requestModal_freeSpace">%1$s libres</string>
     <string name="requestModal_lookupError">Erreur lors de la recherche de série</string>
     <string name="requestModal_lookupLoading">Recherche de série...</string>
     <string name="requestModal_noSeriesFound">Aucune série trouvée</string>

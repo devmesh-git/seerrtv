@@ -833,17 +833,25 @@ fun MenuItem(item: MenuItem, isSelected: Boolean, isDimmed: Boolean = false) {
                 }
             )
             .padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
     ) {
+        // The value is measured first (capped in width), the title gets the rest, so a long
+        // title (e.g. Russian) neither runs into the value nor pushes a short one off screen.
         Text(
             text = item.title,
+            modifier = Modifier.weight(1f, fill = false),
             style = MaterialTheme.typography.bodyLarge,
-            color = if (isDimmed) Color.White.copy(alpha = 0.5f) else Color.White
+            color = if (isDimmed) Color.White.copy(alpha = 0.5f) else Color.White,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
-        Spacer(modifier = Modifier.weight(1f))
         if (item.value.isNotEmpty()) {
             Text(
                 text = item.value,
+                modifier = Modifier
+                    .padding(start = 8.dp)
+                    .widthIn(max = 160.dp),
                 style = MaterialTheme.typography.bodyMedium,
                 color = if (item.title == stringResource(R.string.settingsMenu_debugMode)) {
                     if (item.value == stringResource(R.string.settingsMenu_enabled)) Color(0xFF4CAF50) else Color.LightGray

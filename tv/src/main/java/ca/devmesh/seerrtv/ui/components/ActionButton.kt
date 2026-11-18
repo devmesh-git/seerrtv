@@ -1,5 +1,8 @@
 package ca.devmesh.seerrtv.ui.components
 
+import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.border
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.*
@@ -69,9 +72,18 @@ fun ActionButton(
                         textAlign = TextAlign.Center
                     )
                 ) {
+                    // One line, shrinking to fit: a long single-word label (e.g. Russian
+                    // "Запросить") would otherwise be broken mid-word in a half-width button.
                     Text(
                         text = text,
-                        color = if (enabled) contentColor else contentColor.copy(alpha = 0.5f)
+                        color = if (enabled) contentColor else contentColor.copy(alpha = 0.5f),
+                        maxLines = 1,
+                        autoSize = TextAutoSize.StepBased(
+                            minFontSize = 10.sp,
+                            maxFontSize = MaterialTheme.typography.bodyLarge.fontSize,
+                            stepSize = 0.5.sp
+                        ),
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }

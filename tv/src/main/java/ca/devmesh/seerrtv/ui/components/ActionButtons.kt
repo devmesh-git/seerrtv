@@ -1,5 +1,8 @@
 package ca.devmesh.seerrtv.ui.components
 
+import androidx.compose.foundation.text.TextAutoSize
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
 import android.content.Context
 import android.util.Log
 import androidx.compose.foundation.background
@@ -184,11 +187,7 @@ fun ActionRequestButton(
                             fontWeight = FontWeight.Bold
                         )
                     }
-                    Text(
-                        text = leftText,
-                        color = Color.White,
-                        style = MaterialTheme.typography.bodySmall
-                    )
+                    TierButtonLabel(leftText)
                 }
             }
 
@@ -226,11 +225,7 @@ fun ActionRequestButton(
                             fontWeight = FontWeight.Bold
                         )
                     }
-                    Text(
-                        text = rightText,
-                        color = Color.White,
-                        style = MaterialTheme.typography.bodySmall
-                    )
+                    TierButtonLabel(rightText)
                 }
             }
         }
@@ -380,11 +375,7 @@ fun ActionManageButton(
                             fontWeight = FontWeight.Bold
                         )
                     }
-                    Text(
-                        text = leftText,
-                        color = Color.White,
-                        style = MaterialTheme.typography.bodySmall
-                    )
+                    TierButtonLabel(leftText)
                 }
             }
 
@@ -422,11 +413,7 @@ fun ActionManageButton(
                             fontWeight = FontWeight.Bold
                         )
                     }
-                    Text(
-                        text = rightText,
-                        color = Color.White,
-                        style = MaterialTheme.typography.bodySmall
-                    )
+                    TierButtonLabel(rightText)
                 }
             }
         }
@@ -841,4 +828,20 @@ fun getActionButtonStates(
     )
 
     return states
+}
+
+// Label for one half of the split HD/4K button. Each half has only ~50dp for text: a phrase may
+// wrap to two lines, but a single long word (e.g. Russian "Запросить") would be broken mid-word,
+// so it stays on one line and shrinks just enough to fit.
+@Composable
+private fun TierButtonLabel(text: String) {
+    val style = MaterialTheme.typography.bodySmall
+    Text(
+        text = text,
+        color = Color.White,
+        style = style,
+        maxLines = if (text.trim().contains(' ')) 2 else 1,
+        autoSize = TextAutoSize.StepBased(minFontSize = 8.sp, maxFontSize = style.fontSize, stepSize = 0.5.sp),
+        overflow = TextOverflow.Ellipsis
+    )
 }
