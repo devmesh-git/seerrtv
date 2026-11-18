@@ -766,6 +766,19 @@ class MediaDiscoveryViewModel @Inject constructor(
     // Browse methods for Movies/Series screens
 
     /**
+     * True while the results held here are the browse list for [mediaType], with whatever pages
+     * have been appended to it. The browse screens use this on the way back from media details to
+     * tell "my list is still here" apart from "another target has reused this ViewModel".
+     */
+    fun isShowingBrowse(mediaType: MediaType): Boolean {
+        val mode = when (mediaType) {
+            MediaType.MOVIE -> DiscoveryMode.MOVIE_BROWSE
+            MediaType.TV -> DiscoveryMode.TV_BROWSE
+        }
+        return currentDiscoveryMode == mode && _searchResults.value.isNotEmpty()
+    }
+
+    /**
      * Browse movies with filters and sorting
      */
     fun browseMovies(filters: BrowseModels.MediaFilters, sort: BrowseModels.SortOption, loadMore: Boolean = false) {

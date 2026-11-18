@@ -295,6 +295,15 @@ fun MediaBrowseScreen(
     // for them raced that search and could overwrite its results with unfiltered discover data.
     LaunchedEffect(searchQuery) {
         if (searchQuery.isEmpty()) {
+            // Coming back from media details recomposes this screen, so this effect runs again with
+            // the same empty query. Browsing here would replace every page loaded so far with
+            // page 1: a position saved below that first page is then out of range, the restore
+            // gives up, and the grid lands at the end of page 1 with nothing selected (#20). The
+            // list is still in the ViewModel, so keep it. Uses `shouldRestorePosition` rather than
+            // the manager's flag, which the restore effect may already have cleared.
+            if (shouldRestorePosition && viewModel.isShowingBrowse(mediaType)) {
+                return@LaunchedEffect
+            }
             // Trigger browse with current filters and sort. Read the ViewModel directly: this runs
             // in the same frame as the initializer above, before the collected `currentFilters`
             // catches up, so after visiting the other browse screen it still held that screen's

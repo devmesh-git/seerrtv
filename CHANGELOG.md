@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.35.3
+
+### Fixed: Movies and Series lost their place after opening a title further down
+
+- **Symptom** – On the Movies or Series grid, opening a title below the first page of results and pressing Back did not return to it. The grid jumped back to the end of the first page with no card selected. Titles on the first page were restored correctly. Reported in [#20](https://github.com/devmesh-git/seerrtv/issues/20).
+
+- **Root cause** – Coming back from the details screen re-ran the effect that loads the grid, so it loaded page 1 again and replaced every page already loaded. The saved position was then past the end of the list, so the restore reset the selection to the first card, which was off screen.
+
+- **Fix** – On the way back from details, the grid keeps the list it already has, with all its pages, when it is still that screen's list. It only reloads when the list is gone, for example after a keyword or genre page reused it.
+
+- **Verified** – On a Google TV emulator: Movies row 13 and Series row 12, open a title, Back, the same card is selected in the same place. Scrolling on from there still loads the next pages, a card on the first page is still restored, and opening Movies or Series fresh from the top bar starts at the top.
+
+- Credits to [@lorenzooah](https://github.com/lorenzooah) for the report, the root cause and the fix.
+
 ## 0.35.2
 
 ### Added: Russian
