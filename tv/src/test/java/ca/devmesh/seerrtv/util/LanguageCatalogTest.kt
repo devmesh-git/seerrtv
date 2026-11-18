@@ -14,6 +14,12 @@ class LanguageCatalogTest {
     }
 
     @Test
+    fun `russian is included in supported languages`() {
+        assertTrue(LanguageCatalog.codes.contains("ru"))
+        assertEquals(R.string.language_russian, LanguageCatalog.nameRes("ru"))
+    }
+
+    @Test
     fun `all language codes are unique`() {
         val codes = LanguageCatalog.codes
         assertEquals(codes.toSet().size, codes.size)

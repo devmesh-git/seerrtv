@@ -26,6 +26,7 @@ object LanguageCatalog {
         "et" to R.string.language_estonian,
         "hu" to R.string.language_hungarian,
         "it" to R.string.language_italian,
+        "ru" to R.string.language_russian,
     )
 
     /** ISO codes in display order. */

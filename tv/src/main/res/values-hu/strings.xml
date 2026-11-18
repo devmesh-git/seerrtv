@@ -486,6 +486,7 @@
     <string name="language_estonian">Észt</string>
     <string name="language_hungarian">Magyar</string>
     <string name="language_italian">Olasz</string>
+    <string name="language_russian">Orosz</string>
 
     <!-- Other Filter Strings -->
     <string name="filter_close">Bezárás</string>

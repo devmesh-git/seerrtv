@@ -433,6 +433,7 @@
     <string name="language_estonian">Estisch</string>
     <string name="language_hungarian">Hongaars</string>
     <string name="language_italian">Italiaans</string>
+    <string name="language_russian">Russisch</string>
     
     <!-- Other Filter Strings -->
     <string name="filter_close">Sluiten</string>

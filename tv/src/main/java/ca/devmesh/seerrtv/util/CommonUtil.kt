@@ -225,6 +225,7 @@ object CommonUtil {
         "ja" -> "JP"
         "nl" -> "NL"
         "pt" -> "PT"
+        "ru" -> "RU"
         "zh" -> "CN"
         else -> "US"
     }
